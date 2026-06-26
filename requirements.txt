@@ -1,0 +1,5 @@
+Django
+Pillow
+gunicorn
+psycopg2
+psycopg2-binary

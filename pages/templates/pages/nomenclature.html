@@ -1,0 +1,338 @@
+{% extends "pages/base.html" %}
+{% load static %}
+
+{% block title %}مدونة الشعب المهنية - جدول التخصصات 2019{% endblock %}
+
+{% block extra_head %}
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap');
+
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --accent: #c9a227;
+    --accent2: #2ea043;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --row-hover: #1c2128;
+    --tag-bg: #21262d;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Tajawal', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px 16px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 32px;
+    padding: 32px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute;
+    top: -60px; left: 50%;
+    transform: translateX(-50%);
+    width: 300px; height: 200px;
+    background: radial-gradient(ellipse, rgba(201,162,39,0.15), transparent 70%);
+    pointer-events: none;
+  }
+
+  header h1 {
+    font-size: 1.9rem;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+    margin-bottom: 6px;
+  }
+  header p { color: var(--muted); font-size: 0.95rem; }
+
+  .stats {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+  .stat {
+    background: var(--tag-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 18px;
+    font-size: 0.88rem;
+    color: var(--muted);
+  }
+  .stat strong { color: var(--accent); font-size: 1.1rem; }
+
+  .controls {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .search-wrap {
+    flex: 1;
+    min-width: 220px;
+    position: relative;
+  }
+  .search-wrap svg {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    pointer-events: none;
+  }
+  input[type="search"] {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 40px 10px 14px;
+    color: var(--text);
+    font-family: 'Tajawal', sans-serif;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  input[type="search"]:focus { border-color: var(--accent); }
+  input[type="search"]::placeholder { color: var(--muted); }
+
+  select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'Tajawal', sans-serif;
+    font-size: 0.9rem;
+    outline: none;
+    cursor: pointer;
+    min-width: 180px;
+    transition: border-color 0.2s;
+  }
+  select:focus { border-color: var(--accent); }
+
+  .result-count {
+    color: var(--muted);
+    font-size: 0.88rem;
+    padding: 10px 0;
+    min-width: 120px;
+  }
+  .result-count strong { color: var(--text); }
+
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+  }
+
+  thead th {
+    background: var(--surface);
+    color: var(--muted);
+    font-weight: 600;
+    font-size: 0.82rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 14px 16px;
+    text-align: right;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  thead th:first-child { border-radius: 12px 0 0 0; }
+  thead th:last-child { border-radius: 0 12px 0 0; }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+  tbody tr:hover { background: var(--row-hover); }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr.hidden { display: none; }
+
+  td {
+    padding: 12px 16px;
+    vertical-align: middle;
+  }
+
+  .num {
+    color: var(--muted);
+    font-size: 0.8rem;
+    width: 45px;
+  }
+
+  .code {
+    font-family: 'Courier New', monospace;
+    font-size: 0.82rem;
+    background: var(--tag-bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 3px 8px;
+    color: var(--accent);
+    white-space: nowrap;
+    display: inline-block;
+  }
+
+  .branch-badge {
+    display: inline-block;
+    background: var(--tag-bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 2px 8px;
+    font-size: 0.78rem;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .name { font-weight: 500; color: var(--text); }
+
+  mark {
+    background: rgba(201,162,39,0.3);
+    color: var(--accent);
+    border-radius: 2px;
+    padding: 0 1px;
+  }
+
+  .no-results {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+    font-size: 1rem;
+  }
+
+  footer {
+    text-align: center;
+    margin-top: 28px;
+    color: var(--muted);
+    font-size: 0.82rem;
+  }
+
+</style>
+{% endblock %}
+
+{% block content %}
+
+<header>
+  <h1>🗂️ مدونة الشعب المهنية وتخصصات التكوين المهني</h1>
+  <p>طبعة 2019 — وزارة التكوين والتعليم المهنيين — الجمهورية الجزائرية الديمقراطية الشعبية</p>
+  <div class="stats">
+    <div class="stat">التخصصات: <strong id="totalCount">{{ total_count }}</strong></div>
+    <div class="stat">الشعب المهنية: <strong>{{ branches|length }}</strong></div>
+    <div class="stat">الطبعة: <strong>2019</strong></div>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="search-wrap">
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+    <input type="search" id="searchInput" placeholder="ابحث في التخصصات أو الرموز..." autocomplete="off">
+  </div>
+  <select id="branchFilter">
+    <option value="">كل الشعب المهنية</option>
+    {% for branch in branches %}
+    <option value="{{ branch.name_ar }}">{{ branch.name_ar }}</option>
+    {% endfor %}
+  </select>
+  <div class="result-count">عرض <strong id="visibleCount">{{ total_count }}</strong> تخصص</div>
+</div>
+
+<div class="table-wrap">
+  <table id="mainTable">
+    <thead>
+      <tr>
+        <th class="num">#</th>
+        <th>رمز التخصص</th>
+        <th>اسم التخصص</th>
+        <th>الشعبة المهنية</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+  <div class="no-results" id="noResults" style="display:none">لا توجد نتائج مطابقة للبحث</div>
+</div>
+
+<footer>مستخرج من مدونة الشعب المهنية وتخصصات التكوين المهني — طبعة 2019</footer>
+
+{% endblock %}
+
+{% block extra_js %}
+{{ specialties_data|json_script:"specialties-data" }}
+<script>
+const data = JSON.parse(document.getElementById('specialties-data').textContent);
+
+const tbody = document.getElementById('tableBody');
+const searchInput = document.getElementById('searchInput');
+const branchFilter = document.getElementById('branchFilter');
+const visibleCount = document.getElementById('visibleCount');
+const totalCount = document.getElementById('totalCount');
+const noResults = document.getElementById('noResults');
+
+totalCount.textContent = data.length;
+
+function highlight(text, query) {
+  if (!query) return text;
+  const re = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi');
+  return text.replace(re, '<mark>$1</mark>');
+}
+
+function render(searchQ, branchQ) {
+  tbody.innerHTML = '';
+  let count = 0;
+  data.forEach((row) => {
+    const [code, name, branch] = row;
+    const matchBranch = !branchQ || branch === branchQ;
+    const matchSearch = !searchQ ||
+      code.toLowerCase().includes(searchQ.toLowerCase()) ||
+      name.includes(searchQ) ||
+      branch.includes(searchQ);
+    if (matchBranch && matchSearch) {
+      count++;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="num">${count}</td>
+        <td><span class="code">${highlight(code, searchQ)}</span></td>
+        <td class="name">${highlight(name, searchQ)}</td>
+        <td><span class="branch-badge">${highlight(branch, searchQ)}</span></td>
+      `;
+      tbody.appendChild(tr);
+    }
+  });
+  visibleCount.textContent = count;
+  noResults.style.display = count === 0 ? 'block' : 'none';
+}
+
+render('', '');
+
+searchInput.addEventListener('input', () => render(searchInput.value.trim(), branchFilter.value));
+branchFilter.addEventListener('change', () => render(searchInput.value.trim(), branchFilter.value));
+
+// Deep-link support: #ACP scrolls/filters to that branch code if present in URL hash
+if (window.location.hash) {
+  const code = window.location.hash.replace('#', '');
+  const match = data.find(row => row[3] === code);
+  if (match) {
+    branchFilter.value = match[2];
+    render('', match[2]);
+  }
+}
+</script>
+{% endblock %}

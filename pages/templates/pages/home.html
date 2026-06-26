@@ -1,0 +1,786 @@
+{% extends "pages/base.html" %}
+{% load static pages_extras %}
+
+{% block extra_head %}
+  <!-- Fonts (Arabic + Latin) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Bootstrap 5 RTL -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+
+  <style>
+    :root {
+      --navy:        #0f172a;
+      --navy-mid:    #1e293b;
+      --navy-light:  #334155;
+      --accent:      #f59e0b;
+      --accent-dark: #d97706;
+      --accent-soft: rgba(245,158,11,.12);
+      --accent-glow: rgba(245,158,11,.25);
+      --success:     #10b981;
+      --body-bg:     #f8fafc;
+      --card-bg:     #ffffff;
+      --card-border: #e2e8f0;
+      --text:        #0f172a;
+      --muted:       #64748b;
+      --font-head:   'Cairo', sans-serif;
+      --font-body:   'Cairo', sans-serif;
+      --radius:      10px;
+      --shadow:      0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+      --shadow-md:   0 4px 16px rgba(0,0,0,.10);
+      --shadow-lg:   0 10px 40px rgba(0,0,0,.15);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font-body);
+      background: var(--body-bg);
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.75;
+      overflow-x: hidden;
+    }
+
+    /* ── Navbar ───────────────────────────────────────────────── */
+    #navbar {
+      background: var(--navy);
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      position: sticky;
+      top: 0;
+      z-index: 1040;
+      transition: box-shadow .25s;
+    }
+    #navbar.scrolled { box-shadow: 0 4px 24px rgba(0,0,0,.4); }
+    .nav-brand { display: flex; align-items: center; gap: 11px; text-decoration: none; }
+    .navbar-nav .nav-link {
+      font-family: var(--font-body);
+      font-size: 14.5px;
+      font-weight: 600;
+      color: rgba(255,255,255,.7) !important;
+      padding: 6px 14px !important;
+      border-radius: 6px;
+      transition: all .15s;
+    }
+    .navbar-nav .nav-link:hover,
+    .navbar-nav .nav-link.active { color: #fff !important; background: rgba(255,255,255,.07); }
+    .navbar-nav .dropdown-menu {
+      background: var(--navy-mid);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: var(--radius);
+      min-width: 220px;
+      padding: 6px;
+      margin-top: 6px !important;
+    }
+    .navbar-nav .dropdown-item {
+      color: rgba(255,255,255,.7);
+      font-size: 13.5px;
+      font-weight: 500;
+      border-radius: 6px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      transition: all .15s;
+    }
+    .navbar-nav .dropdown-item:hover { background: rgba(255,255,255,.07); color: #fff; }
+    .navbar-nav .dropdown-item i { font-size: 14px; color: var(--accent); }
+
+    .btn-app {
+      display: flex; align-items: center; gap: 7px;
+      padding: 7px 14px; border-radius: 7px;
+      font-size: 13.5px; font-weight: 700;
+      text-decoration: none; transition: all .15s;
+      border: 1.5px solid transparent;
+    }
+    .btn-app-amber { background: var(--accent); color: var(--navy); }
+    .btn-app-amber:hover { background: var(--accent-dark); color: var(--navy); }
+    .btn-app-outline { background: transparent; border-color: rgba(255,255,255,.18); color: rgba(255,255,255,.85); }
+    .btn-app-outline:hover { border-color: var(--accent); color: var(--accent); }
+
+    .navbar-toggler { border: 1px solid rgba(255,255,255,.2); padding: 5px 9px; }
+    .navbar-toggler-icon {
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255,255,255,.75%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+    }
+
+    @media (max-width: 991.98px) {
+      .navbar-collapse {
+        background: var(--navy);
+        border-top: 1px solid rgba(255,255,255,.07);
+        padding: 12px 16px 16px;
+        margin: 0 -12px;
+      }
+      .navbar-nav .dropdown-menu {
+        position: static !important;
+        float: none !important;
+        background: rgba(255,255,255,.05) !important;
+        border: 1px solid rgba(255,255,255,.07) !important;
+        border-radius: 8px !important;
+        margin: 4px 0 8px 0 !important;
+        padding: 4px !important;
+        box-shadow: none !important;
+      }
+      .navbar-nav .dropdown-item { padding: 9px 14px; border-radius: 6px; }
+      .navbar-collapse .d-flex.align-items-center.gap-2 {
+        flex-direction: column !important;
+        padding-top: 10px;
+        border-top: 1px solid rgba(255,255,255,.07);
+        margin-top: 8px;
+        gap: 8px !important;
+      }
+      .btn-app { width: 100%; justify-content: center; }
+      .navbar-nav .nav-link { padding: 10px 12px !important; border-radius: 8px; }
+    }
+
+    /* ── Hero ────────────────────────────────────────────────── */
+    #hero {
+      background: var(--navy);
+      position: relative;
+      overflow: hidden;
+      padding: 90px 0 80px;
+      min-height: 560px;
+      display: flex;
+      align-items: center;
+    }
+    #hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 70% 60% at 20% 50%, rgba(245,158,11,.08) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 40% at 90% 90%, rgba(16,185,129,.05) 0%, transparent 60%);
+    }
+    #hero::after {
+      content: '';
+      position: absolute; inset: 0;
+      background-image: linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+    }
+
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 7px;
+      background: rgba(245,158,11,.12);
+      border: 1px solid rgba(245,158,11,.3);
+      border-radius: 100px;
+      padding: 5px 14px;
+      font-size: 12.5px; font-weight: 700; color: var(--accent);
+      margin-bottom: 20px;
+    }
+    .hero-title {
+      font-family: var(--font-head);
+      font-size: clamp(34px, 5.5vw, 56px);
+      font-weight: 800;
+      color: #fff;
+      line-height: 1.25;
+      margin-bottom: 18px;
+    }
+    .hero-title .accent { color: var(--accent); }
+    .hero-desc { font-size: 16px; color: rgba(255,255,255,.65); max-width: 520px; line-height: 1.9; margin-bottom: 36px; }
+
+    .hero-cta-group { display: flex; gap: 12px; flex-wrap: wrap; }
+    .hero-cta-primary {
+      background: var(--accent); color: var(--navy); border: none; border-radius: 8px;
+      padding: 12px 26px; font-family: var(--font-head); font-size: 15.5px; font-weight: 700;
+      text-decoration: none; display: inline-flex; align-items: center; gap: 8px; transition: all .18s;
+    }
+    .hero-cta-primary:hover { background: var(--accent-dark); color: var(--navy); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(245,158,11,.35); }
+    .hero-cta-secondary {
+      background: transparent; color: rgba(255,255,255,.8); border: 1.5px solid rgba(255,255,255,.2);
+      border-radius: 8px; padding: 12px 26px; font-family: var(--font-head); font-size: 15.5px; font-weight: 700;
+      text-decoration: none; display: inline-flex; align-items: center; gap: 8px; transition: all .18s;
+    }
+    .hero-cta-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+    .hero-stats { display: flex; gap: 24px; flex-wrap: wrap; margin-top: 44px; padding-top: 32px; border-top: 1px solid rgba(255,255,255,.07); }
+    .hero-stat-val { font-family: var(--font-head); font-size: 28px; font-weight: 800; color: var(--accent); line-height: 1; direction: ltr; }
+    .hero-stat-lbl { font-size: 12px; color: rgba(255,255,255,.45); margin-top: 3px; }
+
+    .hero-visual { position: relative; display: flex; align-items: center; justify-content: center; height: 380px; }
+    .hero-shield {
+      width: 200px; height: 200px; background: rgba(245,158,11,.1); border: 2px solid rgba(245,158,11,.2);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center; position: relative;
+      animation: pulse-ring 3s ease-in-out infinite;
+    }
+    @keyframes pulse-ring { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.04); opacity: .7; } }
+
+    .hero-app-card {
+      position: absolute;
+      background: rgba(255,255,255,.06);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 12px;
+      padding: 14px 18px;
+      display: flex; align-items: center; gap: 10px;
+      color: #fff; text-decoration: none;
+      font-size: 13px; font-weight: 700;
+      transition: all .2s; white-space: nowrap;
+    }
+    .hero-app-card:hover { background: rgba(245,158,11,.15); border-color: var(--accent); color: var(--accent); transform: scale(1.04); }
+    .hero-app-card .icon { font-size: 20px; }
+    .hero-app-card.card-pedagogy { top: 20px; right: 0; }
+    .hero-app-card.card-facturation { bottom: 60px; right: 20px; }
+    .hero-app-card.card-nomenclature { top: 50%; left: -20px; transform: translateY(-50%); }
+
+    /* ── Section shared ──────────────────────────────────────── */
+    .section-label { font-family: var(--font-head); font-size: 12px; font-weight: 700; color: var(--accent); margin-bottom: 10px; }
+    .section-title { font-family: var(--font-head); font-size: clamp(26px, 4vw, 38px); font-weight: 800; color: var(--text); line-height: 1.3; }
+    .section-desc { font-size: 15px; color: var(--muted); line-height: 1.85; max-width: 580px; }
+
+    /* ── Apps Launch Strip ───────────────────────────────────── */
+    #apps-strip { background: var(--navy-mid); padding: 20px 0; border-bottom: 1px solid rgba(255,255,255,.06); }
+    .app-strip-label { font-size: 12px; color: rgba(255,255,255,.35); font-weight: 700; }
+    .app-pill {
+      display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px; border-radius: 8px;
+      font-size: 13.5px; font-weight: 700; text-decoration: none; transition: all .15s; border: 1.5px solid transparent;
+    }
+    .app-pill-amber { background: var(--accent); color: var(--navy); }
+    .app-pill-amber:hover { background: var(--accent-dark); color: var(--navy); box-shadow: 0 4px 16px rgba(245,158,11,.3); }
+    .app-pill-teal { background: rgba(16,185,129,.12); border-color: rgba(16,185,129,.3); color: #10b981; }
+    .app-pill-teal:hover { background: rgba(16,185,129,.2); color: #10b981; }
+    .app-pill-blue { background: rgba(59,130,246,.12); border-color: rgba(59,130,246,.3); color: #60a5fa; }
+    .app-pill-blue:hover { background: rgba(59,130,246,.2); color: #93c5fd; }
+
+    /* ── Mission / Vision / Compétences ─────────────────────── */
+    #mission { padding: 88px 0; }
+    .mission-card {
+      background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 14px;
+      padding: 36px 32px; height: 100%; box-shadow: var(--shadow); position: relative; overflow: hidden;
+      transition: box-shadow .2s, transform .2s;
+    }
+    .mission-card:hover { box-shadow: var(--shadow-md); transform: translateY(-3px); }
+    .mission-card::before { content: ''; position: absolute; top: 0; right: 0; left: 0; height: 3px; }
+    .mission-card.amber::before { background: var(--accent); }
+    .mission-card.green::before  { background: var(--success); }
+    .mission-card.blue::before   { background: #3b82f6; }
+    .mission-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 20px; }
+    .mission-icon.amber { background: var(--accent-soft); color: var(--accent); }
+    .mission-icon.green { background: rgba(16,185,129,.12); color: var(--success); }
+    .mission-icon.blue  { background: rgba(59,130,246,.12); color: #3b82f6; }
+    .mission-title { font-family: var(--font-head); font-size: 22px; font-weight: 800; color: var(--text); margin-bottom: 12px; }
+    .mission-text { font-size: 14.5px; color: var(--muted); line-height: 1.95; }
+
+    /* ── Formations Grid ─────────────────────────────────────── */
+    #formations { padding: 88px 0; background: #fff; }
+    .branch-card {
+      background: var(--body-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 20px;
+      display: flex; align-items: flex-start; gap: 14px; transition: all .18s; text-decoration: none; color: inherit; height: 100%;
+    }
+    .branch-card:hover { background: var(--card-bg); border-color: var(--accent); box-shadow: 0 4px 20px rgba(245,158,11,.12); transform: translateY(-2px); color: inherit; }
+    .branch-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+    .branch-code { font-family: var(--font-head); font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--muted); margin-bottom: 3px; direction: ltr; text-align: right; }
+    .branch-name { font-size: 14.5px; font-weight: 700; color: var(--text); line-height: 1.5; }
+    .branch-name-fr { font-size: 11.5px; color: var(--muted); line-height: 1.3; margin-top: 3px; direction: ltr; text-align: right; }
+
+    .nomenclature-cta {
+      background: var(--navy); color: #fff; border: none; border-radius: 10px; padding: 14px 28px;
+      font-family: var(--font-head); font-size: 15.5px; font-weight: 700; display: inline-flex; align-items: center;
+      gap: 9px; text-decoration: none; transition: all .18s;
+    }
+    .nomenclature-cta:hover { background: var(--accent); color: var(--navy); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(245,158,11,.3); }
+
+    /* ── Upcoming sessions ───────────────────────────────────── */
+    #sessions { padding: 88px 0; }
+    .session-card {
+      background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 22px 24px;
+      display: flex; align-items: center; gap: 18px; box-shadow: var(--shadow); transition: all .18s;
+    }
+    .session-card:hover { box-shadow: var(--shadow-md); border-color: rgba(245,158,11,.4); transform: translateX(-4px); }
+    .session-date-box { background: var(--navy); color: #fff; border-radius: 10px; width: 54px; flex-shrink: 0; text-align: center; padding: 10px 0; }
+    .session-date-day { font-family: var(--font-head); font-size: 24px; font-weight: 800; color: var(--accent); line-height: 1; }
+    .session-date-mon { font-size: 11px; color: rgba(255,255,255,.5); font-weight: 600; }
+    .session-title { font-family: var(--font-head); font-size: 16.5px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .session-meta { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .session-meta span { display: flex; align-items: center; gap: 5px; }
+    .session-badge { margin-inline-start: auto; flex-shrink: 0; padding: 4px 12px; border-radius: 100px; font-size: 11.5px; font-weight: 700; }
+    .badge-planned { background: var(--accent-soft); color: var(--accent); }
+    .badge-open    { background: rgba(16,185,129,.12); color: var(--success); }
+
+    /* ── Video ───────────────────────────────────────────────── */
+    #video-section { padding: 88px 0; background: var(--navy); position: relative; overflow: hidden; }
+    #video-section::before { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse 60% 80% at 50% 50%, rgba(245,158,11,.06) 0%, transparent 70%); }
+    .video-wrapper { border-radius: 16px; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,.5); border: 1px solid rgba(255,255,255,.08); position: relative; }
+    .video-wrapper iframe { display: block; }
+
+    /* ── Map ─────────────────────────────────────────────────── */
+    #map-section { padding: 88px 0; }
+    .map-wrapper { border-radius: 16px; overflow: hidden; box-shadow: var(--shadow-md); border: 1px solid var(--card-border); }
+
+    /* ── Info strip ─────────────────────────────────────────── */
+    #info-strip { background: var(--navy-mid); padding: 40px 0; border-top: 1px solid rgba(255,255,255,.06); border-bottom: 1px solid rgba(255,255,255,.06); }
+    .info-item { display: flex; align-items: flex-start; gap: 14px; color: rgba(255,255,255,.75); }
+    .info-icon { width: 40px; height: 40px; background: rgba(245,158,11,.12); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: 18px; flex-shrink: 0; margin-top: 2px; }
+    .info-title { font-size: 12px; color: rgba(255,255,255,.4); font-weight: 700; margin-bottom: 3px; }
+    .info-value { font-size: 14.5px; color: rgba(255,255,255,.85); font-weight: 500; }
+
+    /* ── Footer ─────────────────────────────────────────────── */
+    footer { background: var(--navy); border-top: 1px solid rgba(255,255,255,.06); padding: 56px 0 32px; }
+    .footer-desc { font-size: 13.5px; color: rgba(255,255,255,.4); line-height: 1.9; margin-top: 12px; }
+    .footer-heading { font-family: var(--font-head); font-size: 13px; font-weight: 700; color: var(--accent); margin-bottom: 16px; }
+    .footer-link { display: flex; align-items: center; gap: 8px; color: rgba(255,255,255,.5); font-size: 13.5px; text-decoration: none; padding: 5px 0; transition: color .15s; }
+    .footer-link:hover { color: rgba(255,255,255,.9); }
+    .footer-link i { font-size: 13px; }
+    .footer-app-link {
+      display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 8px;
+      border: 1px solid rgba(255,255,255,.08); color: rgba(255,255,255,.7); font-size: 13px; font-weight: 600;
+      text-decoration: none; transition: all .15s; margin-bottom: 8px;
+    }
+    .footer-app-link:hover { border-color: var(--accent); color: var(--accent); background: rgba(245,158,11,.05); }
+    .footer-app-link i { font-size: 16px; color: var(--accent); }
+    .social-icon { width: 36px; height: 36px; border-radius: 8px; border: 1px solid rgba(255,255,255,.1); display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,.5); text-decoration: none; font-size: 15px; transition: all .15s; }
+    .social-icon img { width: 18px; height: 18px; object-fit: contain; }
+    .social-icon:hover { border-color: var(--accent); color: var(--accent); background: rgba(245,158,11,.08); }
+    .footer-bottom { margin-top: 40px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,.06); font-size: 12.5px; color: rgba(255,255,255,.25); }
+
+    /* ── Scroll-reveal utility ───────────────────────────────── */
+    .reveal { opacity: 1; transform: none; transition: opacity .55s ease, transform .55s ease; }
+    .reveal.hidden { opacity: 0; transform: translateY(22px); }
+    .reveal.visible { opacity: 1; transform: none; }
+
+    /* ── Back-to-top ─────────────────────────────────────────── */
+    #back-top {
+      position: fixed; bottom: 28px; left: 28px;
+      width: 42px; height: 42px; background: var(--accent); color: var(--navy);
+      border-radius: 10px; border: none; display: flex; align-items: center; justify-content: center;
+      font-size: 18px; cursor: pointer; box-shadow: 0 4px 16px rgba(245,158,11,.35);
+      opacity: 0; transform: translateY(10px); transition: all .25s; z-index: 999;
+    }
+    #back-top.show { opacity: 1; transform: none; }
+    #back-top:hover { background: var(--accent-dark); }
+
+    [dir-ltr] { direction: ltr; unicode-bidi: isolate; }
+
+    @media (max-width: 768px) {
+      #hero { padding: 60px 0 50px; }
+      .hero-visual { display: none; }
+      .hero-stats { gap: 16px; }
+    }
+
+  </style>
+{% endblock %}
+
+{% block content %}
+
+<!-- ══════════════════ NAVBAR ══════════════════ -->
+<nav id="navbar" class="navbar navbar-expand-lg py-0">
+  <div class="container" style="height:64px;">
+
+    <a class="nav-brand me-4" href="{% url 'pages:home' %}">
+      {% if settings.logo %}
+        <img src="{{ settings.logo.url }}" alt="شعار {{ settings.site_name }}" style="height:44px;width:auto;border-radius:8px;">
+      {% else %}
+        <span style="color:#fff;font-weight:800;font-size:18px;">{{ settings.site_name }}</span>
+      {% endif %}
+    </a>
+
+    <button class="navbar-toggler ms-auto me-2" type="button" data-bs-toggle="collapse" data-bs-target="#navMain">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navMain">
+      <ul class="navbar-nav me-auto gap-1">
+        <li class="nav-item"><a class="nav-link active" href="{% url 'pages:home' %}">الرئيسية</a></li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">المؤسسة</a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="#mission"><i class="bi bi-award-fill"></i> مهمتنا</a></li>
+            <li><a class="dropdown-item" href="#mission"><i class="bi bi-eye-fill"></i> رؤيتنا</a></li>
+            <li><a class="dropdown-item" href="#mission"><i class="bi bi-graph-up-arrow"></i> كفاءاتنا</a></li>
+          </ul>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">التكوينات</a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="#formations"><i class="bi bi-collection-fill"></i> الفروع المهنية</a></li>
+            <li><a class="dropdown-item" href="{% url 'pages:nomenclature' %}"><i class="bi bi-list-ul"></i> تصنيف التخصصات</a></li>
+            <li><a class="dropdown-item" href="#sessions"><i class="bi bi-calendar3-fill"></i> الدورات القادمة</a></li>
+          </ul>
+        </li>
+        <li class="nav-item"><a class="nav-link" href="#map-section">الاتصال والوصول</a></li>
+      </ul>
+
+      <!-- App launchers -->
+      <div class="d-flex align-items-center gap-2 ms-2 py-2 py-lg-0">
+        {% for app in internal_apps %}{% if app.show_in_navbar %}
+        <a href="{{ app.url }}" class="btn-app {% if app.color == 'amber' %}btn-app-amber{% else %}btn-app-outline{% endif %}" {% if app.open_in_new_tab %}target="_blank"{% endif %}>
+          <i class="{{ app.icon_class }}"></i> {{ app.title }}
+        </a>
+        {% endif %}{% endfor %}
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ══════════════════ HERO ══════════════════ -->
+<section id="hero">
+  <div class="container position-relative" style="z-index:1;">
+    <div class="row align-items-center gy-5">
+      <div class="col-lg-6">
+        {% if settings.hero_badge_text %}
+        <div class="hero-badge">
+          <i class="bi bi-patch-check-fill"></i>
+          {{ settings.hero_badge_text }}
+        </div>
+        {% endif %}
+        <h1 class="hero-title">
+          {{ settings.hero_title_line1 }}<br>
+          {{ settings.hero_title_line2 }} <span class="accent">{{ settings.hero_title_accent }}</span>
+        </h1>
+        <p class="hero-desc">
+          {{ settings.hero_description }}
+        </p>
+        <div class="hero-cta-group">
+          <a href="{{ settings.hero_cta_primary_url }}" class="hero-cta-primary">
+            <i class="bi bi-collection-fill"></i> {{ settings.hero_cta_primary_text }}
+          </a>
+          <a href="{% url 'pages:nomenclature' %}" class="hero-cta-secondary">
+            <i class="bi bi-list-ul"></i> {{ settings.hero_cta_secondary_text }}
+          </a>
+        </div>
+
+        <div class="hero-stats">
+          {% for stat in hero_stats %}
+          <div>
+            <div class="hero-stat-val">{{ stat.value }}</div>
+            <div class="hero-stat-lbl">{{ stat.label }}</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="col-lg-6 d-none d-lg-block">
+        <div class="hero-visual">
+          {% if settings.hero_image %}
+          <img src="{{ settings.hero_image.url }}" alt="{{ settings.site_name }}"
+            style="max-height:360px;width:auto;object-fit:contain;position:relative;z-index:1;filter:drop-shadow(0 10px 40px rgba(245,158,11,.2));">
+          {% endif %}
+
+          {% for app in internal_apps %}{% if app.show_in_hero %}
+          <a href="{{ app.url }}" class="hero-app-card"
+             style="{% if forloop.counter == 1 %}top:20px;right:0;{% elif forloop.counter == 2 %}bottom:60px;right:20px;{% else %}top:50%;left:-20px;transform:translateY(-50%);{% endif %}"
+             {% if app.open_in_new_tab %}target="_blank"{% endif %}>
+            <i class="{{ app.icon_class }} icon" style="color:{% if app.color == 'teal' %}#10b981{% elif app.color == 'blue' %}#60a5fa{% else %}var(--accent){% endif %}"></i>
+            <div>
+              <div style="font-size:11px;color:rgba(255,255,255,.45);">{{ app.subtitle }}</div>
+              <div>{{ app.title }}</div>
+            </div>
+            <i class="bi bi-arrow-up-left ms-2" style="font-size:12px;color:{% if app.color == 'teal' %}#10b981{% elif app.color == 'blue' %}#60a5fa{% else %}var(--accent){% endif %}"></i>
+          </a>
+          {% endif %}{% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ APPS STRIP ══════════════════ -->
+<div id="apps-strip">
+  <div class="container">
+    <div class="d-flex align-items-center flex-wrap gap-3">
+      <span class="app-strip-label me-2">الوصول السريع:</span>
+      {% for app in internal_apps %}
+      <a href="{{ app.url }}" class="app-pill app-pill-{{ app.color }}" {% if app.open_in_new_tab %}target="_blank"{% endif %}>
+        <i class="{{ app.icon_class }}"></i> {{ app.title }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ MISSION / VISION / COMPÉTENCES ══════════════════ -->
+<section id="mission">
+  <div class="container">
+    <div class="text-center mb-5 reveal">
+      <div class="section-label">من نحن</div>
+      <h2 class="section-title">هويتنا المؤسسية</h2>
+    </div>
+    <div class="row g-4">
+      {% for card in mission_cards %}
+      <div class="col-md-4 reveal" style="transition-delay:{{ forloop.counter0 }}.1s">
+        <div class="mission-card {{ card.color }} h-100">
+          <div class="mission-icon {{ card.color }}"><i class="{{ card.icon_class }}"></i></div>
+          <div class="mission-title">{{ card.title }}</div>
+          <p class="mission-text">{{ card.text }}</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ FORMATIONS (BRANCHES) ══════════════════ -->
+<section id="formations">
+  <div class="container">
+    <div class="row align-items-end mb-5 reveal">
+      <div class="col-lg-7">
+        <div class="section-label">{{ settings.formations_label }}</div>
+        <h2 class="section-title">{{ settings.formations_title }}</h2>
+        <p class="section-desc mt-3">{{ settings.formations_description }}</p>
+      </div>
+      <div class="col-lg-5 text-lg-end mt-3 mt-lg-0">
+        <a href="{% url 'pages:nomenclature' %}" class="nomenclature-cta">
+          <i class="bi bi-list-ul"></i>
+          التصنيف الكامل
+          <i class="bi bi-arrow-left"></i>
+        </a>
+      </div>
+    </div>
+
+    <div class="row g-3" id="branches-grid">
+      {% for branch in branches %}
+      <div class="col-sm-6 col-md-4 col-xl-3 reveal" style="transition-delay:{{ forloop.counter0 }}.03s">
+        <a href="{% url 'pages:nomenclature' %}#{{ branch.code }}" class="branch-card">
+          <div class="branch-dot" style="background:{{ branch.color }}"></div>
+          <div style="min-width:0;">
+            <div class="branch-code">{{ branch.code }}</div>
+            <div class="branch-name">{{ branch.name_ar }}</div>
+            <div class="branch-name-fr">{{ branch.name_fr }}</div>
+          </div>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ PROCHAINES SESSIONS ══════════════════ -->
+<section id="sessions">
+  <div class="container">
+    <div class="text-center mb-5 reveal">
+      <div class="section-label">التخطيط</div>
+      <h2 class="section-title">الدورات القادمة</h2>
+    </div>
+    <div class="row g-3">
+      {% for session in sessions %}
+      <div class="col-lg-6 reveal" style="transition-delay:{{ forloop.counter0 }}.07s">
+        <div class="session-card">
+          <div class="session-date-box">
+            <div class="session-date-day">{{ session.start_date|date:"d" }}</div>
+            <div class="session-date-mon">{{ session.start_date|dz_month }}</div>
+          </div>
+          <div class="flex-grow-1">
+            <div class="session-title">{{ session.title }}</div>
+            <div class="session-meta">
+              <span><i class="bi bi-clock"></i> {{ session.duration_text }}</span>
+              <span><i class="bi bi-people-fill"></i> {{ session.seats }} مقعدا</span>
+            </div>
+          </div>
+          <span class="session-badge {% if session.status == 'open' %}badge-open{% else %}badge-planned{% endif %}">{{ session.get_status_display }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ GALERIE PHOTOS ══════════════════ -->
+<section id="gallery-section" style="padding:88px 0;background:#fff;">
+  <div class="container">
+    <div class="text-center mb-5 reveal">
+      <div class="section-label">{{ settings.gallery_label }}</div>
+      <h2 class="section-title">{{ settings.gallery_title }}</h2>
+    </div>
+    {% if carousel_images %}
+    <div id="eems-carousel" class="carousel slide reveal" data-bs-ride="carousel">
+      <div class="carousel-indicators">
+        {% for img in carousel_images %}
+        <button type="button" data-bs-target="#eems-carousel" data-bs-slide-to="{{ forloop.counter0 }}" {% if forloop.first %}class="active"{% endif %}></button>
+        {% endfor %}
+      </div>
+      <div class="carousel-inner" style="border-radius:16px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.12);">
+        {% for img in carousel_images %}
+        <div class="carousel-item {% if forloop.first %}active{% endif %}">
+          <img src="{{ img.image.url }}" class="d-block w-100" alt="{{ img.caption }}" style="max-height:480px;object-fit:cover;">
+        </div>
+        {% endfor %}
+      </div>
+      <button class="carousel-control-prev" type="button" data-bs-target="#eems-carousel" data-bs-slide="prev">
+        <span class="carousel-control-prev-icon"></span>
+      </button>
+      <button class="carousel-control-next" type="button" data-bs-target="#eems-carousel" data-bs-slide="next">
+        <span class="carousel-control-next-icon"></span>
+      </button>
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<!-- ══════════════════ VIDEO ══════════════════ -->
+{% if settings.video_youtube_embed_url %}
+<section id="video-section">
+  <div class="container position-relative" style="z-index:1;">
+    <div class="text-center mb-5 reveal">
+      <div class="section-label" style="color:var(--accent)">{{ settings.video_label }}</div>
+      <h2 class="section-title" style="color:#fff;">{{ settings.video_title }}</h2>
+      <p class="section-desc mx-auto mt-3" style="color:rgba(255,255,255,.5);">
+        {{ settings.video_description }}
+      </p>
+    </div>
+    <div class="row justify-content-center reveal">
+      <div class="col-lg-9">
+        <div class="video-wrapper">
+          <div class="ratio ratio-16x9">
+              <iframe width="560" height="315" src="{{ settings.video_youtube_embed_url }}" title="{{ settings.video_title }}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- ══════════════════ INFO STRIP ══════════════════ -->
+<div id="info-strip">
+  <div class="container">
+    <div class="row g-4">
+      <div class="col-sm-6 col-lg-3 reveal">
+        <div class="info-item">
+          <div class="info-icon"><i class="bi bi-geo-alt-fill"></i></div>
+          <div>
+            <div class="info-title">العنوان</div>
+            <div class="info-value">{{ settings.address }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-6 col-lg-3 reveal" style="transition-delay:.07s">
+        <div class="info-item">
+          <div class="info-icon"><i class="bi bi-telephone-fill"></i></div>
+          <div>
+            <div class="info-title">الهاتف</div>
+            <div class="info-value" dir="ltr" style="text-align:right;">{{ settings.phone }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-6 col-lg-3 reveal" style="transition-delay:.14s">
+        <div class="info-item">
+          <div class="info-icon"><i class="bi bi-envelope-fill"></i></div>
+          <div>
+            <div class="info-title">البريد الإلكتروني</div>
+            <div class="info-value" dir="ltr" style="text-align:right;"><a href="mailto:{{ settings.email }}" style="color:inherit;text-decoration:none;">{{ settings.email }}</a></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-6 col-lg-3 reveal" style="transition-delay:.21s">
+        <div class="info-item">
+          <div class="info-icon"><i class="bi bi-clock-fill"></i></div>
+          <div>
+            <div class="info-title">أوقات العمل</div>
+            <div class="info-value">{{ settings.working_hours }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ MAP ══════════════════ -->
+{% if settings.map_embed_url %}
+<section id="map-section">
+  <div class="container">
+    <div class="text-center mb-5 reveal">
+      <div class="section-label">{{ settings.map_label }}</div>
+      <h2 class="section-title">{{ settings.map_title }}</h2>
+      <p class="section-desc mx-auto mt-2">{{ settings.map_description }}</p>
+    </div>
+    <div class="map-wrapper reveal">
+      <div class="ratio" style="--bs-aspect-ratio: 42%;">
+        <iframe src="{{ settings.map_embed_url }}" style="border:0;" allowfullscreen="" loading="lazy"></iframe>
+      </div>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+<!-- ══════════════════ FOOTER ══════════════════ -->
+<footer>
+  <div class="container">
+    <div class="row g-5">
+
+      <div class="col-lg-4">
+        <div class="d-flex align-items-center gap-3 mb-3">
+          {% if settings.logo %}<img src="{{ settings.logo.url }}" alt="{{ settings.site_name }}" style="height:48px;width:auto;border-radius:8px;">{% endif %}
+        </div>
+        <p class="footer-desc">{{ settings.footer_description }}</p>
+        <div class="d-flex gap-2 mt-4">
+          {% for link in social_links %}
+          <a href="{{ link.url }}" target="_blank" class="social-icon">
+            {% if link.static_icon %}<img src="{% static link.static_icon %}" alt="{{ link.get_platform_display }}">{% else %}<i class="{{ link.icon_class }}"></i>{% endif %}
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="col-sm-6 col-lg-2">
+        <div class="footer-heading">التصفح</div>
+        {% for link in nav_links %}
+        <a href="{{ link.url }}" class="footer-link"><i class="{{ link.icon_class }}"></i> {{ link.label }}</a>
+        {% endfor %}
+      </div>
+
+      <div class="col-sm-6 col-lg-2">
+        <div class="footer-heading">التكوينات</div>
+        <a href="{% url 'pages:nomenclature' %}" class="footer-link"><i class="bi bi-list-ul"></i> التصنيف الرسمي</a>
+        <a href="#formations" class="footer-link"><i class="bi bi-grid-fill"></i> {{ branches|length }} فرعا</a>
+        <a href="#sessions" class="footer-link"><i class="bi bi-calendar3"></i> برنامج الدورات</a>
+      </div>
+
+      <div class="col-lg-4">
+        <div class="footer-heading">التطبيقات الداخلية</div>
+        {% for app in internal_apps %}{% if app.show_in_footer %}
+        <a href="{{ app.url }}" class="footer-app-link" {% if app.open_in_new_tab %}target="_blank"{% endif %}>
+          <i class="{{ app.icon_class }}"></i>
+          <div>
+            <div style="font-size:12.5px;font-weight:700;">{{ app.title }}</div>
+            <div style="font-size:11px;color:rgba(255,255,255,.35);">{{ app.subtitle }}</div>
+          </div>
+          <i class="bi bi-arrow-up-left ms-auto" style="font-size:13px;color:var(--accent)"></i>
+        </a>
+        {% endif %}{% endfor %}
+      </div>
+
+    </div>
+
+    <div class="footer-bottom d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <span>{{ settings.footer_copyright }}</span>
+      <span>{{ settings.footer_location_text }}</span>
+    </div>
+  </div>
+</footer>
+
+<!-- Back to top -->
+<button id="back-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">
+  <i class="bi bi-chevron-up"></i>
+</button>
+
+{% endblock %}
+
+{% block extra_js %}
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+/* ── Navbar scroll shadow ───────────────────────────────────── */
+window.addEventListener('scroll', () => {
+  document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 20);
+  document.getElementById('back-top').classList.toggle('show', window.scrollY > 300);
+});
+
+/* ── Scroll reveal ──────────────────────────────────────────── */
+const revealEls = document.querySelectorAll('.reveal');
+const observer = new IntersectionObserver(
+  (entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        observer.unobserve(e.target);
+      }
+    });
+  },
+  { threshold: 0.12 }
+);
+revealEls.forEach(el => observer.observe(el));
+</script>
+{% endblock %}
