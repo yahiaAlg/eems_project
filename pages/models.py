@@ -28,6 +28,8 @@ class SiteVisitor(models.Model):
             if forwarded
             else request.META.get("REMOTE_ADDR", "0.0.0.0")
         )
+        if isinstance(ip, bytes):
+            ip = ip.decode("utf-8", errors="ignore")
         ip_hash = ip.encode()
         from datetime import date
 
