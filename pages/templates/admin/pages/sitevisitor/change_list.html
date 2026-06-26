@@ -1,0 +1,20 @@
+{% extends "admin/change_list.html" %}
+{% block content %}
+<div style="display:flex;gap:1.5rem;padding:1.2rem 1.5rem;background:#1e293b;border-radius:10px;margin-bottom:1.5rem;direction:rtl;flex-wrap:wrap">
+  <div style="text-align:center;min-width:100px">
+    <div style="font-size:2rem;font-weight:bold;color:#f59e0b">{{ visitor_today }}</div>
+    <div style="color:#94a3b8;font-size:.85rem;margin-top:.25rem">اليوم</div>
+  </div>
+  <div style="width:1px;background:#334155"></div>
+  <div style="text-align:center;min-width:100px">
+    <div style="font-size:2rem;font-weight:bold;color:#10b981">{{ visitor_month }}</div>
+    <div style="color:#94a3b8;font-size:.85rem;margin-top:.25rem">هذا الشهر</div>
+  </div>
+  <div style="width:1px;background:#334155"></div>
+  <div style="text-align:center;min-width:100px">
+    <div style="font-size:2rem;font-weight:bold;color:#3b82f6">{{ visitor_total }}</div>
+    <div style="color:#94a3b8;font-size:.85rem;margin-top:.25rem">الإجمالي</div>
+  </div>
+</div>
+{{ block.super }}
+{% endblock %}

@@ -1,4 +1,37 @@
+import hashlib
+
 from django.db import models
+
+
+# ──────────────────────────────────────────────────────────────────
+#  Site visitor counter — unique visits tracked by hashed IP + date
+# ──────────────────────────────────────────────────────────────────
+class SiteVisitor(models.Model):
+    ip_hash = models.CharField("هاش IP", max_length=64, db_index=True)
+    date = models.DateField("التاريخ", db_index=True)
+
+    class Meta:
+        unique_together = ("ip_hash", "date")
+        ordering = ["-date"]
+        verbose_name = "زيارة"
+        verbose_name_plural = "📈 إحصائيات الزوار"
+
+    def __str__(self):
+        return str(self.date)
+
+    @classmethod
+    def record(cls, request):
+        """Hash the visitor IP and record one visit per IP per day."""
+        forwarded = request.META.get("HTTP_X_FORWARDED_FOR", "")
+        ip = (
+            forwarded.split(",")[0].strip()
+            if forwarded
+            else request.META.get("REMOTE_ADDR", "0.0.0.0")
+        )
+        ip_hash = ip.encode()
+        from datetime import date
+
+        cls.objects.get_or_create(ip_hash=ip_hash, date=date.today())
 
 
 # ──────────────────────────────────────────────────────────────────

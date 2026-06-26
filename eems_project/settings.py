@@ -33,7 +33,7 @@ SECRET_KEY = "django-insecure-_)l*h!8sdkyvt1vz+6_pqvl3qzyejafazx5wt2vfe%lmr54a4e
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -56,6 +56,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "pages.middleware.VisitorCounterMiddleware",
 ]
 
 ROOT_URLCONF = "eems_project.urls"
@@ -63,7 +64,7 @@ ROOT_URLCONF = "eems_project.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [

@@ -247,6 +247,20 @@
 
     /* ── Mission / Vision / Compétences ─────────────────────── */
     #mission { padding: 88px 0; }
+    /* ── Visitor Stats ───────────────────────────────────────── */
+    #visitor-stats { padding: 56px 0; background: var(--navy-mid); }
+    .vstat-card {
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: var(--radius);
+      padding: 28px 24px;
+      text-align: center;
+      transition: all .2s;
+    }
+    .vstat-card:hover { background: rgba(245,158,11,.07); border-color: rgba(245,158,11,.25); transform: translateY(-3px); }
+    .vstat-icon { font-size: 22px; color: var(--accent); margin-bottom: 12px; }
+    .vstat-val { font-family: var(--font-head); font-size: 36px; font-weight: 800; color: #fff; line-height: 1; direction: ltr; }
+    .vstat-lbl { font-size: 13px; color: rgba(255,255,255,.45); margin-top: 8px; }
     .mission-card {
       background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 14px;
       padding: 36px 32px; height: 100%; box-shadow: var(--shadow); position: relative; overflow: hidden;
@@ -335,6 +349,9 @@
     .social-icon img { width: 18px; height: 18px; object-fit: contain; }
     .social-icon:hover { border-color: var(--accent); color: var(--accent); background: rgba(245,158,11,.08); }
     .footer-bottom { margin-top: 40px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,.06); font-size: 12.5px; color: rgba(255,255,255,.25); }
+    .visitor-counter { display: flex; align-items: center; gap: 14px; }
+    .visitor-counter span { display: flex; align-items: center; gap: 5px; }
+    .visitor-counter i { font-size: 11px; color: var(--accent); }
 
     /* ── Scroll-reveal utility ───────────────────────────────── */
     .reveal { opacity: 1; transform: none; transition: opacity .55s ease, transform .55s ease; }
@@ -490,6 +507,39 @@
     </div>
   </div>
 </div>
+
+<!-- ══════════════════ VISITOR STATS ══════════════════ -->
+<section id="visitor-stats">
+  <div class="container">
+    <div class="text-center mb-4 reveal">
+      <div class="section-label" style="color:rgba(255,255,255,.45)">إحصائيات</div>
+      <h2 class="section-title" style="color:#fff">زوار الموقع</h2>
+    </div>
+    <div class="row g-4 justify-content-center">
+      <div class="col-6 col-md-4 reveal">
+        <div class="vstat-card">
+          <div class="vstat-icon"><i class="bi bi-circle-fill" style="color:var(--success)"></i></div>
+          <div class="vstat-val">{{ visitor_stats.today }}</div>
+          <div class="vstat-lbl">زوار اليوم</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-4 reveal" style="transition-delay:.1s">
+        <div class="vstat-card">
+          <div class="vstat-icon"><i class="bi bi-bar-chart-fill"></i></div>
+          <div class="vstat-val">{{ visitor_stats.month }}</div>
+          <div class="vstat-lbl">زوار هذا الشهر</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-4 reveal" style="transition-delay:.2s">
+        <div class="vstat-card">
+          <div class="vstat-icon"><i class="bi bi-people-fill" style="color:#3b82f6"></i></div>
+          <div class="vstat-val">{{ visitor_stats.total }}</div>
+          <div class="vstat-lbl">إجمالي الزوار</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 
 <!-- ══════════════════ MISSION / VISION / COMPÉTENCES ══════════════════ -->
 <section id="mission">
@@ -746,6 +796,11 @@
 
     <div class="footer-bottom d-flex flex-wrap align-items-center justify-content-between gap-2">
       <span>{{ settings.footer_copyright }}</span>
+      <div class="visitor-counter">
+        <span title="زوار اليوم"><i class="bi bi-circle-fill"></i> {{ visitor_stats.today }}</span>
+        <span title="زوار هذا الشهر"><i class="bi bi-bar-chart-fill"></i> {{ visitor_stats.month }}</span>
+        <span title="إجمالي الزوار"><i class="bi bi-people-fill"></i> {{ visitor_stats.total }}</span>
+      </div>
       <span>{{ settings.footer_location_text }}</span>
     </div>
   </div>
