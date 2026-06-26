@@ -1,11 +1,21 @@
 from django.shortcuts import render
+from django.views.decorators.cache import never_cache
 
 from .models import (
-    SiteSettings, HeroStat, MissionCard, CarouselImage,
-    Branch, Specialty, TrainingSession, SocialLink, InternalApp, NavLink,
+    SiteSettings,
+    HeroStat,
+    MissionCard,
+    CarouselImage,
+    Branch,
+    Specialty,
+    TrainingSession,
+    SocialLink,
+    InternalApp,
+    NavLink,
 )
 
 
+@never_cache
 def home(request):
     settings_obj = SiteSettings.load()
     context = {
@@ -22,10 +32,10 @@ def home(request):
     return render(request, "pages/home.html", context)
 
 
+@never_cache
 def nomenclature(request):
-    specialties = (
-        Specialty.objects.select_related("branch")
-        .order_by("branch__order", "code")
+    specialties = Specialty.objects.select_related("branch").order_by(
+        "branch__order", "code"
     )
     # Same row shape the original static page used: [code, name, branch_name, branch_code]
     # NOTE: keep this a plain Python list — it goes through the `json_script`

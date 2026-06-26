@@ -100,6 +100,7 @@ if POSTGRES_DB_NAME:
             or os.environ.get("DB_HOST", "localhost"),
             "PORT": os.environ.get("POSTGRES_PORT")
             or os.environ.get("DB_PORT", "5432"),
+            "CONN_MAX_AGE": 0,
         }
     }
 else:
@@ -146,6 +147,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "public"
 STATICFILES_DIRS = [BASE_DIR / "pages" / "static"]
 
 MEDIA_URL = "media/"
