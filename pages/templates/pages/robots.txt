@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# Block the broken internal app links from being indexed by Google
+Disallow: /pedagogy
+Disallow: /facturation
+
+Sitemap: https://excellance-ms.dz/sitemap.xml

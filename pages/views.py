@@ -31,7 +31,12 @@ def home(request):
     }
     return render(request, "pages/home.html", context)
 
-
+@never_cache
+def robots(request):
+    return render(request, "pages/robots.txt", context={})
+    
+    
+    
 @never_cache
 def nomenclature(request):
     specialties = (
