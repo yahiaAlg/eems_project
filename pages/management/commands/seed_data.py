@@ -1,5 +1,7 @@
 import datetime
+import os
 
+from django.contrib.auth import get_user_model
 from django.contrib.staticfiles import finders
 from django.core.files import File
 from django.core.management.base import BaseCommand
@@ -602,6 +604,7 @@ class Command(BaseCommand):
 
     @transaction.atomic
     def handle(self, *args, **options):
+        self.seed_admin_user()
         self.seed_site_settings()
         self.seed_images()
         self.seed_hero_stats()
@@ -612,6 +615,44 @@ class Command(BaseCommand):
         self.seed_internal_apps()
         self.seed_nav_links()
         self.stdout.write(self.style.SUCCESS("✔ Seed data loaded successfully."))
+
+    # ── Admin (superuser) account ───────────────────────────────
+    # Idempotent: only creates the account the first time; never resets the
+    # password of an existing account on re-run. Override the credentials via
+    # env vars EEMS_ADMIN_USERNAME / EEMS_ADMIN_EMAIL / EEMS_ADMIN_PASSWORD
+    # before running seed_data if you don't want the default password.
+    def seed_admin_user(self):
+        User = get_user_model()
+        username = os.environ.get("EEMS_ADMIN_USERNAME", "admin")
+        email = os.environ.get("EEMS_ADMIN_EMAIL", "admin@eems.dz")
+        password = os.environ.get("EEMS_ADMIN_PASSWORD", "ChangeMe123!")
+
+        user, created = User.objects.get_or_create(
+            username=username,
+            defaults={"email": email, "is_staff": True, "is_superuser": True},
+        )
+        if created:
+            user.set_password(password)
+            user.save()
+            self.stdout.write(
+                self.style.SUCCESS(
+                    f"✔ تم إنشاء حساب المدير: {username} / {password} "
+                    f"— يُنصح بتغيير كلمة المرور فورا من لوحة التحكم."
+                )
+            )
+        else:
+            # Make sure an existing account keeps admin rights even if it
+            # was created manually without them.
+            changed = False
+            if not user.is_staff:
+                user.is_staff = True
+                changed = True
+            if not user.is_superuser:
+                user.is_superuser = True
+                changed = True
+            if changed:
+                user.save()
+            self.stdout.write(self.style.WARNING(f"↷ حساب المدير موجود مسبقا: {username}"))
 
     # ── SiteSettings (singleton) ────────────────────────────────
     def seed_site_settings(self):
@@ -628,8 +669,8 @@ class Command(BaseCommand):
             "مؤسسة خاصة للتكوين والتعليم المهني معتمدة بسطيف — 15 فرعا: إدارية، إعلام آلي ومهن "
             "مهنية، مع مكتب دراسات معتمد من وزارة البيئة."
         )
-        s.hero_cta_primary_text = "اطّلع على تكويناتنا"
-        s.hero_cta_primary_url = "#formations"
+        s.hero_cta_primary_text = "سجّل في تكويناتنا"
+        s.hero_cta_primary_url = "/formations/"
         s.hero_cta_secondary_text = "التصنيف الرسمي"
         s.hero_cta_secondary_url = "/nomenclature/"
 
@@ -841,6 +882,15 @@ class Command(BaseCommand):
                 False,
                 3,
             ),
+            (
+                "التسجيل الإلكتروني",
+                "الدخول المهني — سجّل مباشرة عبر الموقع",
+                "bi bi-pencil-square",
+                "/formations/",
+                "amber",
+                False,
+                4,
+            ),
         ]
         for title, subtitle, icon, url, color, new_tab, order in apps:
             InternalApp.objects.create(
@@ -859,9 +909,10 @@ class Command(BaseCommand):
         links = [
             ("الرئيسية", "/", 1),
             ("المهمة والرؤية", "/#mission", 2),
-            ("التكوينات", "/#formations", 3),
-            ("الدورات", "/#sessions", 4),
-            ("الاتصال", "/#map-section", 5),
+            ("الفروع المهنية", "/#formations", 3),
+            ("سجّل في تكوين", "/formations/", 4),
+            ("الدورات", "/#sessions", 5),
+            ("الاتصال", "/#map-section", 6),
         ]
         for label, url, order in links:
             NavLink.objects.create(label=label, url=url, order=order)

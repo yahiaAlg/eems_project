@@ -116,6 +116,21 @@ class Offering(models.Model):
     def tasks_list(self):
         return [line.strip() for line in self.main_tasks.splitlines() if line.strip()]
 
+    @property
+    def approved_comments(self):
+        return self.comments.filter(is_approved=True)
+
+    @property
+    def average_rating(self):
+        approved = list(self.approved_comments)
+        if not approved:
+            return 0
+        return round(sum(c.rating for c in approved) / len(approved), 1)
+
+    @property
+    def comments_count(self):
+        return self.approved_comments.count()
+
     def get_absolute_url(self):
         return reverse("enrollment:detail", args=[self.session.slug, self.code])
 
@@ -285,3 +300,60 @@ class EnrollmentNote(models.Model):
 
     def __str__(self):
         return f"note on enrollment #{self.enrollment_id}"
+
+
+RATING_CHOICES = [(i, "★" * i) for i in range(1, 6)]
+
+
+class Comment(models.Model):
+    """A public review/comment left by a visitor on a specific offering (moderated)."""
+
+    offering = models.ForeignKey(
+        Offering, on_delete=models.CASCADE, related_name="comments",
+        verbose_name="التخصص",
+    )
+    name = models.CharField("الاسم", max_length=120)
+    email = models.EmailField("البريد الإلكتروني", blank=True)
+    rating = models.PositiveSmallIntegerField(
+        "التقييم", choices=RATING_CHOICES, default=5,
+    )
+    text = models.TextField("التعليق")
+    is_approved = models.BooleanField("موافق عليه (يظهر في الموقع)", default=False)
+    created_at = models.DateTimeField("تاريخ النشر", auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "تعليق"
+        verbose_name_plural = "تعليقات الزوار"
+
+    def __str__(self):
+        return f"{self.name} — {self.offering.code} ({self.rating}★)"
+
+
+class Enquiry(models.Model):
+    """A public question about an offering (or a general enquiry), answered by staff."""
+
+    offering = models.ForeignKey(
+        Offering, on_delete=models.CASCADE, related_name="enquiries",
+        verbose_name="التخصص", null=True, blank=True,
+    )
+    name = models.CharField("الاسم", max_length=120)
+    phone = models.CharField("الهاتف", max_length=20, blank=True)
+    email = models.EmailField("البريد الإلكتروني", blank=True)
+    question = models.TextField("السؤال / الاستفسار")
+    answer = models.TextField("الرد", blank=True)
+    is_answered = models.BooleanField("تمت الإجابة", default=False)
+    answered_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        verbose_name="أجاب عليه",
+    )
+    created_at = models.DateTimeField("تاريخ الإرسال", auto_now_add=True)
+    answered_at = models.DateTimeField("تاريخ الرد", null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "استفسار"
+        verbose_name_plural = "استفسارات الزوار"
+
+    def __str__(self):
+        return f"{self.name}: {self.question[:40]}"
