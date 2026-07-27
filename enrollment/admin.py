@@ -41,6 +41,32 @@ class OfferingAdmin(admin.ModelAdmin):
     list_filter = ("session", "qualification_level", "is_active", "is_featured")
     search_fields = ("code", "title")
     autocomplete_fields = ("specialty",)
+    fieldsets = (
+        (
+            "معلومات عامة",
+            {
+                "fields": (
+                    "session", "specialty", "code", "title", "branch_label",
+                    "qualification_level", "certificate_type", "entry_level",
+                    "duration_months", "monthly_fee", "total_fee", "seats_available",
+                )
+            },
+        ),
+        ("المحتوى", {"fields": ("description", "main_tasks")}),
+        (
+            "الوسائط (صور وفيديو)",
+            {
+                "fields": ("image", "poster_url", "background_url", "video_url"),
+                "description": (
+                    "الصورة المرفوعة لها الأولوية دائما. إن لم تُرفع صورة، يمكن "
+                    "الاكتفاء بروابط poster_url / background_url من أي خدمة صور "
+                    "مجانية (مثل picsum.photos أو unsplash). في غياب كل شيء تُولّد "
+                    "صورة عشوائية تلقائيا حسب رمز التخصص."
+                ),
+            },
+        ),
+        ("العرض على الموقع", {"fields": ("is_active", "is_featured", "order")}),
+    )
 
     def seats_display(self, obj):
         return f"{obj.seats_taken} / {obj.seats_available} ({obj.fill_rate}%)"

@@ -856,31 +856,13 @@ class Command(BaseCommand):
         InternalApp.objects.all().delete()
         apps = [
             (
-                "التطبيق البيداغوجي",
-                "إدارة التكوينات والدورات",
-                "bi bi-mortarboard-fill",
-                "http://192.168.100.10/pedagogy",
-                "amber",
-                True,
-                1,
-            ),
-            (
-                "الفوترة",
-                "الفواتير والعروض والدفعات",
-                "bi bi-receipt-cutoff",
-                "http://192.168.100.10/facturation",
-                "teal",
-                True,
-                2,
-            ),
-            (
                 "تصنيف التكوينات",
                 "الكتالوج الرسمي 2019 — أكثر من 500 تخصص",
                 "bi bi-list-ul",
                 "/nomenclature/",
                 "blue",
                 False,
-                3,
+                1,
             ),
             (
                 "التسجيل الإلكتروني",
@@ -889,7 +871,7 @@ class Command(BaseCommand):
                 "/formations/",
                 "amber",
                 False,
-                4,
+                2,
             ),
         ]
         for title, subtitle, icon, url, color, new_tab, order in apps:

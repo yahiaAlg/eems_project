@@ -39,6 +39,9 @@ class Command(BaseCommand):
                     "المساعدة في إدارة الأزمة بعد وقوع الحادث\n"
                     "المشاركة في دورة IOSH Managing البريطانية"
                 ),
+                poster_url="https://picsum.photos/seed/CIP01Q/700/500",
+                background_url="https://picsum.photos/seed/CIP01Q-bg/1600/900",
+                video_url="https://www.youtube.com/watch?v=aXaQ6O5ao9Y",
                 order=1,
             ),
             dict(
@@ -49,6 +52,9 @@ class Command(BaseCommand):
                 monthly_fee=8000, total_fee=24000, seats_available=12,
                 description="تكوين تأهيلي لقيادة الرافعة الشوكية (Chariot élévateur) وفق معايير السلامة.",
                 main_tasks="قيادة الرافعة الشوكية بأمان\nمناولة ونقل البضائع داخل المخازن\nاحترام قواعد السلامة أثناء المناولة",
+                poster_url="https://picsum.photos/seed/MME07Q/700/500",
+                background_url="https://picsum.photos/seed/MME07Q-bg/1600/900",
+                video_url="https://www.youtube.com/watch?v=8u2QRvhAdKU",
                 order=2,
             ),
             dict(
@@ -68,6 +74,8 @@ class Command(BaseCommand):
                     "القيام بعمليات الجرد الدورية\n"
                     "إدارة وتنسيق مساحات التخزين"
                 ),
+                poster_url="https://picsum.photos/seed/TAG0701/700/500",
+                background_url="https://picsum.photos/seed/TAG0701-bg/1600/900",
                 order=3,
             ),
             dict(
@@ -86,6 +94,8 @@ class Command(BaseCommand):
                     "التحاور مع الزبائن لتحديد نمط التأمين وشروط الضمانات\n"
                     "متابعة ملفات الزبائن وتقييم المخاطر"
                 ),
+                poster_url="https://picsum.photos/seed/TAG0704/700/500",
+                background_url="https://picsum.photos/seed/TAG0704-bg/1600/900",
                 order=4,
             ),
         ]

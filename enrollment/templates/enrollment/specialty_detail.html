@@ -22,8 +22,14 @@
   html { scroll-behavior: smooth; }
   body { font-family: var(--font-head); background: var(--body-bg); color: var(--text); }
 
-  #detail-hero { background: var(--navy); position: relative; overflow: hidden; padding: 56px 0 90px; }
+  #detail-hero {
+    background: var(--navy) center/cover no-repeat; position: relative; overflow: hidden; padding: 56px 0 90px;
+  }
   #detail-hero::before { content:''; position:absolute; inset:0; background: radial-gradient(ellipse 70% 70% at 25% 20%, rgba(245,158,11,.10) 0%, transparent 70%); }
+  #detail-hero.has-bg::after { content:''; position:absolute; inset:0; background: linear-gradient(180deg, rgba(15,23,42,.88), rgba(15,23,42,.94)); }
+
+  .video-wrap { position: relative; padding-bottom: 56.25%; height: 0; border-radius: 14px; overflow: hidden; box-shadow: var(--shadow-md); }
+  .video-wrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
   .crumb { color: rgba(255,255,255,.45); font-size: 13px; margin-bottom: 14px; }
   .crumb a { color: rgba(255,255,255,.6); text-decoration: none; }
   .hero-code { font-family:'Courier New',monospace; font-size:.8rem; font-weight:700; color:var(--accent); background:rgba(245,158,11,.12); border:1px solid rgba(245,158,11,.3); border-radius:6px; padding:4px 12px; direction:ltr; }
@@ -97,7 +103,7 @@
   </div>
 </nav>
 
-<section id="detail-hero">
+<section id="detail-hero" class="has-bg" style="background-image:url('{{ offering.background_src }}');">
   <div class="container position-relative" style="z-index:1;">
     <div class="crumb"><a href="{% url 'pages:home' %}">الرئيسية</a> / <a href="{% url 'enrollment:catalog' %}">التخصصات</a> / {{ offering.code }}</div>
     <span class="hero-code">{{ offering.code }}</span>
@@ -133,6 +139,16 @@
     {% if offering.tasks_list %}
       <div class="section-h"><iconify-icon icon="mdi:clipboard-list-outline"></iconify-icon> المهام الأساسية</div>
       <ul class="tasks">{% for task in offering.tasks_list %}<li>{{ task }}</li>{% endfor %}</ul>
+    {% endif %}
+
+    {% if offering.youtube_embed_id %}
+      <div class="section-h"><iconify-icon icon="mdi:youtube"></iconify-icon> فيديو تعريفي</div>
+      <div class="video-wrap">
+        <iframe src="https://www.youtube.com/embed/{{ offering.youtube_embed_id }}"
+                title="فيديو تعريفي — {{ offering.title }}"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen loading="lazy"></iframe>
+      </div>
     {% endif %}
 
     <div class="section-h"><iconify-icon icon="mdi:seat-outline"></iconify-icon> المقاعد المتاحة</div>

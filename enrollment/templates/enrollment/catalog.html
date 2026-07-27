@@ -53,7 +53,30 @@
   .stat-pill b { color: #fff; font-size: 16px; }
   .stat-pill span { color: rgba(255,255,255,.5); font-size: 12px; }
 
-  #controls-bar { background: #fff; border-bottom: 1px solid var(--card-border); padding: 20px 0; position: sticky; top: 0; z-index: 20; }
+  #controls-bar {
+    background: #fff; border-bottom: 1px solid var(--card-border);
+    position: sticky; top: 64px; z-index: 30; box-shadow: 0 2px 10px rgba(15,23,42,.04);
+  }
+  #controls-bar-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 14px 0; cursor: pointer; user-select: none;
+  }
+  #controls-bar-head .cb-title { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 14.5px; color: var(--text); }
+  #controls-bar-head .cb-title iconify-icon { color: var(--accent); font-size: 18px; }
+  #controls-bar-head .cb-summary { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+  #controls-bar-toggle {
+    display: flex; align-items: center; justify-content: center; width: 30px; height: 30px;
+    border-radius: 8px; background: var(--body-bg); border: 1px solid var(--card-border);
+    transition: transform .25s ease, background .2s;
+  }
+  #controls-bar-toggle iconify-icon { font-size: 18px; color: var(--muted); transition: transform .25s ease; }
+  #controls-bar.open #controls-bar-toggle iconify-icon { transform: rotate(180deg); }
+  #controls-bar-body {
+    display: grid; grid-template-rows: 0fr; transition: grid-template-rows .28s ease;
+  }
+  #controls-bar.open #controls-bar-body { grid-template-rows: 1fr; }
+  #controls-bar-body > div { overflow: hidden; }
+  #controls-bar-body form { padding-bottom: 18px; }
   .form-select {
     background-color: var(--body-bg); border: 1px solid var(--card-border); border-radius: 8px;
     font-family: var(--font-head); font-size: 14px; font-weight: 600; color: var(--text); padding: 10px 14px;
@@ -67,6 +90,8 @@
     box-shadow: var(--shadow); transition: box-shadow .2s, transform .2s, border-color .2s;
   }
   .offer-card:hover { box-shadow: 0 10px 30px rgba(15,23,42,.12); border-color: var(--accent); transform: translateY(-4px); }
+  .offer-poster { margin: -22px -22px 0; border-radius: 14px 14px 0 0; overflow: hidden; aspect-ratio: 16/10; background: var(--body-bg); }
+  .offer-poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .offer-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .offer-code {
     font-family: 'Courier New', monospace; font-size: .75rem; font-weight: 700; color: var(--navy);
@@ -130,38 +155,50 @@
   </div>
 </section>
 
-<div id="controls-bar">
+<div id="controls-bar" class="{% if query or selected_session or selected_branch or selected_level %}open{% endif %}">
   <div class="container">
-    <form method="get" class="d-flex gap-3 flex-wrap align-items-center">
-      <div class="position-relative" style="min-width:220px;flex:1;">
-        <i class="bi bi-search position-absolute" style="top:50%;right:14px;transform:translateY(-50%);color:var(--muted);"></i>
-        <input type="text" name="q" value="{{ query }}" placeholder="ابحث عن تخصص أو رمز..." class="form-select" style="padding-right:36px;">
+    <div id="controls-bar-head" onclick="document.getElementById('controls-bar').classList.toggle('open')">
+      <div class="cb-title">
+        <iconify-icon icon="mdi:filter-variant"></iconify-icon>
+        فلترة التخصصات
+        {% if query or selected_session or selected_branch or selected_level %}
+          <span class="cb-summary">— فلاتر مفعّلة</span>
+        {% endif %}
       </div>
-      <select name="session" class="form-select" style="min-width:200px;" onchange="this.form.submit()">
-        <option value="">كل الدورات</option>
-        {% for s in sessions %}
-          <option value="{{ s.slug }}" {% if s.slug == selected_session %}selected{% endif %}>{{ s.name }}</option>
-        {% endfor %}
-      </select>
-      <select name="branch" class="form-select" style="min-width:180px;" onchange="this.form.submit()">
-        <option value="">كل الشعب</option>
-        {% for b in branches %}
-          <option value="{{ b.id }}" {% if b.id == selected_branch %}selected{% endif %}>{{ b.name_ar }}</option>
-        {% endfor %}
-      </select>
-      <select name="level" class="form-select" style="min-width:160px;" onchange="this.form.submit()">
-        <option value="">كل المستويات</option>
-        <option value="1" {% if selected_level == 1 %}selected{% endif %}>1 - ش.م.ت.م</option>
-        <option value="2" {% if selected_level == 2 %}selected{% endif %}>2 - ش.ك.م</option>
-        <option value="3" {% if selected_level == 3 %}selected{% endif %}>3 - ش.ت.م</option>
-        <option value="4" {% if selected_level == 4 %}selected{% endif %}>4 - ش.ت</option>
-        <option value="5" {% if selected_level == 5 %}selected{% endif %}>5 - ش.ت.س</option>
-      </select>
-      <button type="submit" class="btn-detail" style="padding:10px 20px;flex:0 0 auto;"><i class="bi bi-search"></i> بحث</button>
-      {% if query or selected_session or selected_branch or selected_level %}
-      <a href="{% url 'enrollment:catalog' %}" class="btn-detail full" style="padding:10px 20px;flex:0 0 auto;"><i class="bi bi-x-lg"></i> مسح الفلاتر</a>
-      {% endif %}
-    </form>
+      <div id="controls-bar-toggle"><iconify-icon icon="mdi:chevron-down"></iconify-icon></div>
+    </div>
+    <div id="controls-bar-body"><div>
+      <form method="get" class="d-flex gap-3 flex-wrap align-items-center">
+        <div class="position-relative" style="min-width:220px;flex:1;">
+          <i class="bi bi-search position-absolute" style="top:50%;right:14px;transform:translateY(-50%);color:var(--muted);"></i>
+          <input type="text" name="q" value="{{ query }}" placeholder="ابحث عن تخصص أو رمز..." class="form-select" style="padding-right:36px;">
+        </div>
+        <select name="session" class="form-select" style="min-width:200px;" onchange="this.form.submit()">
+          <option value="">كل الدورات</option>
+          {% for s in sessions %}
+            <option value="{{ s.slug }}" {% if s.slug == selected_session %}selected{% endif %}>{{ s.name }}</option>
+          {% endfor %}
+        </select>
+        <select name="branch" class="form-select" style="min-width:180px;" onchange="this.form.submit()">
+          <option value="">كل الشعب</option>
+          {% for b in branches %}
+            <option value="{{ b.id }}" {% if b.id == selected_branch %}selected{% endif %}>{{ b.name_ar }}</option>
+          {% endfor %}
+        </select>
+        <select name="level" class="form-select" style="min-width:160px;" onchange="this.form.submit()">
+          <option value="">كل المستويات</option>
+          <option value="1" {% if selected_level == 1 %}selected{% endif %}>1 - ش.م.ت.م</option>
+          <option value="2" {% if selected_level == 2 %}selected{% endif %}>2 - ش.ك.م</option>
+          <option value="3" {% if selected_level == 3 %}selected{% endif %}>3 - ش.ت.م</option>
+          <option value="4" {% if selected_level == 4 %}selected{% endif %}>4 - ش.ت</option>
+          <option value="5" {% if selected_level == 5 %}selected{% endif %}>5 - ش.ت.س</option>
+        </select>
+        <button type="submit" class="btn-detail" style="padding:10px 20px;flex:0 0 auto;"><i class="bi bi-search"></i> بحث</button>
+        {% if query or selected_session or selected_branch or selected_level %}
+        <a href="{% url 'enrollment:catalog' %}" class="btn-detail full" style="padding:10px 20px;flex:0 0 auto;"><i class="bi bi-x-lg"></i> مسح الفلاتر</a>
+        {% endif %}
+      </form>
+    </div></div>
   </div>
 </div>
 
@@ -171,6 +208,9 @@
       {% for offering in offerings %}
       <div class="col-sm-6 col-lg-4 offer-item">
         <div class="offer-card">
+          <div class="offer-poster">
+            <img src="{{ offering.poster_src }}" alt="{{ offering.title }}" loading="lazy">
+          </div>
           <div class="offer-top">
             <span class="offer-code">{{ offering.code }}</span>
             {% if offering.get_qualification_level_display %}<span class="offer-level">{{ offering.qualification_level }} — {{ offering.get_certificate_type_display }}</span>{% endif %}

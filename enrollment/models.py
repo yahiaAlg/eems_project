@@ -84,7 +84,19 @@ class Offering(models.Model):
         "المهام الأساسية", blank=True, help_text="سطر واحد لكل مهمة",
     )
     image = models.ImageField(
-        "صورة", upload_to="enrollment/offerings/", blank=True, null=True,
+        "صورة (ملف مرفوع)", upload_to="enrollment/offerings/", blank=True, null=True,
+    )
+    poster_url = models.URLField(
+        "رابط صورة الملصق (بطاقة العرض)", blank=True,
+        help_text="يُستعمل إن لم يتم رفع صورة أعلاه. يمكن استعمال رابط من خدمة صور مجانية.",
+    )
+    background_url = models.URLField(
+        "رابط صورة الخلفية (صفحة التفاصيل)", blank=True,
+        help_text="تُعرض كخلفية لرأس صفحة التخصص.",
+    )
+    video_url = models.URLField(
+        "رابط فيديو تعريفي (YouTube)", blank=True,
+        help_text="ألصق رابط فيديو يوتيوب ترويجي لهذا التخصص (اختياري).",
     )
     is_active = models.BooleanField("معروضة على الموقع", default=True)
     is_featured = models.BooleanField("تخصص مميز (يظهر في الصفحة الرئيسية)", default=False)
@@ -134,6 +146,36 @@ class Offering(models.Model):
 
     def get_absolute_url(self):
         return reverse("enrollment:detail", args=[self.session.slug, self.code])
+
+    @property
+    def poster_src(self):
+        """Best available poster image: uploaded file > custom URL > free placeholder API."""
+        if self.image:
+            return self.image.url
+        if self.poster_url:
+            return self.poster_url
+        return f"https://picsum.photos/seed/{self.code}/700/500"
+
+    @property
+    def background_src(self):
+        """Best available background image for the detail-page hero."""
+        if self.background_url:
+            return self.background_url
+        if self.image:
+            return self.image.url
+        return f"https://picsum.photos/seed/{self.code}-bg/1600/900"
+
+    @property
+    def youtube_embed_id(self):
+        """Extract the YouTube video id from common URL formats."""
+        import re
+        if not self.video_url:
+            return ""
+        match = re.search(
+            r"(?:youtu\.be/|youtube\.com/(?:watch\?v=|embed/|shorts/))([\w-]{11})",
+            self.video_url,
+        )
+        return match.group(1) if match else ""
 
 
 SOURCE_CHOICES = [
