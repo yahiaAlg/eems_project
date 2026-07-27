@@ -609,7 +609,7 @@
       <div class="col-sm-6 col-lg-4 reveal" style="transition-delay:{{ forloop.counter0 }}.05s">
         <a href="{{ offering.get_absolute_url }}" class="featured-card">
           <div class="featured-thumb">
-            {% if offering.image %}<img src="{{ offering.image.url }}" alt="{{ offering.title }}">{% endif %}
+            <img src="{{ offering.poster_src }}" alt="{{ offering.title }}" loading="lazy">
             <span class="featured-badge">{{ offering.session.name }}</span>
           </div>
           <div class="featured-body">
