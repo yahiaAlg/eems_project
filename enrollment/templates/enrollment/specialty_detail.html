@@ -1,0 +1,71 @@
+{% extends "pages/base.html" %}
+{% load enrollment_extras %}
+
+{% block title %}{{ offering.title }} — {{ offering.code }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap');
+  :root {
+    --bg: #0d1117; --surface: #161b22; --border: #30363d;
+    --accent: #c9a227; --accent2: #2ea043; --text: #e6edf3; --muted: #8b949e; --tag-bg: #21262d;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Tajawal', sans-serif; background: var(--bg); color: var(--text); padding: 24px 16px; }
+  .wrap { max-width: 820px; margin: 0 auto; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px; }
+  .code { font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--accent); background: var(--tag-bg); border: 1px solid var(--border); border-radius: 5px; padding: 3px 10px; }
+  h1 { margin: 12px 0 6px; font-size: 1.7rem; color: var(--text); }
+  .sub { color: var(--muted); margin-bottom: 20px; }
+  .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 14px; margin: 20px 0; }
+  .info-box { background: var(--tag-bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; text-align: center; }
+  .info-box .label { color: var(--muted); font-size: 0.78rem; }
+  .info-box .value { color: var(--accent); font-weight: 700; font-size: 1.1rem; margin-top: 4px; }
+  h2 { color: var(--text); font-size: 1.1rem; margin: 22px 0 8px; }
+  p, li { color: var(--text); line-height: 1.8; }
+  ul { padding-inline-start: 20px; }
+  .seats-bar { height: 8px; background: var(--tag-bg); border-radius: 4px; overflow: hidden; margin-top: 8px; }
+  .seats-bar span { display: block; height: 100%; background: var(--accent); }
+  .btn { display: inline-block; margin-top: 24px; text-decoration: none; background: var(--accent); color: #0d1117; font-weight: 700; padding: 12px 28px; border-radius: 8px; }
+  .btn.full { background: var(--tag-bg); color: var(--muted); border: 1px solid var(--border); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <div class="panel">
+    <span class="code">{{ offering.code }}</span>
+    <h1>{{ offering.title }}</h1>
+    <div class="sub">{{ offering.session.name }}{% if offering.branch_label %} • {{ offering.branch_label }}{% endif %}</div>
+
+    <div class="info-grid">
+      <div class="info-box"><div class="label">مدة التكوين</div><div class="value">{{ offering.duration_months }} شهرا</div></div>
+      {% if offering.monthly_fee %}<div class="info-box"><div class="label">القيمة الشهرية</div><div class="value">{{ offering.monthly_fee|da }}</div></div>{% endif %}
+      {% if offering.total_fee %}<div class="info-box"><div class="label">القيمة الإجمالية</div><div class="value">{{ offering.total_fee|da }}</div></div>{% endif %}
+      {% if offering.get_certificate_type_display %}<div class="info-box"><div class="label">الشهادة</div><div class="value">{{ offering.get_certificate_type_display }}</div></div>{% endif %}
+    </div>
+
+    {% if offering.description %}
+      <h2>تعريف التخصص</h2>
+      <p>{{ offering.description }}</p>
+    {% endif %}
+
+    {% if offering.tasks_list %}
+      <h2>المهام الأساسية</h2>
+      <ul>
+        {% for task in offering.tasks_list %}<li>{{ task }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+
+    <h2>المقاعد المتاحة</h2>
+    <div class="seats-bar"><span style="width: {{ offering.fill_rate }}%;"></span></div>
+    <p>{{ offering.seats_taken }} / {{ offering.seats_available }} مقعد مشغول</p>
+
+    {% if offering.seats_remaining > 0 %}
+      <a class="btn" href="{% url 'enrollment:subscribe' offering.session.slug offering.code %}">سجّل الآن</a>
+    {% else %}
+      <a class="btn full" href="{% url 'enrollment:subscribe' offering.session.slug offering.code %}">اكتملت المقاعد — سجّل في قائمة الانتظار</a>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

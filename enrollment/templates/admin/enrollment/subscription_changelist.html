@@ -1,0 +1,22 @@
+{% extends "admin/change_list.html" %}
+
+{% block content_title %}
+  <h1>{{ title }}</h1>
+  <div style="display:flex; gap:16px; flex-wrap:wrap; margin:10px 0 20px;">
+    <div style="background:#161b22; border:1px solid #30363d; border-radius:8px; padding:10px 18px; color:#e6edf3;">
+      اليوم: <strong style="color:#c9a227;">{{ sub_today }}</strong>
+    </div>
+    <div style="background:#161b22; border:1px solid #30363d; border-radius:8px; padding:10px 18px; color:#e6edf3;">
+      هذا الشهر: <strong style="color:#c9a227;">{{ sub_month }}</strong>
+    </div>
+    <div style="background:#161b22; border:1px solid #30363d; border-radius:8px; padding:10px 18px; color:#e6edf3;">
+      الإجمالي: <strong style="color:#c9a227;">{{ sub_total }}</strong>
+    </div>
+    <div style="background:#161b22; border:1px solid #30363d; border-radius:8px; padding:10px 18px; color:#e6edf3;">
+      قيد الدراسة: <strong style="color:#c9a227;">{{ sub_pending }}</strong>
+    </div>
+    <a href="{% url 'admin:enrollment_subscription_dashboard' %}" style="align-self:center; color:#2ea043; font-weight:700;">
+      ← عرض لوحة الإحصائيات الكاملة
+    </a>
+  </div>
+{% endblock %}

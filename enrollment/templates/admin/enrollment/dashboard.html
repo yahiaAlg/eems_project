@@ -1,0 +1,121 @@
+{% extends "admin/base_site.html" %}
+{% load enrollment_extras %}
+
+{% block content %}
+<div style="font-family: Tajawal, sans-serif; direction: rtl;">
+
+  <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:24px;">
+    <div class="stat-card"><div class="stat-label">اليوم</div><div class="stat-value">{{ today_count }}</div></div>
+    <div class="stat-card"><div class="stat-label">هذا الشهر</div><div class="stat-value">{{ month_count }}</div></div>
+    <div class="stat-card"><div class="stat-label">الإجمالي</div><div class="stat-value">{{ total }}</div></div>
+    <div class="stat-card"><div class="stat-label">قيد الدراسة</div><div class="stat-value">{{ pending_count }}</div></div>
+    <div class="stat-card"><div class="stat-label">أفراد</div><div class="stat-value">{{ individual_count }}</div></div>
+    <div class="stat-card"><div class="stat-label">مؤسسات</div><div class="stat-value">{{ enterprise_count }}</div></div>
+  </div>
+
+  <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(340px,1fr)); gap:20px;">
+    <div class="chart-box">
+      <h3>التسجيلات حسب الحالة</h3>
+      <canvas id="statusChart"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3>التسجيلات حسب المصدر</h3>
+      <canvas id="sourceChart"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3>التسجيلات آخر 7 أيام</h3>
+      <canvas id="dailyChart"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3>الأكثر طلبا (أعلى 10 تخصصات)</h3>
+      <canvas id="offeringChart"></canvas>
+    </div>
+  </div>
+
+  <h2 style="margin-top:32px;">نسبة امتلاء المقاعد لكل عرض تكوين</h2>
+  <table style="width:100%; border-collapse:collapse; margin-top:10px;">
+    <thead>
+      <tr style="text-align:right; border-bottom:2px solid #30363d;">
+        <th style="padding:8px;">الرمز</th><th>العنوان</th><th>الدورة</th><th>المقاعد</th><th>نسبة الامتلاء</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in offerings %}
+      <tr style="border-bottom:1px solid #30363d;">
+        <td style="padding:8px;">{{ o.code }}</td>
+        <td>{{ o.title }}</td>
+        <td>{{ o.session.name }}</td>
+        <td>{{ o.seats_taken }} / {{ o.seats_available }}</td>
+        <td>
+          <div style="background:#21262d; border-radius:4px; height:8px; width:140px; overflow:hidden; display:inline-block; vertical-align:middle;">
+            <div style="height:100%; width:{{ o.fill_rate }}%; background:{% if o.fill_rate >= 90 %}#f85149{% else %}#c9a227{% endif %};"></div>
+          </div>
+          <span style="margin-inline-start:6px;">{{ o.fill_rate }}%</span>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<style>
+  .stat-card { background:#161b22; border:1px solid #30363d; border-radius:10px; padding:16px 24px; color:#e6edf3; min-width:140px; }
+  .stat-label { color:#8b949e; font-size:0.85rem; }
+  .stat-value { color:#c9a227; font-size:1.6rem; font-weight:800; }
+  .chart-box { background:#161b22; border:1px solid #30363d; border-radius:10px; padding:16px; color:#e6edf3; }
+  .chart-box h3 { margin-bottom:12px; font-size:1rem; color:#e6edf3; }
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script>
+  const statusData = {{ by_status|safe }};
+  const sourceData = {{ by_source|safe }};
+  const offeringData = {{ by_offering|safe }};
+  const dailyData = {{ daily_last_week|safe }};
+
+  const statusLabels = {
+    pending: "قيد الدراسة", contacted: "تم التواصل", accepted: "مقبول",
+    waitlisted: "قائمة انتظار", rejected: "مرفوض",
+  };
+  const sourceLabels = {
+    web: "الموقع", facebook: "فيسبوك", instagram: "إنستغرام",
+    qr: "QR Code", phone: "هاتف", walkin: "حضور مباشر",
+  };
+
+  new Chart(document.getElementById('statusChart'), {
+    type: 'doughnut',
+    data: {
+      labels: statusData.map(d => statusLabels[d.status] || d.status),
+      datasets: [{ data: statusData.map(d => d.count),
+        backgroundColor: ['#c9a227','#3b82f6','#2ea043','#8b949e','#f85149'] }],
+    },
+  });
+
+  new Chart(document.getElementById('sourceChart'), {
+    type: 'bar',
+    data: {
+      labels: sourceData.map(d => sourceLabels[d.source] || d.source),
+      datasets: [{ label: 'عدد التسجيلات', data: sourceData.map(d => d.count), backgroundColor: '#c9a227' }],
+    },
+    options: { plugins: { legend: { display: false } } },
+  });
+
+  new Chart(document.getElementById('dailyChart'), {
+    type: 'line',
+    data: {
+      labels: dailyData.map(d => d.created_at__date),
+      datasets: [{ label: 'تسجيلات/يوم', data: dailyData.map(d => d.count),
+        borderColor: '#2ea043', backgroundColor: 'rgba(46,160,67,0.15)', fill: true, tension: 0.3 }],
+    },
+  });
+
+  new Chart(document.getElementById('offeringChart'), {
+    type: 'bar',
+    data: {
+      labels: offeringData.map(d => d.offering__code),
+      datasets: [{ label: 'عدد الطلبات', data: offeringData.map(d => d.count), backgroundColor: '#3b82f6' }],
+    },
+    options: { indexAxis: 'y', plugins: { legend: { display: false } } },
+  });
+</script>
+{% endblock %}

@@ -17,6 +17,13 @@ urlpatterns = [
         {"sitemaps": sitemaps},
         name="django.contrib.sitemaps.views.sitemap",
     ),
+    path(
+        "api/", include("enrollment.api_urls")
+    ),  # /api/sessions/, /api/offerings/, /api/register/...
+    path(
+        "api/pages/", include("pages.api_urls")
+    ),  # /api/pages/branches/, /api/pages/specialties/...
+    path("", include("enrollment.urls")),  # <-- أضف هذا قبل include("pages.urls")
     path("", include("pages.urls")),
 ]
 

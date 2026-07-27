@@ -1,0 +1,116 @@
+{% extends "pages/base.html" %}
+{% load enrollment_extras %}
+
+{% block title %}الدخول المهني — التخصصات المتاحة للتسجيل{% endblock %}
+
+{% block extra_head %}
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap');
+
+  :root {
+    --bg: #0d1117; --surface: #161b22; --border: #30363d;
+    --accent: #c9a227; --accent2: #2ea043; --text: #e6edf3;
+    --muted: #8b949e; --row-hover: #1c2128; --tag-bg: #21262d;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Tajawal', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 24px 16px; }
+
+  header { text-align: center; margin-bottom: 28px; padding: 32px 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+  header h1 { font-size: 1.8rem; font-weight: 800; color: var(--accent); margin-bottom: 6px; }
+  header p { color: var(--muted); font-size: 0.95rem; }
+
+  .controls { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; max-width: 1100px; margin-inline: auto; }
+  select {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 14px; color: var(--text); font-family: inherit; font-size: 0.9rem;
+    cursor: pointer; min-width: 180px;
+  }
+  select:focus { outline: none; border-color: var(--accent); }
+
+  .grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 18px; max-width: 1100px; margin: 0 auto;
+  }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px; display: flex; flex-direction: column; gap: 10px;
+    transition: border-color .2s, transform .2s;
+  }
+  .card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .card .code {
+    font-family: 'Courier New', monospace; font-size: 0.8rem; color: var(--accent);
+    background: var(--tag-bg); border: 1px solid var(--border); border-radius: 5px;
+    padding: 2px 8px; display: inline-block; width: fit-content;
+  }
+  .card h3 { font-size: 1.15rem; color: var(--text); }
+  .card .meta { color: var(--muted); font-size: 0.85rem; }
+  .card .fee { color: var(--accent2); font-weight: 700; font-size: 1rem; }
+
+  .seats-bar { height: 6px; background: var(--tag-bg); border-radius: 4px; overflow: hidden; }
+  .seats-bar span { display: block; height: 100%; background: var(--accent); }
+  .seats-label { font-size: 0.78rem; color: var(--muted); }
+
+  .btn {
+    margin-top: 6px; text-align: center; text-decoration: none;
+    background: var(--accent); color: #0d1117; font-weight: 700;
+    padding: 10px; border-radius: 8px; transition: opacity .2s;
+  }
+  .btn:hover { opacity: .85; }
+  .btn.full { background: var(--tag-bg); color: var(--muted); border: 1px solid var(--border); }
+
+  .no-results { text-align: center; padding: 60px 20px; color: var(--muted); grid-column: 1 / -1; }
+</style>
+{% endblock %}
+
+{% block content %}
+<header>
+  <h1>📋 الدخول المهني — التسجيلات المفتوحة</h1>
+  <p>اختر التخصص الذي يناسبك وسجّل مباشرة عبر الموقع</p>
+</header>
+
+<form method="get" class="controls">
+  <select name="session" onchange="this.form.submit()">
+    <option value="">كل الدورات</option>
+    {% for s in sessions %}
+      <option value="{{ s.slug }}" {% if s.slug == selected_session %}selected{% endif %}>{{ s.name }}</option>
+    {% endfor %}
+  </select>
+  <select name="branch" onchange="this.form.submit()">
+    <option value="">كل الشعب</option>
+    {% for b in branches %}
+      <option value="{{ b.id }}" {% if b.id == selected_branch %}selected{% endif %}>{{ b.name_ar }}</option>
+    {% endfor %}
+  </select>
+  <select name="level" onchange="this.form.submit()">
+    <option value="">كل المستويات</option>
+    {% for value, label in offerings.model.qualification_level.field.choices %}{% endfor %}
+    <option value="1" {% if selected_level == 1 %}selected{% endif %}>1 - ش.م.ت.م</option>
+    <option value="2" {% if selected_level == 2 %}selected{% endif %}>2 - ش.ك.م</option>
+    <option value="3" {% if selected_level == 3 %}selected{% endif %}>3 - ش.ت.م</option>
+    <option value="4" {% if selected_level == 4 %}selected{% endif %}>4 - ش.ت</option>
+    <option value="5" {% if selected_level == 5 %}selected{% endif %}>5 - ش.ت.س</option>
+  </select>
+</form>
+
+<div class="grid">
+  {% for offering in offerings %}
+  <div class="card">
+    <span class="code">{{ offering.code }}</span>
+    <h3>{{ offering.title }}</h3>
+    <div class="meta">{{ offering.session.name }} • مدة التكوين: {{ offering.duration_months }} شهرا</div>
+    {% if offering.monthly_fee %}<div class="fee">{{ offering.monthly_fee|da }} / شهر</div>{% endif %}
+    <div>
+      <div class="seats-bar"><span style="width: {{ offering.fill_rate }}%;"></span></div>
+      <div class="seats-label">{{ offering.seats_taken }} / {{ offering.seats_available }} مقعد مشغول</div>
+    </div>
+    {% if offering.seats_remaining > 0 %}
+      <a class="btn" href="{% url 'enrollment:detail' offering.session.slug offering.code %}">التفاصيل والتسجيل</a>
+    {% else %}
+      <a class="btn full" href="{% url 'enrollment:detail' offering.session.slug offering.code %}">اكتملت المقاعد — قائمة الانتظار</a>
+    {% endif %}
+  </div>
+  {% empty %}
+  <div class="no-results">لا توجد تخصصات مطابقة حاليا.</div>
+  {% endfor %}
+</div>
+{% endblock %}
