@@ -625,7 +625,7 @@ class Command(BaseCommand):
         User = get_user_model()
         username = os.environ.get("EEMS_ADMIN_USERNAME", "admin")
         email = os.environ.get("EEMS_ADMIN_EMAIL", "admin@eems.dz")
-        password = os.environ.get("EEMS_ADMIN_PASSWORD", "ChangeMe123!")
+        password = os.environ.get("EEMS_ADMIN_PASSWORD", "system2026*")
 
         user, created = User.objects.get_or_create(
             username=username,
@@ -652,7 +652,9 @@ class Command(BaseCommand):
                 changed = True
             if changed:
                 user.save()
-            self.stdout.write(self.style.WARNING(f"↷ حساب المدير موجود مسبقا: {username}"))
+            self.stdout.write(
+                self.style.WARNING(f"↷ حساب المدير موجود مسبقا: {username}")
+            )
 
     # ── SiteSettings (singleton) ────────────────────────────────
     def seed_site_settings(self):
