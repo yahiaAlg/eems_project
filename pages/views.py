@@ -1,11 +1,13 @@
-from django.shortcuts import render
+from django.contrib import messages
+from django.shortcuts import redirect, render
 from django.views.decorators.cache import never_cache
 from datetime import date
 
+from .forms import NewsletterForm
 from .models import (
     SiteSettings, HeroStat, MissionCard, CarouselImage,
     Branch, Specialty, TrainingSession, SocialLink, InternalApp, NavLink,
-    SiteVisitor,
+    SiteVisitor, Partner, ProcessStep, Testimonial,
 )
 
 
@@ -13,6 +15,20 @@ from .models import (
 def home(request):
     settings_obj = SiteSettings.load()
     today = date.today()
+
+    # Live counters instead of hardcoded numbers.
+    from enrollment.models import Offering, Enrollment
+    live_counters = {
+        "branches": Branch.objects.filter(is_active=True).count(),
+        "specialties": Specialty.objects.count(),
+        "offerings": Offering.objects.filter(is_active=True).count(),
+        "enrolled": Enrollment.objects.filter(status="accepted").count(),
+    }
+    featured_offerings = (
+        Offering.objects.filter(is_active=True, is_featured=True, session__is_active=True)
+        .select_related("session")[:6]
+    )
+
     context = {
         "settings": settings_obj,
         "hero_stats": HeroStat.objects.all(),
@@ -28,8 +44,26 @@ def home(request):
             "month": SiteVisitor.objects.filter(date__year=today.year, date__month=today.month).count(),
             "total": SiteVisitor.objects.count(),
         },
+        "live_counters": live_counters,
+        "featured_offerings": featured_offerings,
+        "partners": Partner.objects.filter(is_active=True),
+        "process_steps": ProcessStep.objects.all(),
+        "testimonials": Testimonial.objects.filter(is_active=True),
+        "newsletter_form": NewsletterForm(),
     }
     return render(request, "pages/home.html", context)
+
+
+@never_cache
+def newsletter_subscribe(request):
+    if request.method == "POST":
+        form = NewsletterForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "شكرا لاشتراكك في نشرتنا الإخبارية!")
+        else:
+            messages.error(request, "الرجاء إدخال بريد إلكتروني صالح.")
+    return redirect(request.META.get("HTTP_REFERER") or "pages:home")
 
 @never_cache
 def robots(request):

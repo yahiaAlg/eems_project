@@ -34,10 +34,11 @@ class OfferingAdmin(admin.ModelAdmin):
         "monthly_fee",
         "seats_display",
         "is_active",
+        "is_featured",
         "order",
     )
-    list_editable = ("is_active", "order")
-    list_filter = ("session", "qualification_level", "is_active")
+    list_editable = ("is_active", "is_featured", "order")
+    list_filter = ("session", "qualification_level", "is_active", "is_featured")
     search_fields = ("code", "title")
     autocomplete_fields = ("specialty",)
 

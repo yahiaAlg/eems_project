@@ -134,7 +134,11 @@
 
 <div id="controls-bar">
   <div class="container">
-    <form method="get" class="d-flex gap-3 flex-wrap">
+    <form method="get" class="d-flex gap-3 flex-wrap align-items-center">
+      <div class="position-relative" style="min-width:220px;flex:1;">
+        <i class="bi bi-search position-absolute" style="top:50%;right:14px;transform:translateY(-50%);color:var(--muted);"></i>
+        <input type="text" name="q" value="{{ query }}" placeholder="ابحث عن تخصص أو رمز..." class="form-select" style="padding-right:36px;">
+      </div>
       <select name="session" class="form-select" style="min-width:200px;" onchange="this.form.submit()">
         <option value="">كل الدورات</option>
         {% for s in sessions %}
@@ -155,6 +159,10 @@
         <option value="4" {% if selected_level == 4 %}selected{% endif %}>4 - ش.ت</option>
         <option value="5" {% if selected_level == 5 %}selected{% endif %}>5 - ش.ت.س</option>
       </select>
+      <button type="submit" class="btn-detail" style="padding:10px 20px;flex:0 0 auto;"><i class="bi bi-search"></i> بحث</button>
+      {% if query or selected_session or selected_branch or selected_level %}
+      <a href="{% url 'enrollment:catalog' %}" class="btn-detail full" style="padding:10px 20px;flex:0 0 auto;"><i class="bi bi-x-lg"></i> مسح الفلاتر</a>
+      {% endif %}
     </form>
   </div>
 </div>

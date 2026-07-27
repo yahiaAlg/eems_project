@@ -87,6 +87,7 @@ class Offering(models.Model):
         "صورة", upload_to="enrollment/offerings/", blank=True, null=True,
     )
     is_active = models.BooleanField("معروضة على الموقع", default=True)
+    is_featured = models.BooleanField("تخصص مميز (يظهر في الصفحة الرئيسية)", default=False)
     order = models.PositiveIntegerField("الترتيب", default=0)
 
     class Meta:

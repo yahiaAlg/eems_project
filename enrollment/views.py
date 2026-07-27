@@ -1,9 +1,10 @@
 from django.contrib import messages
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
 from pages.models import Branch, SiteSettings
 
-from .forms import CommentForm, EnquiryForm, IndividualSubscribeForm
+from .forms import CommentForm, EnquiryForm, GeneralEnquiryForm, IndividualSubscribeForm
 from .models import Client, Enrollment, FormationSession, Offering, Participant
 
 
@@ -11,6 +12,7 @@ def catalog(request):
     session_slug = request.GET.get("session") or ""
     branch_id = request.GET.get("branch") or ""
     level = request.GET.get("level") or ""
+    query = request.GET.get("q") or ""
 
     offerings = (
         Offering.objects.filter(is_active=True, session__is_active=True)
@@ -22,6 +24,10 @@ def catalog(request):
         offerings = offerings.filter(specialty__branch_id=branch_id)
     if level:
         offerings = offerings.filter(qualification_level=level)
+    if query:
+        offerings = offerings.filter(
+            Q(title__icontains=query) | Q(code__icontains=query) | Q(branch_label__icontains=query)
+        )
 
     context = {
         "settings": SiteSettings.load(),
@@ -31,8 +37,26 @@ def catalog(request):
         "selected_session": session_slug,
         "selected_branch": int(branch_id) if branch_id.isdigit() else None,
         "selected_level": int(level) if level.isdigit() else None,
+        "query": query,
     }
     return render(request, "enrollment/catalog.html", context)
+
+
+def general_enquiry(request):
+    """General 'talk to an advisor' request, not tied to a specific offering."""
+    if request.method == "POST":
+        form = GeneralEnquiryForm(request.POST)
+        if form.is_valid():
+            enquiry = form.save(commit=False)
+            enquiry.offering = None
+            enquiry.save()
+            messages.success(
+                request,
+                "تم استلام طلبكم، سيتواصل معكم أحد مستشارينا في أقرب وقت ممكن.",
+            )
+        else:
+            messages.error(request, "الرجاء التحقق من المعلومات المدخلة.")
+    return redirect(request.META.get("HTTP_REFERER") or "pages:home")
 
 
 def specialty_detail(request, session_slug, code):

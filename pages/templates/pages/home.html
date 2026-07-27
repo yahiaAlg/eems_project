@@ -377,10 +377,83 @@
       .hero-stats { gap: 16px; }
     }
 
+    /* ── Featured offerings strip ────────────────────────────── */
+    #featured-strip { padding: 60px 0; background: var(--body-bg); }
+    .featured-card {
+      background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 14px;
+      overflow: hidden; height: 100%; box-shadow: var(--shadow); transition: all .18s; text-decoration: none; color: inherit; display: block;
+    }
+    .featured-card:hover { box-shadow: var(--shadow-md); transform: translateY(-3px); color: inherit; }
+    .featured-thumb { height: 140px; background: var(--navy); position: relative; overflow: hidden; }
+    .featured-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .featured-badge { position: absolute; top: 10px; right: 10px; background: var(--accent); color: var(--navy); font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 100px; }
+    .featured-body { padding: 16px 18px; }
+    .featured-title { font-weight: 800; font-size: 15px; color: var(--text); margin-bottom: 6px; }
+    .featured-meta { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+
+    /* ── Process strip ───────────────────────────────────────── */
+    #process-strip { padding: 88px 0; background: #fff; }
+    .process-step { text-align: center; position: relative; }
+    .process-num {
+      width: 56px; height: 56px; border-radius: 50%; background: var(--accent-soft); color: var(--accent);
+      display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto 18px;
+    }
+    .process-title { font-family: var(--font-head); font-weight: 800; font-size: 16px; margin-bottom: 8px; }
+    .process-desc { font-size: 13.5px; color: var(--muted); line-height: 1.8; }
+    .process-arrow { position: absolute; top: 28px; left: -20px; color: var(--card-border); font-size: 20px; }
+    [dir="rtl"] .process-arrow, .process-arrow { transform: scaleX(-1); }
+
+    /* ── Partners trust strip ────────────────────────────────── */
+    #partners-strip { padding: 40px 0; background: var(--body-bg); border-top: 1px solid var(--card-border); border-bottom: 1px solid var(--card-border); }
+    .partner-logo { display: flex; align-items: center; justify-content: center; height: 60px; filter: grayscale(1); opacity: .6; transition: all .2s; }
+    .partner-logo:hover { filter: grayscale(0); opacity: 1; }
+    .partner-logo img { max-height: 44px; max-width: 100%; object-fit: contain; }
+
+    /* ── Testimonials ─────────────────────────────────────────── */
+    #testimonials { padding: 88px 0; background: var(--navy); position: relative; overflow: hidden; }
+    .testimonial-card {
+      background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 14px;
+      padding: 28px; height: 100%; color: #fff;
+    }
+    .testimonial-quote { font-size: 14px; line-height: 1.9; color: rgba(255,255,255,.75); margin-bottom: 18px; }
+    .testimonial-person { display: flex; align-items: center; gap: 12px; }
+    .testimonial-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; background: rgba(255,255,255,.1); }
+    .testimonial-name { font-weight: 800; font-size: 14px; }
+    .testimonial-role { font-size: 12px; color: rgba(255,255,255,.45); }
+
+    /* ── Newsletter ──────────────────────────────────────────── */
+    .newsletter-form { display: flex; gap: 8px; margin-top: 8px; }
+    .newsletter-form input { flex: 1; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.15); color: #fff; border-radius: 8px; padding: 9px 12px; font-size: 13px; }
+    .newsletter-form input::placeholder { color: rgba(255,255,255,.4); }
+    .newsletter-form button { background: var(--accent); color: var(--navy); border: none; border-radius: 8px; padding: 0 16px; font-weight: 700; font-size: 13px; }
+
+    /* ── Advisor floating button ────────────────────────────── */
+    #advisor-fab {
+      position: fixed; bottom: 28px; left: 82px; z-index: 999;
+      background: var(--navy); color: #fff; border: 1.5px solid var(--accent);
+      border-radius: 100px; padding: 12px 20px; font-weight: 700; font-size: 13.5px;
+      display: flex; align-items: center; gap: 8px; text-decoration: none; box-shadow: var(--shadow-lg);
+      transition: all .2s;
+    }
+    #advisor-fab:hover { background: var(--accent); color: var(--navy); }
+    @media (max-width: 768px) {
+      #advisor-fab { left: 14px; bottom: 84px; padding: 10px 16px; font-size: 12.5px; }
+    }
+
   </style>
 {% endblock %}
 
 {% block content %}
+
+{% if messages %}
+<div id="toast-stack" style="position:fixed;top:80px;left:50%;transform:translateX(-50%);z-index:2000;width:min(92vw,420px);">
+  {% for message in messages %}
+  <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-success{% endif %}" style="border-radius:10px;font-size:13.5px;font-weight:600;box-shadow:var(--shadow-lg);" role="alert">
+    {{ message }}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
 
 <!-- ══════════════════ NAVBAR ══════════════════ -->
 <nav id="navbar" class="navbar navbar-expand-lg py-0">
@@ -508,6 +581,51 @@
   </div>
 </div>
 
+{% if partners %}
+<!-- ══════════════════ PARTNERS / ACCREDITATION ══════════════════ -->
+<div id="partners-strip">
+  <div class="container">
+    <div class="text-center mb-4"><span class="section-label">شركاؤنا وجهات الاعتماد</span></div>
+    <div class="row g-4 align-items-center justify-content-center">
+      {% for partner in partners %}
+      <div class="col-4 col-md-2">
+        {% if partner.url %}<a href="{{ partner.url }}" target="_blank" class="partner-logo"><img src="{{ partner.logo.url }}" alt="{{ partner.name }}"></a>
+        {% else %}<div class="partner-logo"><img src="{{ partner.logo.url }}" alt="{{ partner.name }}"></div>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if featured_offerings %}
+<!-- ══════════════════ FORMATIONS DU MOMENT ══════════════════ -->
+<section id="featured-strip">
+  <div class="container">
+    <div class="text-center mb-5 reveal">
+      <div class="section-label">مميزة</div>
+      <h2 class="section-title">تكوينات هذا الموسم</h2>
+    </div>
+    <div class="row g-4">
+      {% for offering in featured_offerings %}
+      <div class="col-sm-6 col-lg-4 reveal" style="transition-delay:{{ forloop.counter0 }}.05s">
+        <a href="{{ offering.get_absolute_url }}" class="featured-card">
+          <div class="featured-thumb">
+            {% if offering.image %}<img src="{{ offering.image.url }}" alt="{{ offering.title }}">{% endif %}
+            <span class="featured-badge">{{ offering.session.name }}</span>
+          </div>
+          <div class="featured-body">
+            <div class="featured-title">{{ offering.title }}</div>
+            <div class="featured-meta"><i class="bi bi-clock"></i> {{ offering.duration_months }} أشهر &bull; {{ offering.session.start_date|date:"d/m/Y" }}</div>
+          </div>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
 <!-- ══════════════════ VISITOR STATS ══════════════════ -->
 <section id="visitor-stats">
   <div class="container">
@@ -535,6 +653,27 @@
           <div class="vstat-icon"><i class="bi bi-people-fill" style="color:#3b82f6"></i></div>
           <div class="vstat-val">{{ visitor_stats.total }}</div>
           <div class="vstat-lbl">إجمالي الزوار</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-4 reveal" style="transition-delay:.25s">
+        <div class="vstat-card">
+          <div class="vstat-icon"><i class="bi bi-sitemap-fill"></i></div>
+          <div class="vstat-val">{{ live_counters.branches }}</div>
+          <div class="vstat-lbl">فرعا مهنيا</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-4 reveal" style="transition-delay:.3s">
+        <div class="vstat-card">
+          <div class="vstat-icon"><i class="bi bi-collection-fill"></i></div>
+          <div class="vstat-val">{{ live_counters.offerings }}</div>
+          <div class="vstat-lbl">تخصص معروض</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-4 reveal" style="transition-delay:.35s">
+        <div class="vstat-card">
+          <div class="vstat-icon"><i class="bi bi-patch-check-fill" style="color:var(--success)"></i></div>
+          <div class="vstat-val">{{ live_counters.enrolled }}</div>
+          <div class="vstat-lbl">مسجل مقبول</div>
         </div>
       </div>
     </div>
@@ -596,6 +735,28 @@
     </div>
   </div>
 </section>
+
+{% if process_steps %}
+<!-- ══════════════════ كيف نعمل ══════════════════ -->
+<section id="process-strip">
+  <div class="container">
+    <div class="text-center mb-5 reveal">
+      <div class="section-label">المسار</div>
+      <h2 class="section-title">كيف تسجل معنا</h2>
+    </div>
+    <div class="row g-5">
+      {% for step in process_steps %}
+      <div class="col-6 col-md-3 reveal process-step" style="transition-delay:{{ forloop.counter0 }}.08s">
+        {% if not forloop.first %}<i class="bi bi-arrow-left process-arrow d-none d-md-block"></i>{% endif %}
+        <div class="process-num"><i class="{{ step.icon_class }}"></i></div>
+        <div class="process-title">{{ step.title }}</div>
+        <p class="process-desc">{{ step.description }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
 
 <!-- ══════════════════ PROCHAINES SESSIONS ══════════════════ -->
 <section id="sessions">
@@ -659,6 +820,35 @@
   </div>
 </section>
 
+{% if testimonials %}
+<!-- ══════════════════ شهادات النجاح ══════════════════ -->
+<section id="testimonials">
+  <div class="container position-relative" style="z-index:1;">
+    <div class="text-center mb-5 reveal">
+      <div class="section-label">آراؤهم</div>
+      <h2 class="section-title" style="color:#fff;">شهادات نجاح</h2>
+    </div>
+    <div class="row g-4">
+      {% for t in testimonials %}
+      <div class="col-md-4 reveal" style="transition-delay:{{ forloop.counter0 }}.08s">
+        <div class="testimonial-card">
+          <p class="testimonial-quote">"{{ t.quote }}"</p>
+          <div class="testimonial-person">
+            {% if t.photo %}<img src="{{ t.photo.url }}" alt="{{ t.name }}" class="testimonial-avatar">
+            {% else %}<div class="testimonial-avatar d-flex align-items-center justify-content-center"><i class="bi bi-person-fill"></i></div>{% endif %}
+            <div>
+              <div class="testimonial-name">{{ t.name }}</div>
+              {% if t.role %}<div class="testimonial-role">{{ t.role }}</div>{% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
 <!-- ══════════════════ VIDEO ══════════════════ -->
 {% if settings.video_youtube_embed_url %}
 <section id="video-section">
@@ -672,15 +862,37 @@
     </div>
     <div class="row justify-content-center reveal">
       <div class="col-lg-9">
-        <div class="video-wrapper">
-          <div class="ratio ratio-16x9">
-              <iframe width="560" height="315" src="{{ settings.video_youtube_embed_url }}" title="{{ settings.video_title }}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+        <button type="button" class="video-wrapper border-0 p-0 w-100 position-relative" data-bs-toggle="modal" data-bs-target="#videoModal" style="cursor:pointer;">
+          <div class="ratio ratio-16x9" style="background:var(--navy-mid);">
+            {% if settings.hero_image %}<img src="{{ settings.hero_image.url }}" alt="{{ settings.video_title }}" style="width:100%;height:100%;object-fit:cover;opacity:.5;">{% endif %}
           </div>
-        </div>
+          <div class="position-absolute top-50 start-50 translate-middle" style="width:76px;height:76px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;">
+            <i class="bi bi-play-fill" style="font-size:34px;color:var(--navy);"></i>
+          </div>
+          <span class="position-absolute bottom-0 end-0 m-3" style="color:#fff;font-weight:700;font-size:13px;background:rgba(0,0,0,.4);padding:6px 14px;border-radius:100px;">
+            <i class="bi bi-play-circle"></i> Regarder la vidéo
+          </span>
+        </button>
       </div>
     </div>
   </div>
 </section>
+
+<!-- Video lightbox modal -->
+<div class="modal fade" id="videoModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content" style="background:var(--navy);border:1px solid rgba(255,255,255,.1);">
+      <div class="modal-header border-0">
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body pt-0">
+        <div class="ratio ratio-16x9">
+          <iframe id="videoModalIframe" src="" title="{{ settings.video_title }}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 {% endif %}
 
 <!-- ══════════════════ INFO STRIP ══════════════════ -->
@@ -755,6 +967,11 @@
           {% if settings.logo %}<img src="{{ settings.logo.url }}" alt="{{ settings.site_name }}" style="height:48px;width:auto;border-radius:8px;">{% endif %}
         </div>
         <p class="footer-desc">{{ settings.footer_description }}</p>
+        <form class="newsletter-form" method="post" action="{% url 'pages:newsletter_subscribe' %}">
+          {% csrf_token %}
+          {{ newsletter_form.email }}
+          <button type="submit"><i class="bi bi-send-fill"></i></button>
+        </form>
         <div class="d-flex gap-2 mt-4">
           {% for link in social_links %}
           <a href="{{ link.url }}" target="_blank" class="social-icon">
@@ -806,6 +1023,49 @@
   </div>
 </footer>
 
+<!-- Advisor request -->
+<a href="#" id="advisor-fab" data-bs-toggle="modal" data-bs-target="#advisorModal">
+  <i class="bi bi-headset"></i> اطلب استشارة
+</a>
+
+<div class="modal fade" id="advisorModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:14px;border:none;">
+      <div class="modal-header">
+        <h5 class="modal-title" style="font-family:var(--font-head);font-weight:800;">
+          <i class="bi bi-headset" style="color:var(--accent)"></i> اطلب استشارة مجانية
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted" style="font-size:13.5px;">أخبرنا بما تحتاجه وسيتواصل معك أحد مستشارينا في أقرب وقت ممكن.</p>
+        <form method="post" action="{% url 'enrollment:general_enquiry' %}">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label">الاسم</label>
+            <input type="text" name="name" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">الهاتف</label>
+            <input type="text" name="phone" class="form-control" dir="ltr" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">البريد الإلكتروني (اختياري)</label>
+            <input type="email" name="email" class="form-control" dir="ltr">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">طلبك</label>
+            <textarea name="question" class="form-control" rows="3" required></textarea>
+          </div>
+          <button type="submit" class="hero-cta-primary w-100 justify-content-center">
+            <i class="bi bi-send-fill"></i> إرسال الطلب
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Back to top -->
 <button id="back-top" onclick="window.scrollTo({top:0,behavior:'smooth'})">
   <i class="bi bi-chevron-up"></i>
@@ -837,5 +1097,22 @@ const observer = new IntersectionObserver(
   { threshold: 0.12 }
 );
 revealEls.forEach(el => observer.observe(el));
+
+/* ── Video modal: only load the iframe src when opened ───────── */
+const videoModal = document.getElementById('videoModal');
+if (videoModal) {
+  const embedUrl = "{{ settings.video_youtube_embed_url }}";
+  videoModal.addEventListener('show.bs.modal', () => {
+    document.getElementById('videoModalIframe').src = embedUrl + (embedUrl.includes('?') ? '&' : '?') + 'autoplay=1';
+  });
+  videoModal.addEventListener('hidden.bs.modal', () => {
+    document.getElementById('videoModalIframe').src = '';
+  });
+}
+
+/* ── Auto-dismiss toasts ──────────────────────────────────────── */
+setTimeout(() => {
+  document.querySelectorAll('#toast-stack .alert').forEach(el => el.style.display = 'none');
+}, 6000);
 </script>
 {% endblock %}

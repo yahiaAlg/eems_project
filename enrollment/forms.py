@@ -126,6 +126,27 @@ class CommentForm(forms.ModelForm):
         }
 
 
+class GeneralEnquiryForm(forms.ModelForm):
+    """Same as EnquiryForm, used for a general 'talk to an advisor' request
+    that isn't tied to a specific offering."""
+
+    class Meta:
+        model = Enquiry
+        fields = ["name", "phone", "email", "question"]
+        widgets = {
+            "name": forms.TextInput(attrs={**WIDGET_ATTRS, "placeholder": "اسمك"}),
+            "phone": forms.TextInput(attrs={**WIDGET_ATTRS, "placeholder": "رقم الهاتف", "dir": "ltr"}),
+            "email": forms.EmailInput(attrs={**WIDGET_ATTRS, "placeholder": "بريدك الإلكتروني (اختياري)", "dir": "ltr"}),
+            "question": forms.Textarea(attrs={**WIDGET_ATTRS, "rows": 3, "placeholder": "ما الذي تريد الاستفسار عنه؟"}),
+        }
+        labels = {
+            "name": "الاسم",
+            "phone": "الهاتف",
+            "email": "البريد الإلكتروني",
+            "question": "طلبك",
+        }
+
+
 class EnquiryForm(forms.ModelForm):
     class Meta:
         model = Enquiry

@@ -424,3 +424,78 @@ class NavLink(models.Model):
 
     def __str__(self):
         return self.label
+
+
+# ──────────────────────────────────────────────────────────────────
+#  Partner / accreditation logos (trust strip)
+# ──────────────────────────────────────────────────────────────────
+class Partner(models.Model):
+    name = models.CharField("الاسم", max_length=120)
+    logo = models.ImageField("الشعار", upload_to="partners/")
+    url = models.URLField("الرابط", blank=True)
+    order = models.PositiveIntegerField("الترتيب", default=0)
+    is_active = models.BooleanField("مفعّل", default=True)
+
+    class Meta:
+        ordering = ["order", "id"]
+        verbose_name = "شريك / جهة اعتماد"
+        verbose_name_plural = "🤝 الشركاء وجهات الاعتماد"
+
+    def __str__(self):
+        return self.name
+
+
+# ──────────────────────────────────────────────────────────────────
+#  "How we work" process steps
+# ──────────────────────────────────────────────────────────────────
+class ProcessStep(models.Model):
+    icon_class = models.CharField(
+        "أيقونة Bootstrap", max_length=60, default="bi bi-1-circle"
+    )
+    title = models.CharField("العنوان", max_length=100)
+    description = models.TextField("الوصف", blank=True)
+    order = models.PositiveIntegerField("الترتيب", default=0)
+
+    class Meta:
+        ordering = ["order", "id"]
+        verbose_name = "خطوة"
+        verbose_name_plural = "🪜 كيف نعمل (خطوات التسجيل)"
+
+    def __str__(self):
+        return self.title
+
+
+# ──────────────────────────────────────────────────────────────────
+#  Testimonials / success stories
+# ──────────────────────────────────────────────────────────────────
+class Testimonial(models.Model):
+    name = models.CharField("الاسم", max_length=120)
+    role = models.CharField("الصفة / المؤسسة", max_length=150, blank=True)
+    photo = models.ImageField("الصورة", upload_to="testimonials/", blank=True, null=True)
+    quote = models.TextField("الشهادة")
+    order = models.PositiveIntegerField("الترتيب", default=0)
+    is_active = models.BooleanField("مفعّلة", default=True)
+
+    class Meta:
+        ordering = ["order", "id"]
+        verbose_name = "شهادة نجاح"
+        verbose_name_plural = "💬 شهادات النجاح"
+
+    def __str__(self):
+        return self.name
+
+
+# ──────────────────────────────────────────────────────────────────
+#  Newsletter subscribers
+# ──────────────────────────────────────────────────────────────────
+class NewsletterSubscriber(models.Model):
+    email = models.EmailField("البريد الإلكتروني", unique=True)
+    created_at = models.DateTimeField("تاريخ الاشتراك", auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "مشترك في النشرة"
+        verbose_name_plural = "📩 المشتركون في النشرة الإخبارية"
+
+    def __str__(self):
+        return self.email

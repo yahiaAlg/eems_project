@@ -9,4 +9,5 @@ urlpatterns = [
     path("formations/<slug:session_slug>/<str:code>/", views.specialty_detail, name="detail"),
     path("formations/<slug:session_slug>/<str:code>/inscription/", views.subscribe, name="subscribe"),
     path("inscription/merci/", views.subscribe_success, name="subscribe_success"),
+    path("advisor/", views.general_enquiry, name="general_enquiry"),
 ]

@@ -11,6 +11,10 @@ from .models import (
     InternalApp,
     NavLink,
     SiteVisitor,
+    Partner,
+    ProcessStep,
+    Testimonial,
+    NewsletterSubscriber,
 )
 
 
@@ -216,3 +220,30 @@ class SiteVisitorAdmin(admin.ModelAdmin):
         ).count()
         extra_context["visitor_total"] = SiteVisitor.objects.count()
         return super().changelist_view(request, extra_context=extra_context)
+
+
+@admin.register(Partner)
+class PartnerAdmin(admin.ModelAdmin):
+    list_display = ("name", "url", "order", "is_active")
+    list_editable = ("order", "is_active")
+
+
+@admin.register(ProcessStep)
+class ProcessStepAdmin(admin.ModelAdmin):
+    list_display = ("title", "icon_class", "order")
+    list_editable = ("order",)
+
+
+@admin.register(Testimonial)
+class TestimonialAdmin(admin.ModelAdmin):
+    list_display = ("name", "role", "order", "is_active")
+    list_editable = ("order", "is_active")
+
+
+@admin.register(NewsletterSubscriber)
+class NewsletterSubscriberAdmin(admin.ModelAdmin):
+    list_display = ("email", "created_at")
+    search_fields = ("email",)
+
+    def has_add_permission(self, request):
+        return False
