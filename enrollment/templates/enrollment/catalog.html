@@ -1,116 +1,234 @@
 {% extends "pages/base.html" %}
-{% load enrollment_extras %}
+{% load static enrollment_extras %}
 
 {% block title %}الدخول المهني — التخصصات المتاحة للتسجيل{% endblock %}
 
 {% block extra_head %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+<script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
+
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap');
-
   :root {
-    --bg: #0d1117; --surface: #161b22; --border: #30363d;
-    --accent: #c9a227; --accent2: #2ea043; --text: #e6edf3;
-    --muted: #8b949e; --row-hover: #1c2128; --tag-bg: #21262d;
+    --navy: #0f172a; --navy-mid: #1e293b; --navy-light: #334155;
+    --accent: #f59e0b; --accent-dark: #d97706; --accent-soft: rgba(245,158,11,.12);
+    --success: #10b981; --body-bg: #f8fafc; --card-bg: #fff; --card-border: #e2e8f0;
+    --text: #0f172a; --muted: #64748b; --font-head: 'Cairo', sans-serif;
+    --radius: 10px;
+    --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.06);
+    --shadow-md: 0 4px 16px rgba(0,0,0,.10);
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Tajawal', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 24px 16px; }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { font-family: var(--font-head); background: var(--body-bg); color: var(--text); }
 
-  header { text-align: center; margin-bottom: 28px; padding: 32px 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
-  header h1 { font-size: 1.8rem; font-weight: 800; color: var(--accent); margin-bottom: 6px; }
-  header p { color: var(--muted); font-size: 0.95rem; }
-
-  .controls { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; max-width: 1100px; margin-inline: auto; }
-  select {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-    padding: 10px 14px; color: var(--text); font-family: inherit; font-size: 0.9rem;
-    cursor: pointer; min-width: 180px;
+  #catalog-hero {
+    background: var(--navy); position: relative; overflow: hidden;
+    padding: 70px 0 56px;
   }
-  select:focus { outline: none; border-color: var(--accent); }
-
-  .grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 18px; max-width: 1100px; margin: 0 auto;
+  #catalog-hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse 70% 60% at 20% 30%, rgba(245,158,11,.10) 0%, transparent 70%);
   }
-  .card {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-    padding: 20px; display: flex; flex-direction: column; gap: 10px;
-    transition: border-color .2s, transform .2s;
+  #catalog-hero::after {
+    content: ''; position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+                       linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+    background-size: 40px 40px; pointer-events: none;
   }
-  .card:hover { border-color: var(--accent); transform: translateY(-2px); }
-  .card .code {
-    font-family: 'Courier New', monospace; font-size: 0.8rem; color: var(--accent);
-    background: var(--tag-bg); border: 1px solid var(--border); border-radius: 5px;
-    padding: 2px 8px; display: inline-block; width: fit-content;
+  .catalog-badge {
+    display: inline-flex; align-items: center; gap: 7px; background: rgba(245,158,11,.12);
+    border: 1px solid rgba(245,158,11,.3); border-radius: 100px; padding: 5px 14px;
+    font-size: 12.5px; font-weight: 700; color: var(--accent); margin-bottom: 16px;
   }
-  .card h3 { font-size: 1.15rem; color: var(--text); }
-  .card .meta { color: var(--muted); font-size: 0.85rem; }
-  .card .fee { color: var(--accent2); font-weight: 700; font-size: 1rem; }
+  #catalog-hero h1 { font-size: clamp(28px, 4.5vw, 42px); font-weight: 800; color: #fff; margin-bottom: 10px; }
+  #catalog-hero p { color: rgba(255,255,255,.6); font-size: 15.5px; max-width: 560px; }
 
-  .seats-bar { height: 6px; background: var(--tag-bg); border-radius: 4px; overflow: hidden; }
-  .seats-bar span { display: block; height: 100%; background: var(--accent); }
-  .seats-label { font-size: 0.78rem; color: var(--muted); }
-
-  .btn {
-    margin-top: 6px; text-align: center; text-decoration: none;
-    background: var(--accent); color: #0d1117; font-weight: 700;
-    padding: 10px; border-radius: 8px; transition: opacity .2s;
+  .stat-pill {
+    display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 10px 16px;
   }
-  .btn:hover { opacity: .85; }
-  .btn.full { background: var(--tag-bg); color: var(--muted); border: 1px solid var(--border); }
+  .stat-pill iconify-icon { font-size: 20px; color: var(--accent); }
+  .stat-pill b { color: #fff; font-size: 16px; }
+  .stat-pill span { color: rgba(255,255,255,.5); font-size: 12px; }
 
-  .no-results { text-align: center; padding: 60px 20px; color: var(--muted); grid-column: 1 / -1; }
+  #controls-bar { background: #fff; border-bottom: 1px solid var(--card-border); padding: 20px 0; position: sticky; top: 0; z-index: 20; }
+  .form-select {
+    background-color: var(--body-bg); border: 1px solid var(--card-border); border-radius: 8px;
+    font-family: var(--font-head); font-size: 14px; font-weight: 600; color: var(--text); padding: 10px 14px;
+  }
+  .form-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+  #catalog-grid { padding: 48px 0 88px; }
+  .offer-card {
+    background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 14px;
+    padding: 22px; height: 100%; display: flex; flex-direction: column; gap: 12px;
+    box-shadow: var(--shadow); transition: box-shadow .2s, transform .2s, border-color .2s;
+  }
+  .offer-card:hover { box-shadow: 0 10px 30px rgba(15,23,42,.12); border-color: var(--accent); transform: translateY(-4px); }
+  .offer-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .offer-code {
+    font-family: 'Courier New', monospace; font-size: .75rem; font-weight: 700; color: var(--navy);
+    background: var(--accent-soft); border-radius: 6px; padding: 3px 9px; direction: ltr;
+  }
+  .offer-level { font-size: 11.5px; font-weight: 700; color: #3b82f6; background: rgba(59,130,246,.1); border-radius: 6px; padding: 3px 9px; }
+  .offer-card h3 { font-size: 1.1rem; font-weight: 800; color: var(--text); margin: 0; line-height: 1.4; }
+  .offer-meta { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12.5px; color: var(--muted); }
+  .offer-meta span { display: flex; align-items: center; gap: 5px; }
+  .offer-meta iconify-icon { color: var(--accent); font-size: 15px; }
+  .offer-fee { font-weight: 800; color: var(--success); font-size: 1rem; direction: ltr; text-align: right; }
+
+  .seats-bar { height: 7px; background: var(--body-bg); border-radius: 4px; overflow: hidden; }
+  .seats-bar span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent-dark)); width: 0; transition: width 1.1s cubic-bezier(.2,.8,.2,1); }
+  .seats-label { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+
+  .btn-detail {
+    margin-top: auto; text-align: center; text-decoration: none; background: var(--navy); color: #fff;
+    font-weight: 700; font-size: 14px; padding: 11px; border-radius: 8px; transition: all .18s;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .btn-detail:hover { background: var(--accent); color: var(--navy); transform: translateY(-1px); }
+  .btn-detail.full { background: var(--body-bg); color: var(--muted); border: 1px solid var(--card-border); }
+  .btn-detail.full:hover { background: #fef3c7; color: var(--accent-dark); }
+
+  .no-results { text-align: center; padding: 70px 20px; color: var(--muted); grid-column: 1 / -1; }
+  .no-results iconify-icon { font-size: 40px; color: var(--card-border); margin-bottom: 12px; }
 </style>
 {% endblock %}
 
 {% block content %}
-<header>
-  <h1>📋 الدخول المهني — التسجيلات المفتوحة</h1>
-  <p>اختر التخصص الذي يناسبك وسجّل مباشرة عبر الموقع</p>
-</header>
-
-<form method="get" class="controls">
-  <select name="session" onchange="this.form.submit()">
-    <option value="">كل الدورات</option>
-    {% for s in sessions %}
-      <option value="{{ s.slug }}" {% if s.slug == selected_session %}selected{% endif %}>{{ s.name }}</option>
-    {% endfor %}
-  </select>
-  <select name="branch" onchange="this.form.submit()">
-    <option value="">كل الشعب</option>
-    {% for b in branches %}
-      <option value="{{ b.id }}" {% if b.id == selected_branch %}selected{% endif %}>{{ b.name_ar }}</option>
-    {% endfor %}
-  </select>
-  <select name="level" onchange="this.form.submit()">
-    <option value="">كل المستويات</option>
-    {% for value, label in offerings.model.qualification_level.field.choices %}{% endfor %}
-    <option value="1" {% if selected_level == 1 %}selected{% endif %}>1 - ش.م.ت.م</option>
-    <option value="2" {% if selected_level == 2 %}selected{% endif %}>2 - ش.ك.م</option>
-    <option value="3" {% if selected_level == 3 %}selected{% endif %}>3 - ش.ت.م</option>
-    <option value="4" {% if selected_level == 4 %}selected{% endif %}>4 - ش.ت</option>
-    <option value="5" {% if selected_level == 5 %}selected{% endif %}>5 - ش.ت.س</option>
-  </select>
-</form>
-
-<div class="grid">
-  {% for offering in offerings %}
-  <div class="card">
-    <span class="code">{{ offering.code }}</span>
-    <h3>{{ offering.title }}</h3>
-    <div class="meta">{{ offering.session.name }} • مدة التكوين: {{ offering.duration_months }} شهرا</div>
-    {% if offering.monthly_fee %}<div class="fee">{{ offering.monthly_fee|da }} / شهر</div>{% endif %}
-    <div>
-      <div class="seats-bar"><span style="width: {{ offering.fill_rate }}%;"></span></div>
-      <div class="seats-label">{{ offering.seats_taken }} / {{ offering.seats_available }} مقعد مشغول</div>
+<nav id="navbar" class="navbar navbar-expand-lg py-0" style="background:var(--navy);position:sticky;top:0;z-index:1040;">
+  <div class="container" style="height:64px;">
+    <a class="d-flex align-items-center gap-2 text-decoration-none" href="{% url 'pages:home' %}">
+      {% if settings.logo %}<img src="{{ settings.logo.url }}" alt="{{ settings.site_name }}" style="height:40px;width:auto;border-radius:8px;">
+      {% else %}<span style="color:#fff;font-weight:800;font-size:18px;">{{ settings.site_name }}</span>{% endif %}
+    </a>
+    <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#navMain" style="border:1px solid rgba(255,255,255,.2);">
+      <span class="navbar-toggler-icon" style="background-image:url('data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 30 30%27%3e%3cpath stroke=%27rgba(255,255,255,.75)%27 stroke-linecap=%27round%27 stroke-miterlimit=%2710%27 stroke-width=%272%27 d=%27M4 7h22M4 15h22M4 23h22%27/%3e%3c/svg%3e');"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navMain">
+      <ul class="navbar-nav ms-auto gap-1">
+        <li class="nav-item"><a class="nav-link" href="{% url 'pages:home' %}" style="color:rgba(255,255,255,.7);font-weight:600;">الرئيسية</a></li>
+        <li class="nav-item"><a class="nav-link active" href="{% url 'enrollment:catalog' %}" style="color:#fff;font-weight:700;">التسجيل الإلكتروني</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'pages:nomenclature' %}" style="color:rgba(255,255,255,.7);font-weight:600;">التصنيف الرسمي</a></li>
+      </ul>
     </div>
-    {% if offering.seats_remaining > 0 %}
-      <a class="btn" href="{% url 'enrollment:detail' offering.session.slug offering.code %}">التفاصيل والتسجيل</a>
-    {% else %}
-      <a class="btn full" href="{% url 'enrollment:detail' offering.session.slug offering.code %}">اكتملت المقاعد — قائمة الانتظار</a>
-    {% endif %}
   </div>
-  {% empty %}
-  <div class="no-results">لا توجد تخصصات مطابقة حاليا.</div>
-  {% endfor %}
+</nav>
+
+<section id="catalog-hero">
+  <div class="container position-relative" style="z-index:1;">
+    <div class="catalog-badge"><iconify-icon icon="mdi:certificate-outline"></iconify-icon> الدخول المهني — التسجيلات مفتوحة</div>
+    <h1>اختر تخصصك وسجّل مباشرة</h1>
+    <p>تصفّح التخصصات المتاحة عبر مختلف الدورات، وسجّل ترشحك عبر الموقع في دقائق معدودة.</p>
+    <div class="d-flex flex-wrap gap-3 mt-4">
+      <div class="stat-pill"><iconify-icon icon="mdi:layers-triple-outline"></iconify-icon><div><b>{{ offerings.count }}</b> <span class="d-block">تخصص متاح</span></div></div>
+      <div class="stat-pill"><iconify-icon icon="mdi:calendar-check-outline"></iconify-icon><div><b>{{ sessions.count }}</b> <span class="d-block">دورة نشطة</span></div></div>
+      <div class="stat-pill"><iconify-icon icon="mdi:sitemap-outline"></iconify-icon><div><b>{{ branches.count }}</b> <span class="d-block">شعبة مهنية</span></div></div>
+    </div>
+  </div>
+</section>
+
+<div id="controls-bar">
+  <div class="container">
+    <form method="get" class="d-flex gap-3 flex-wrap">
+      <select name="session" class="form-select" style="min-width:200px;" onchange="this.form.submit()">
+        <option value="">كل الدورات</option>
+        {% for s in sessions %}
+          <option value="{{ s.slug }}" {% if s.slug == selected_session %}selected{% endif %}>{{ s.name }}</option>
+        {% endfor %}
+      </select>
+      <select name="branch" class="form-select" style="min-width:180px;" onchange="this.form.submit()">
+        <option value="">كل الشعب</option>
+        {% for b in branches %}
+          <option value="{{ b.id }}" {% if b.id == selected_branch %}selected{% endif %}>{{ b.name_ar }}</option>
+        {% endfor %}
+      </select>
+      <select name="level" class="form-select" style="min-width:160px;" onchange="this.form.submit()">
+        <option value="">كل المستويات</option>
+        <option value="1" {% if selected_level == 1 %}selected{% endif %}>1 - ش.م.ت.م</option>
+        <option value="2" {% if selected_level == 2 %}selected{% endif %}>2 - ش.ك.م</option>
+        <option value="3" {% if selected_level == 3 %}selected{% endif %}>3 - ش.ت.م</option>
+        <option value="4" {% if selected_level == 4 %}selected{% endif %}>4 - ش.ت</option>
+        <option value="5" {% if selected_level == 5 %}selected{% endif %}>5 - ش.ت.س</option>
+      </select>
+    </form>
+  </div>
 </div>
+
+<section id="catalog-grid">
+  <div class="container">
+    <div class="row g-4" id="offer-grid">
+      {% for offering in offerings %}
+      <div class="col-sm-6 col-lg-4 offer-item">
+        <div class="offer-card">
+          <div class="offer-top">
+            <span class="offer-code">{{ offering.code }}</span>
+            {% if offering.get_qualification_level_display %}<span class="offer-level">{{ offering.qualification_level }} — {{ offering.get_certificate_type_display }}</span>{% endif %}
+          </div>
+          <h3>{{ offering.title }}</h3>
+          <div class="offer-meta">
+            <span><iconify-icon icon="mdi:calendar-month-outline"></iconify-icon> {{ offering.session.name }}</span>
+            <span><iconify-icon icon="mdi:clock-time-four-outline"></iconify-icon> {{ offering.duration_months }} شهرا</span>
+          </div>
+          {% if offering.monthly_fee %}<div class="offer-fee">{{ offering.monthly_fee|da }} / شهر</div>{% endif %}
+          <div>
+            <div class="seats-bar"><span data-fill="{{ offering.fill_rate }}"></span></div>
+            <div class="seats-label">{{ offering.seats_taken }} / {{ offering.seats_available }} مقعد مشغول &bull; {{ offering.comments_count }} تعليق</div>
+          </div>
+          {% if offering.seats_remaining > 0 %}
+            <a class="btn-detail" href="{% url 'enrollment:detail' offering.session.slug offering.code %}"><iconify-icon icon="mdi:arrow-left-circle-outline"></iconify-icon> التفاصيل والتسجيل</a>
+          {% else %}
+            <a class="btn-detail full" href="{% url 'enrollment:detail' offering.session.slug offering.code %}"><iconify-icon icon="mdi:clock-alert-outline"></iconify-icon> اكتملت المقاعد — قائمة الانتظار</a>
+          {% endif %}
+        </div>
+      </div>
+      {% empty %}
+      <div class="no-results">
+        <iconify-icon icon="mdi:folder-search-outline"></iconify-icon>
+        <div>لا توجد تخصصات مطابقة حاليا.</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<footer style="background:var(--navy);border-top:1px solid rgba(255,255,255,.06);padding:32px 0;">
+  <div class="container d-flex flex-wrap align-items-center justify-content-between gap-2" style="color:rgba(255,255,255,.4);font-size:13px;">
+    <span>{{ settings.footer_copyright }}</span>
+    <a href="{% url 'pages:home' %}" style="color:var(--accent);text-decoration:none;font-weight:700;">← العودة إلى الموقع الرئيسي</a>
+  </div>
+</footer>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script>
+  gsap.registerPlugin(ScrollTrigger);
+
+  gsap.from("#catalog-hero .catalog-badge, #catalog-hero h1, #catalog-hero p, #catalog-hero .stat-pill", {
+    y: 18, opacity: 0, duration: .6, stagger: .08, ease: "power2.out",
+  });
+
+  document.querySelectorAll(".offer-item").forEach((card, i) => {
+    gsap.from(card, {
+      scrollTrigger: { trigger: card, start: "top 92%" },
+      y: 26, opacity: 0, duration: .55, delay: (i % 3) * .05, ease: "power2.out",
+    });
+  });
+
+  document.querySelectorAll(".seats-bar span").forEach((bar) => {
+    ScrollTrigger.create({
+      trigger: bar,
+      start: "top 95%",
+      onEnter: () => gsap.to(bar, { width: bar.dataset.fill + "%", duration: 1.1, ease: "power2.out" }),
+      once: true,
+    });
+  });
+</script>
 {% endblock %}
