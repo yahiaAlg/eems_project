@@ -8,22 +8,36 @@ from .models import Enrollment
 def notify_staff_on_new_enrollment(sender, instance, created, **kwargs):
     if not created:
         return
-    # Uses Django's ADMINS setting + configured EMAIL_BACKEND.
-    # Silently no-ops if email isn't configured — never blocks the request.
-    from django.core.mail import mail_admins
+
+    from django.conf import settings
+    from pages.emails import send_branded_mail
 
     client = instance.client
-    try:
-        mail_admins(
+    context = {
+        "client_name": client.display_name,
+        "client_type": client.get_client_type_display(),
+        "participant_name": instance.participant.full_name,
+        "phone": client.phone,
+        "offering_title": instance.offering.title,
+        "offering_code": instance.offering.code,
+        "session_name": instance.offering.session.name,
+    }
+
+    # Notify admins/support inbox with the branded HTML template.
+    admin_emails = [addr for _name, addr in getattr(settings, "ADMINS", [])]
+    if admin_emails:
+        send_branded_mail(
+            template="emails/enrollment_admin_notification.html",
             subject=f"تسجيل جديد: {client.display_name} — {instance.offering.code}",
-            message=(
-                f"الزبون: {client.display_name} ({client.get_client_type_display()})\n"
-                f"المشارك: {instance.participant.full_name}\n"
-                f"الهاتف: {client.phone}\n"
-                f"التخصص: {instance.offering.title} ({instance.offering.code})\n"
-                f"الدورة: {instance.offering.session.name}\n"
-            ),
-            fail_silently=True,
+            to=admin_emails,
+            context=context,
         )
-    except Exception:
-        pass
+
+    # Confirm receipt to the client, if they provided an email address.
+    if client.email:
+        send_branded_mail(
+            template="emails/enrollment_client_confirmation.html",
+            subject="تم استلام طلب تسجيلك — إيمس",
+            to=[client.email],
+            context=context,
+        )

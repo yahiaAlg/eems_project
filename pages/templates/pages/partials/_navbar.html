@@ -1,0 +1,67 @@
+{% load static %}
+{% if messages %}
+<div id="toast-stack" style="position:fixed;top:80px;left:50%;transform:translateX(-50%);z-index:2000;width:min(92vw,420px);">
+  {% for message in messages %}
+  <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-success{% endif %}" style="border-radius:10px;font-size:13.5px;font-weight:600;box-shadow:var(--shadow-lg);" role="alert">
+    {{ message }}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- ══════════════════ NAVBAR ══════════════════ -->
+<nav id="navbar" class="navbar navbar-expand-lg py-0">
+  <div class="container" style="height:64px;">
+
+    <a class="nav-brand me-4" href="{% url 'pages:home' %}">
+      {% if settings.logo %}
+        <img src="{{ settings.logo.url }}" alt="شعار {{ settings.site_name }}" style="height:44px;width:auto;border-radius:8px;">
+      {% else %}
+        <span style="color:#fff;font-weight:800;font-size:18px;">{{ settings.site_name }}</span>
+      {% endif %}
+    </a>
+
+    <button class="navbar-toggler ms-auto me-2" type="button" data-bs-toggle="collapse" data-bs-target="#navMain">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navMain">
+      <ul class="navbar-nav me-auto gap-1">
+        <li class="nav-item"><a class="nav-link {% if active_nav == 'home' %}active{% endif %}" href="{% url 'pages:home' %}">الرئيسية</a></li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle {% if active_nav == 'about' %}active{% endif %}" href="#" data-bs-toggle="dropdown">المؤسسة</a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="{% url 'pages:about' %}"><i class="bi bi-building"></i> من نحن</a></li>
+            <li><a class="dropdown-item" href="{% url 'pages:about' %}#mission"><i class="bi bi-award-fill"></i> مهمتنا ورؤيتنا</a></li>
+            <li><a class="dropdown-item" href="{% url 'pages:about' %}#values"><i class="bi bi-graph-up-arrow"></i> قيمنا</a></li>
+          </ul>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle {% if active_nav == 'nomenclature' %}active{% endif %}" href="#" data-bs-toggle="dropdown">التكوينات</a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="{% url 'pages:home' %}#formations"><i class="bi bi-collection-fill"></i> الفروع المهنية</a></li>
+            <li><a class="dropdown-item" href="{% url 'pages:nomenclature' %}"><i class="bi bi-list-ul"></i> تصنيف التخصصات</a></li>
+            <li><a class="dropdown-item" href="{% url 'pages:home' %}#sessions"><i class="bi bi-calendar3-fill"></i> الدورات القادمة</a></li>
+          </ul>
+        </li>
+        <li class="nav-item"><a class="nav-link {% if active_nav == 'faq' %}active{% endif %}" href="{% url 'pages:faq' %}">الأسئلة الشائعة</a></li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle {% if active_nav == 'contact' %}active{% endif %}" href="#" data-bs-toggle="dropdown">الاتصال والوصول</a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="{% url 'pages:contact' %}"><i class="bi bi-envelope-fill"></i> معلومات التواصل</a></li>
+            <li><a class="dropdown-item" href="{% url 'pages:contact' %}#map"><i class="bi bi-geo-alt-fill"></i> الموقع والخريطة</a></li>
+          </ul>
+        </li>
+      </ul>
+
+      <!-- App launchers -->
+      <div class="d-flex align-items-center gap-2 ms-2 py-2 py-lg-0">
+        {% for app in internal_apps %}{% if app.show_in_navbar %}
+        <a href="{{ app.url }}" class="btn-app {% if app.color == 'amber' %}btn-app-amber{% else %}btn-app-outline{% endif %}" {% if app.open_in_new_tab %}target="_blank"{% endif %}>
+          <i class="{{ app.icon_class }}"></i> {{ app.title }}
+        </a>
+        {% endif %}{% endfor %}
+      </div>
+    </div>
+  </div>
+</nav>

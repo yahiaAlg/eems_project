@@ -1,0 +1,153 @@
+{% extends "pages/base.html" %}
+{% load static %}
+
+{% block title %}{{ contact_page.title }} — {{ settings.site_name }}{% endblock %}
+
+{% block extra_head %}
+{% include "pages/partials/_design_tokens.html" %}
+<style>
+  .contact-info-card {
+    background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius);
+    padding: 24px; display: flex; align-items: flex-start; gap: 16px; height: 100%;
+  }
+  .contact-info-icon {
+    width: 44px; height: 44px; border-radius: 10px; background: var(--accent-soft); color: var(--accent);
+    display: flex; align-items: center; justify-content: center; font-size: 19px; flex-shrink: 0;
+  }
+  .contact-info-label { font-size: 12.5px; color: var(--muted); margin-bottom: 4px; }
+  .contact-info-value { font-family: var(--font-head); font-weight: 700; font-size: 15px; color: var(--text); }
+
+  .contact-form-card {
+    background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px;
+    padding: 36px; box-shadow: var(--shadow-md);
+  }
+  .contact-form-card label { font-size: 13.5px; font-weight: 700; color: var(--text); margin-bottom: 6px; display:block; }
+  .contact-form-card .form-control, .contact-form-card .form-select {
+    border: 1.5px solid var(--card-border); border-radius: 8px; padding: 11px 14px; font-size: 14px;
+  }
+  .contact-form-card .form-control:focus, .contact-form-card .form-select:focus {
+    border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .contact-submit-btn {
+    background: var(--accent); color: var(--navy); border: none; border-radius: 8px; padding: 13px 30px;
+    font-family: var(--font-head); font-weight: 700; font-size: 15px; width: 100%; transition: all .15s;
+  }
+  .contact-submit-btn:hover { background: var(--accent-dark); }
+
+  .map-frame { border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-md); border: 1px solid var(--card-border); }
+
+  .errorlist { list-style: none; padding: 0; margin: 4px 0 0; color: #dc2626; font-size: 12.5px; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% include "pages/partials/_navbar.html" with active_nav="contact" %}
+
+<!-- ══════════════════ HERO ══════════════════ -->
+<section class="page-hero">
+  <div class="container position-relative" style="z-index:1;">
+    <div class="section-label">{{ contact_page.label }}</div>
+    <h1>{{ contact_page.title }}</h1>
+    <p>{{ contact_page.description }}</p>
+  </div>
+</section>
+
+<!-- ══════════════════ INFO STRIP ══════════════════ -->
+<section class="page-section alt" style="padding-top:56px;padding-bottom:40px;">
+  <div class="container">
+    <div class="row g-4">
+      {% if settings.address %}
+      <div class="col-md-6 col-lg-3">
+        <div class="contact-info-card">
+          <div class="contact-info-icon"><i class="bi bi-geo-alt-fill"></i></div>
+          <div><div class="contact-info-label">العنوان</div><div class="contact-info-value">{{ settings.address }}</div></div>
+        </div>
+      </div>
+      {% endif %}
+      {% if settings.phone %}
+      <div class="col-md-6 col-lg-3">
+        <div class="contact-info-card">
+          <div class="contact-info-icon"><i class="bi bi-telephone-fill"></i></div>
+          <div><div class="contact-info-label">الهاتف</div><div class="contact-info-value" dir="ltr">{{ settings.phone }}</div></div>
+        </div>
+      </div>
+      {% endif %}
+      {% if settings.email %}
+      <div class="col-md-6 col-lg-3">
+        <div class="contact-info-card">
+          <div class="contact-info-icon"><i class="bi bi-envelope-fill"></i></div>
+          <div><div class="contact-info-label">البريد الإلكتروني</div><div class="contact-info-value" dir="ltr">{{ settings.email }}</div></div>
+        </div>
+      </div>
+      {% endif %}
+      {% if settings.working_hours %}
+      <div class="col-md-6 col-lg-3">
+        <div class="contact-info-card">
+          <div class="contact-info-icon"><i class="bi bi-clock-fill"></i></div>
+          <div><div class="contact-info-label">أوقات العمل</div><div class="contact-info-value">{{ settings.working_hours }}</div></div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════ FORM + MAP ══════════════════ -->
+<section class="page-section" id="map">
+  <div class="container">
+    <div class="row g-5">
+      <div class="col-lg-7">
+        <div class="contact-form-card">
+          <h2 class="section-title mb-4" style="font-size:24px;">أرسل لنا رسالة</h2>
+          <form method="post" novalidate>
+            {% csrf_token %}
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
+                {{ form.name }}
+                {{ form.name.errors }}
+              </div>
+              <div class="col-md-6">
+                <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+                {{ form.email }}
+                {{ form.email.errors }}
+              </div>
+              <div class="col-md-6">
+                <label for="{{ form.phone.id_for_label }}">{{ form.phone.label }}</label>
+                {{ form.phone }}
+                {{ form.phone.errors }}
+              </div>
+              <div class="col-md-6">
+                <label for="{{ form.subject.id_for_label }}">{{ form.subject.label }}</label>
+                {{ form.subject }}
+                {{ form.subject.errors }}
+              </div>
+              <div class="col-12">
+                <label for="{{ form.message.id_for_label }}">{{ form.message.label }}</label>
+                {{ form.message }}
+                {{ form.message.errors }}
+              </div>
+              <div class="col-12">
+                <button type="submit" class="contact-submit-btn"><i class="bi bi-send-fill"></i> إرسال الرسالة</button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+      <div class="col-lg-5">
+        {% if settings.map_embed_url %}
+        <div class="map-frame">
+          <iframe src="{{ settings.map_embed_url }}" width="100%" height="420" style="border:0;" allowfullscreen loading="lazy"></iframe>
+        </div>
+        {% else %}
+        <div class="story-image-placeholder" style="height:420px;border-radius:var(--radius);background:var(--navy-mid);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.2);font-size:60px;">
+          <i class="bi bi-map"></i>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+
+{% include "pages/partials/_footer.html" %}
+{% endblock %}

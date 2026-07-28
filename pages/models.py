@@ -499,3 +499,178 @@ class NewsletterSubscriber(models.Model):
 
     def __str__(self):
         return self.email
+
+
+# ──────────────────────────────────────────────────────────────────
+#  About page — singleton hero/story + repeatable values & milestones
+# ──────────────────────────────────────────────────────────────────
+class AboutPage(SingletonModel):
+    hero_label = models.CharField(
+        "شارة الصفحة", max_length=100, blank=True, default="من نحن"
+    )
+    hero_title = models.CharField(
+        "عنوان الصفحة", max_length=200, default="قصة مؤسسة التميز للإدارة والأمن"
+    )
+    hero_description = models.TextField("وصف مختصر", blank=True)
+    hero_image = models.ImageField(
+        "صورة الصفحة", upload_to="site/about/", blank=True, null=True
+    )
+
+    story_label = models.CharField(
+        "قصتنا - تسمية", max_length=100, blank=True, default="قصتنا"
+    )
+    story_title = models.CharField(
+        "قصتنا - عنوان", max_length=200, blank=True, default="كيف بدأنا"
+    )
+    story_body = models.TextField("قصتنا - نص", blank=True)
+    story_image = models.ImageField(
+        "قصتنا - صورة", upload_to="site/about/", blank=True, null=True
+    )
+
+    values_label = models.CharField(
+        "القيم - تسمية", max_length=100, blank=True, default="قيمنا"
+    )
+    values_title = models.CharField(
+        "القيم - عنوان", max_length=200, blank=True, default="ما الذي يميزنا"
+    )
+
+    timeline_label = models.CharField(
+        "المسار الزمني - تسمية", max_length=100, blank=True, default="مسارنا"
+    )
+    timeline_title = models.CharField(
+        "المسار الزمني - عنوان", max_length=200, blank=True, default="محطات بارزة"
+    )
+
+    class Meta:
+        verbose_name = "صفحة من نحن"
+        verbose_name_plural = "📖 صفحة من نحن"
+
+    def __str__(self):
+        return "صفحة من نحن"
+
+
+class AboutValue(models.Model):
+    icon_class = models.CharField(
+        "أيقونة Bootstrap", max_length=60, default="bi bi-gem"
+    )
+    title = models.CharField("العنوان", max_length=100)
+    text = models.TextField("النص")
+    order = models.PositiveIntegerField("الترتيب", default=0)
+
+    class Meta:
+        ordering = ["order", "id"]
+        verbose_name = "قيمة"
+        verbose_name_plural = "💎 قيم المؤسسة (صفحة من نحن)"
+
+    def __str__(self):
+        return self.title
+
+
+class Milestone(models.Model):
+    year = models.CharField("السنة", max_length=20)
+    title = models.CharField("العنوان", max_length=150)
+    text = models.TextField("النص", blank=True)
+    order = models.PositiveIntegerField("الترتيب", default=0)
+
+    class Meta:
+        ordering = ["order", "year"]
+        verbose_name = "محطة"
+        verbose_name_plural = "🏁 المسار الزمني (صفحة من نحن)"
+
+    def __str__(self):
+        return f"{self.year} — {self.title}"
+
+
+# ──────────────────────────────────────────────────────────────────
+#  FAQ page — categories + items
+# ──────────────────────────────────────────────────────────────────
+class FAQCategory(models.Model):
+    name = models.CharField("اسم الفئة", max_length=120)
+    order = models.PositiveIntegerField("الترتيب", default=0)
+
+    class Meta:
+        ordering = ["order", "id"]
+        verbose_name = "فئة أسئلة"
+        verbose_name_plural = "🗂️ فئات الأسئلة الشائعة"
+
+    def __str__(self):
+        return self.name
+
+
+class FAQItem(models.Model):
+    category = models.ForeignKey(
+        FAQCategory,
+        verbose_name="الفئة",
+        related_name="items",
+        on_delete=models.CASCADE,
+    )
+    question = models.CharField("السؤال", max_length=255)
+    answer = models.TextField("الجواب")
+    order = models.PositiveIntegerField("الترتيب", default=0)
+    is_active = models.BooleanField("مفعّل", default=True)
+
+    class Meta:
+        ordering = ["category__order", "order", "id"]
+        verbose_name = "سؤال شائع"
+        verbose_name_plural = "❓ الأسئلة الشائعة"
+
+    def __str__(self):
+        return self.question
+
+
+# ──────────────────────────────────────────────────────────────────
+#  Contact page — intro singleton + incoming messages
+# ──────────────────────────────────────────────────────────────────
+class ContactPageSettings(SingletonModel):
+    label = models.CharField(
+        "تسمية", max_length=100, blank=True, default="تواصل معنا"
+    )
+    title = models.CharField(
+        "عنوان", max_length=200, blank=True, default="نحن هنا لمساعدتك"
+    )
+    description = models.TextField("وصف", blank=True)
+
+    class Meta:
+        verbose_name = "إعدادات صفحة الاتصال"
+        verbose_name_plural = "☎️ إعدادات صفحة الاتصال"
+
+    def __str__(self):
+        return "إعدادات صفحة الاتصال"
+
+
+class ContactMessage(models.Model):
+    SUBJECT_CHOICES = [
+        ("info", "طلب معلومات عن التكوينات"),
+        ("enrollment", "استفسار حول التسجيل"),
+        ("partnership", "شراكة / تعاون"),
+        ("complaint", "شكوى / ملاحظة"),
+        ("other", "أخرى"),
+    ]
+    STATUS_NEW = "new"
+    STATUS_READ = "read"
+    STATUS_REPLIED = "replied"
+    STATUS_CHOICES = [
+        (STATUS_NEW, "جديدة"),
+        (STATUS_READ, "مقروءة"),
+        (STATUS_REPLIED, "تم الرد"),
+    ]
+
+    name = models.CharField("الاسم الكامل", max_length=150)
+    email = models.EmailField("البريد الإلكتروني")
+    phone = models.CharField("الهاتف", max_length=50, blank=True)
+    subject = models.CharField(
+        "الموضوع", max_length=20, choices=SUBJECT_CHOICES, default="info"
+    )
+    message = models.TextField("الرسالة")
+    status = models.CharField(
+        "الحالة", max_length=10, choices=STATUS_CHOICES, default=STATUS_NEW
+    )
+    created_at = models.DateTimeField("تاريخ الإرسال", auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "رسالة تواصل"
+        verbose_name_plural = "✉️ رسائل التواصل"
+
+    def __str__(self):
+        return f"{self.name} — {self.get_subject_display()}"

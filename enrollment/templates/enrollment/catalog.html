@@ -123,24 +123,7 @@
 {% endblock %}
 
 {% block content %}
-<nav id="navbar" class="navbar navbar-expand-lg py-0" style="background:var(--navy);position:sticky;top:0;z-index:1040;">
-  <div class="container" style="height:64px;">
-    <a class="d-flex align-items-center gap-2 text-decoration-none" href="{% url 'pages:home' %}">
-      {% if settings.logo %}<img src="{{ settings.logo.url }}" alt="{{ settings.site_name }}" style="height:40px;width:auto;border-radius:8px;">
-      {% else %}<span style="color:#fff;font-weight:800;font-size:18px;">{{ settings.site_name }}</span>{% endif %}
-    </a>
-    <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#navMain" style="border:1px solid rgba(255,255,255,.2);">
-      <span class="navbar-toggler-icon" style="background-image:url('data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 30 30%27%3e%3cpath stroke=%27rgba(255,255,255,.75)%27 stroke-linecap=%27round%27 stroke-miterlimit=%2710%27 stroke-width=%272%27 d=%27M4 7h22M4 15h22M4 23h22%27/%3e%3c/svg%3e');"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="navMain">
-      <ul class="navbar-nav ms-auto gap-1">
-        <li class="nav-item"><a class="nav-link" href="{% url 'pages:home' %}" style="color:rgba(255,255,255,.7);font-weight:600;">الرئيسية</a></li>
-        <li class="nav-item"><a class="nav-link active" href="{% url 'enrollment:catalog' %}" style="color:#fff;font-weight:700;">التسجيل الإلكتروني</a></li>
-        <li class="nav-item"><a class="nav-link" href="{% url 'pages:nomenclature' %}" style="color:rgba(255,255,255,.7);font-weight:600;">التصنيف الرسمي</a></li>
-      </ul>
-    </div>
-  </div>
-</nav>
+{% include "pages/partials/_navbar.html" %}
 
 <section id="catalog-hero">
   <div class="container position-relative" style="z-index:1;">
@@ -242,12 +225,7 @@
   </div>
 </section>
 
-<footer style="background:var(--navy);border-top:1px solid rgba(255,255,255,.06);padding:32px 0;">
-  <div class="container d-flex flex-wrap align-items-center justify-content-between gap-2" style="color:rgba(255,255,255,.4);font-size:13px;">
-    <span>{{ settings.footer_copyright }}</span>
-    <a href="{% url 'pages:home' %}" style="color:var(--accent);text-decoration:none;font-weight:700;">← العودة إلى الموقع الرئيسي</a>
-  </div>
-</footer>
+{% include "pages/partials/_footer.html" %}
 {% endblock %}
 
 {% block extra_js %}

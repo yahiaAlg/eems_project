@@ -1,0 +1,55 @@
+{% load static %}<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}{{ site_name }}{% endblock %}</title>
+</head>
+<body style="margin:0;padding:0;background:#f8fafc;font-family:'Cairo','Tahoma',sans-serif;color:#0f172a;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;padding:32px 12px;">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 16px rgba(15,23,42,.08);">
+
+        <!-- Header -->
+        <tr>
+          <td style="background:#0f172a;padding:28px 32px;text-align:center;">
+            <div style="font-family:'Cairo',sans-serif;font-size:20px;font-weight:800;color:#ffffff;">
+              إيمس <span style="color:#f59e0b;">EEMS</span>
+            </div>
+            <div style="font-size:12px;color:rgba(255,255,255,.55);margin-top:4px;">
+              مؤسسة التميز للإدارة والأمن — سطيف، الجزائر
+            </div>
+          </td>
+        </tr>
+
+        <!-- Accent bar -->
+        <tr><td style="height:4px;background:linear-gradient(90deg,#f59e0b,#d97706);line-height:4px;font-size:0;">&nbsp;</td></tr>
+
+        <!-- Body -->
+        <tr>
+          <td style="padding:36px 32px;">
+            {% block body %}{% endblock %}
+          </td>
+        </tr>
+
+        <!-- Footer -->
+        <tr>
+          <td style="background:#f1f5f9;padding:24px 32px;text-align:center;border-top:1px solid #e2e8f0;">
+            <div style="font-size:12.5px;color:#64748b;line-height:1.9;">
+              <strong style="color:#0f172a;">إيمس — مؤسسة التميز للإدارة والأمن</strong><br>
+              سطيف، الجزائر &nbsp;·&nbsp; support@excellance-ms.dz &nbsp;·&nbsp;
+              <a href="{{ site_url }}" style="color:#d97706;text-decoration:none;">excellance-ms.dz</a>
+            </div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:10px;">
+              هذه رسالة آلية، الرجاء عدم الرد مباشرة على هذا البريد إن لم يُطلب منك ذلك.
+            </div>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>

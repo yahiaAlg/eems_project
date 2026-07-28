@@ -1,0 +1,184 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block content %}
+<div style="font-family: Tajawal, Cairo, sans-serif; direction: rtl;">
+
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px;">
+    <h1 style="margin:0;">📊 لوحة الإحصائيات والتحليلات</h1>
+    <div style="display:flex; gap:10px;">
+      <a href="{% url 'admin:enrollment_enrollment_dashboard' %}" class="button">إحصائيات التسجيلات</a>
+      <a href="{% url 'admin:auth_user_changelist' %}" class="button">إدارة المستخدمين</a>
+    </div>
+  </div>
+
+  <!-- KPI cards -->
+  <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:28px;">
+    <div class="stat-card"><div class="stat-label">زوار اليوم</div><div class="stat-value">{{ visitors_today }}</div></div>
+    <div class="stat-card"><div class="stat-label">زوار هذا الشهر</div><div class="stat-value">{{ visitors_month }}</div></div>
+    <div class="stat-card"><div class="stat-label">إجمالي الزوار</div><div class="stat-value">{{ visitors_total }}</div></div>
+    <div class="stat-card"><div class="stat-label">مشتركو النشرة</div><div class="stat-value">{{ newsletter_total }}</div></div>
+    <div class="stat-card"><div class="stat-label">رسائل جديدة</div><div class="stat-value" style="color:#f85149;">{{ contact_new }}</div></div>
+    <div class="stat-card"><div class="stat-label">إجمالي الرسائل</div><div class="stat-value">{{ contact_total }}</div></div>
+    <div class="stat-card"><div class="stat-label">تسجيلات قيد الدراسة</div><div class="stat-value">{{ enrollments_pending }}</div></div>
+    <div class="stat-card"><div class="stat-label">إجمالي التسجيلات</div><div class="stat-value">{{ enrollments_total }}</div></div>
+  </div>
+
+  <!-- User management summary -->
+  <h2 style="margin-bottom:10px;">👥 إدارة المستخدمين</h2>
+  <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px;">
+    <div class="stat-card"><div class="stat-label">إجمالي المستخدمين</div><div class="stat-value">{{ users_total }}</div></div>
+    <div class="stat-card"><div class="stat-label">طاقم الإدارة (staff)</div><div class="stat-value">{{ users_staff }}</div></div>
+    <div class="stat-card"><div class="stat-label">حسابات نشطة</div><div class="stat-value">{{ users_active }}</div></div>
+    <div class="stat-card"><div class="stat-label">الزبائن (تسجيلات)</div><div class="stat-value">{{ clients_total }}</div></div>
+  </div>
+  <div class="chart-box" style="margin-bottom:28px;">
+    <h3>آخر المستخدمين المسجّلين</h3>
+    <table style="width:100%; border-collapse:collapse;">
+      <thead>
+        <tr style="text-align:right; border-bottom:2px solid #30363d;">
+          <th style="padding:8px;">اسم المستخدم</th><th>البريد الإلكتروني</th><th>الحالة</th><th>تاريخ الانضمام</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in recent_users %}
+        <tr style="border-bottom:1px solid #30363d;">
+          <td style="padding:8px;"><a href="{% url 'admin:auth_user_change' u.pk %}" style="color:#e6edf3;">{{ u.username }}</a></td>
+          <td>{{ u.email|default:"—" }}</td>
+          <td>{% if u.is_staff %}<span style="color:#c9a227;">طاقم إدارة</span>{% else %}مستخدم{% endif %}</td>
+          <td>{{ u.date_joined|date:"Y-m-d" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td style="padding:8px;" colspan="4">لا يوجد مستخدمون بعد.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div style="margin-top:12px;"><a href="{% url 'admin:auth_user_changelist' %}" class="button">عرض كل المستخدمين ›</a></div>
+  </div>
+
+  <!-- Charts -->
+  <h2 style="margin-bottom:10px;">📈 الرسوم البيانية</h2>
+  <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(360px,1fr)); gap:20px; margin-bottom:28px;">
+    <div class="chart-box">
+      <h3>الزوار (آخر 30 يوما)</h3>
+      <canvas id="visitorsChart"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3>نمو المشتركين في النشرة (آخر 30 يوما)</h3>
+      <canvas id="newsletterChart"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3>رسائل التواصل حسب الحالة</h3>
+      <canvas id="contactStatusChart"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3>رسائل التواصل حسب الموضوع</h3>
+      <canvas id="contactSubjectChart"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3>التسجيلات حسب الحالة</h3>
+      <canvas id="enrollmentStatusChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Recent contact messages -->
+  <h2 style="margin-bottom:10px;">✉️ آخر رسائل التواصل</h2>
+  <div class="chart-box">
+    <table style="width:100%; border-collapse:collapse;">
+      <thead>
+        <tr style="text-align:right; border-bottom:2px solid #30363d;">
+          <th style="padding:8px;">الاسم</th><th>البريد الإلكتروني</th><th>الموضوع</th><th>الحالة</th><th>التاريخ</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in recent_messages %}
+        <tr style="border-bottom:1px solid #30363d;">
+          <td style="padding:8px;"><a href="{% url 'admin:pages_contactmessage_change' m.pk %}" style="color:#e6edf3;">{{ m.name }}</a></td>
+          <td dir="ltr">{{ m.email }}</td>
+          <td>{{ m.get_subject_display }}</td>
+          <td>{{ m.get_status_display }}</td>
+          <td>{{ m.created_at|date:"Y-m-d H:i" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td style="padding:8px;" colspan="5">لا توجد رسائل بعد.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div style="margin-top:12px;"><a href="{% url 'admin:pages_contactmessage_changelist' %}" class="button">عرض كل الرسائل ›</a></div>
+  </div>
+
+</div>
+
+<style>
+  .stat-card { background:#161b22; border:1px solid #30363d; border-radius:10px; padding:16px 24px; color:#e6edf3; min-width:150px; }
+  .stat-label { color:#8b949e; font-size:0.85rem; }
+  .stat-value { color:#c9a227; font-size:1.6rem; font-weight:800; }
+  .chart-box { background:#161b22; border:1px solid #30363d; border-radius:10px; padding:16px; color:#e6edf3; }
+  .chart-box h3 { margin-bottom:12px; font-size:1rem; color:#e6edf3; }
+  .chart-box table td, .chart-box table th { color: #e6edf3; }
+</style>
+
+<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+<script>
+  const visitorsData    = {{ visitors_daily|safe }};
+  const newsletterData  = {{ newsletter_daily|safe }};
+  const contactStatus   = {{ contact_by_status|safe }};
+  const contactSubject  = {{ contact_by_subject|safe }};
+  const enrollmentStatus = {{ enrollment_by_status|safe }};
+
+  const contactStatusLabels = { new: "جديدة", read: "مقروءة", replied: "تم الرد" };
+  const contactSubjectLabels = {
+    info: "معلومات عن التكوينات", enrollment: "استفسار تسجيل",
+    partnership: "شراكة", complaint: "شكوى", other: "أخرى",
+  };
+  const enrollmentStatusLabels = {
+    pending: "قيد الدراسة", contacted: "تم التواصل", accepted: "مقبول",
+    waitlisted: "قائمة انتظار", rejected: "مرفوض",
+  };
+
+  new Chart(document.getElementById('visitorsChart'), {
+    type: 'line',
+    data: {
+      labels: visitorsData.map(d => d.date),
+      datasets: [{ label: 'زيارات/يوم', data: visitorsData.map(d => d.count),
+        borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.15)', fill: true, tension: 0.3 }],
+    },
+  });
+
+  new Chart(document.getElementById('newsletterChart'), {
+    type: 'line',
+    data: {
+      labels: newsletterData.map(d => d.day),
+      datasets: [{ label: 'مشتركون جدد/يوم', data: newsletterData.map(d => d.count),
+        borderColor: '#2ea043', backgroundColor: 'rgba(46,160,67,0.15)', fill: true, tension: 0.3 }],
+    },
+  });
+
+  new Chart(document.getElementById('contactStatusChart'), {
+    type: 'doughnut',
+    data: {
+      labels: contactStatus.map(d => contactStatusLabels[d.status] || d.status),
+      datasets: [{ data: contactStatus.map(d => d.count),
+        backgroundColor: ['#f85149', '#3b82f6', '#2ea043'] }],
+    },
+  });
+
+  new Chart(document.getElementById('contactSubjectChart'), {
+    type: 'bar',
+    data: {
+      labels: contactSubject.map(d => contactSubjectLabels[d.subject] || d.subject),
+      datasets: [{ label: 'عدد الرسائل', data: contactSubject.map(d => d.count), backgroundColor: '#c9a227' }],
+    },
+    options: { indexAxis: 'y', plugins: { legend: { display: false } } },
+  });
+
+  new Chart(document.getElementById('enrollmentStatusChart'), {
+    type: 'doughnut',
+    data: {
+      labels: enrollmentStatus.map(d => enrollmentStatusLabels[d.status] || d.status),
+      datasets: [{ data: enrollmentStatus.map(d => d.count),
+        backgroundColor: ['#c9a227','#3b82f6','#2ea043','#8b949e','#f85149'] }],
+    },
+  });
+</script>
+{% endblock %}

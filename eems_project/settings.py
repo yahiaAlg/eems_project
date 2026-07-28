@@ -159,14 +159,22 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Email settings
-ADMINS = [("الإدارة", "eems.direction@gmail.com")]
+# Email settings — support@excellance-ms.dz mailbox (Secure SSL/TLS, recommended)
+# Server: mail.excellance-ms.dz — SMTP (outgoing) port 465, authenticated, SSL.
+# NOTE: EMAIL_HOST_PASSWORD default below ("system2026*") is the mailbox's
+# initial password. Change it on the mail account and set EMAIL_HOST_PASSWORD
+# in the .env file — never rely on the hardcoded fallback in production.
+ADMINS = [("الإدارة", "support@excellance-ms.dz")]
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = "smtp.gmail.com"
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
+EMAIL_HOST = "mail.excellance-ms.dz"
+EMAIL_PORT = 465
+EMAIL_USE_SSL = True
+EMAIL_USE_TLS = False
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "support@excellance-ms.dz")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "system2026*")
+EMAIL_TIMEOUT = 10  # seconds — never let a slow/unreachable mail server hang a request
+DEFAULT_FROM_EMAIL = f"إيمس — الدعم <{EMAIL_HOST_USER}>"
+SERVER_EMAIL = EMAIL_HOST_USER
 
 # Django REST Framework settings
 

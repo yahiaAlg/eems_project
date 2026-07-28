@@ -2,10 +2,23 @@ from django.contrib import messages
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
-from pages.models import Branch, SiteSettings
+from pages.forms import NewsletterForm
+from pages.models import Branch, InternalApp, NavLink, SiteSettings, SocialLink
+from pages.views import _visitor_stats
 
 from .forms import CommentForm, EnquiryForm, GeneralEnquiryForm, IndividualSubscribeForm
 from .models import Client, Enrollment, FormationSession, Offering, Participant
+
+
+def _shared_chrome_context():
+    """Context needed by the site-wide pages/partials/_navbar.html and _footer.html."""
+    return {
+        "social_links": SocialLink.objects.all(),
+        "internal_apps": InternalApp.objects.all(),
+        "nav_links": NavLink.objects.all(),
+        "newsletter_form": NewsletterForm(),
+        "visitor_stats": _visitor_stats(),
+    }
 
 
 def catalog(request):
@@ -38,6 +51,7 @@ def catalog(request):
         "selected_branch": int(branch_id) if branch_id.isdigit() else None,
         "selected_level": int(level) if level.isdigit() else None,
         "query": query,
+        **_shared_chrome_context(),
     }
     return render(request, "enrollment/catalog.html", context)
 
@@ -100,6 +114,7 @@ def specialty_detail(request, session_slug, code):
         "related_offerings": Offering.objects.filter(
             is_active=True, session=offering.session,
         ).exclude(pk=offering.pk)[:3],
+        **_shared_chrome_context(),
     }
     return render(request, "enrollment/specialty_detail.html", context)
 
@@ -161,7 +176,7 @@ def subscribe(request, session_slug, code):
     else:
         form = IndividualSubscribeForm()
 
-    context = {"settings": SiteSettings.load(), "form": form, "offering": offering}
+    context = {"settings": SiteSettings.load(), "form": form, "offering": offering, **_shared_chrome_context()}
     return render(request, "enrollment/subscribe.html", context)
 
 

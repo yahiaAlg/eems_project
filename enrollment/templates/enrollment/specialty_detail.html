@@ -89,19 +89,7 @@
 {% endblock %}
 
 {% block content %}
-<nav id="navbar" class="navbar navbar-expand-lg py-0" style="background:var(--navy);position:sticky;top:0;z-index:1040;">
-  <div class="container" style="height:64px;">
-    <a class="d-flex align-items-center gap-2 text-decoration-none" href="{% url 'pages:home' %}">
-      {% if settings.logo %}<img src="{{ settings.logo.url }}" alt="{{ settings.site_name }}" style="height:40px;width:auto;border-radius:8px;">
-      {% else %}<span style="color:#fff;font-weight:800;font-size:18px;">{{ settings.site_name }}</span>{% endif %}
-    </a>
-    <div class="ms-auto">
-      <a href="{% url 'enrollment:catalog' %}" class="btn btn-sm" style="background:var(--accent);color:var(--navy);font-weight:700;border-radius:7px;padding:7px 16px;text-decoration:none;">
-        <i class="bi bi-arrow-right"></i> كل التخصصات
-      </a>
-    </div>
-  </div>
-</nav>
+{% include "pages/partials/_navbar.html" %}
 
 <section id="detail-hero" class="has-bg" style="background-image:url('{{ offering.background_src }}');">
   <div class="container position-relative" style="z-index:1;">
@@ -251,6 +239,8 @@
     </form>
   </div>
 </div>
+
+{% include "pages/partials/_footer.html" %}
 {% endblock %}
 
 {% block extra_js %}
