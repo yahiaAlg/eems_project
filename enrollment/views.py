@@ -7,7 +7,7 @@ from pages.models import Branch, InternalApp, NavLink, SiteSettings, SocialLink
 from pages.views import _visitor_stats
 
 from .forms import CommentForm, EnquiryForm, GeneralEnquiryForm, IndividualSubscribeForm
-from .models import Client, Enrollment, FormationSession, Offering, Participant
+from .models import Client, Enrollment, Formateur, FormationSession, Offering, Participant
 
 
 def _shared_chrome_context():
@@ -25,11 +25,12 @@ def catalog(request):
     session_slug = request.GET.get("session") or ""
     branch_id = request.GET.get("branch") or ""
     level = request.GET.get("level") or ""
+    formateur_slug = request.GET.get("formateur") or ""
     query = request.GET.get("q") or ""
 
     offerings = (
         Offering.objects.filter(is_active=True, session__is_active=True)
-        .select_related("session", "specialty__branch")
+        .select_related("session", "specialty__branch", "formateur")
     )
     if session_slug:
         offerings = offerings.filter(session__slug=session_slug)
@@ -37,6 +38,8 @@ def catalog(request):
         offerings = offerings.filter(specialty__branch_id=branch_id)
     if level:
         offerings = offerings.filter(qualification_level=level)
+    if formateur_slug:
+        offerings = offerings.filter(formateur__slug=formateur_slug)
     if query:
         offerings = offerings.filter(
             Q(title__icontains=query) | Q(code__icontains=query) | Q(branch_label__icontains=query)
@@ -46,14 +49,31 @@ def catalog(request):
         "settings": SiteSettings.load(),
         "sessions": FormationSession.objects.filter(is_active=True),
         "branches": Branch.objects.filter(is_active=True),
+        "formateurs": Formateur.objects.filter(is_active=True, offerings__isnull=False).distinct(),
         "offerings": offerings,
         "selected_session": session_slug,
         "selected_branch": int(branch_id) if branch_id.isdigit() else None,
         "selected_level": int(level) if level.isdigit() else None,
+        "selected_formateur": formateur_slug,
         "query": query,
         **_shared_chrome_context(),
     }
     return render(request, "enrollment/catalog.html", context)
+
+
+def formateur_detail(request, slug):
+    formateur = get_object_or_404(Formateur, slug=slug, is_active=True)
+    offerings = (
+        formateur.offerings.filter(is_active=True, session__is_active=True)
+        .select_related("session", "specialty__branch")
+    )
+    context = {
+        "settings": SiteSettings.load(),
+        "formateur": formateur,
+        "offerings": offerings,
+        **_shared_chrome_context(),
+    }
+    return render(request, "enrollment/formateur_detail.html", context)
 
 
 def general_enquiry(request):

@@ -4,49 +4,34 @@
 {% block title %}{{ about.hero_title }} — {{ settings.site_name }}{% endblock %}
 
 {% block extra_head %}
-{% include "pages/partials/_design_tokens.html" %}
-<style>
-  .value-card {
-    background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius);
-    padding: 28px; height: 100%; transition: all .2s; position: relative; overflow: hidden;
-  }
-  .value-card:hover { box-shadow: var(--shadow-md); transform: translateY(-3px); }
-  .value-icon {
-    width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
-    font-size: 22px; margin-bottom: 18px; background: var(--accent-soft); color: var(--accent);
-  }
-  .value-title { font-family: var(--font-head); font-size: 18px; font-weight: 800; color: var(--text); margin-bottom: 8px; }
-  .value-text { font-size: 14px; color: var(--muted); line-height: 1.8; }
-
-  .story-image { border-radius: var(--radius); box-shadow: var(--shadow-lg); width: 100%; height: 360px; object-fit: cover; }
-  .story-image-placeholder {
-    border-radius: var(--radius); width: 100%; height: 360px; background: var(--navy-mid);
-    display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,.2); font-size: 60px;
-  }
-
-  .timeline { position: relative; padding-inline-start: 28px; }
-  .timeline::before { content: ''; position: absolute; top: 6px; bottom: 6px; right: 8px; width: 2px; background: var(--card-border); }
-  .timeline-item { position: relative; padding-bottom: 32px; padding-inline-end: 16px; }
-  .timeline-item:last-child { padding-bottom: 0; }
-  .timeline-dot {
-    position: absolute; right: -25px; top: 3px; width: 14px; height: 14px; border-radius: 50%;
-    background: var(--accent); border: 3px solid var(--body-bg); box-shadow: 0 0 0 2px var(--accent);
-  }
-  .timeline-year { font-family: var(--font-head); font-size: 13px; font-weight: 800; color: var(--accent); direction: ltr; text-align: right; }
-  .timeline-title { font-family: var(--font-head); font-size: 17px; font-weight: 800; color: var(--text); margin: 4px 0 6px; }
-  .timeline-text { font-size: 13.5px; color: var(--muted); line-height: 1.8; }
-</style>
+<link href="{% static 'css/pages/about.css' %}" rel="stylesheet">
 {% endblock %}
 
 {% block content %}
 {% include "pages/partials/_navbar.html" with active_nav="about" %}
 
 <!-- ══════════════════ HERO ══════════════════ -->
-<section class="page-hero">
+<section class="page-hero about-hero">
   <div class="container position-relative" style="z-index:1;">
-    <div class="section-label">{{ about.hero_label }}</div>
-    <h1>{{ about.hero_title }}</h1>
-    <p>{{ about.hero_description }}</p>
+    <div class="row align-items-center gy-4">
+      <div class="col-lg-7">
+        <div class="section-label">{{ about.hero_label }}</div>
+        <h1>{{ about.hero_title }}</h1>
+        <p>{{ about.hero_description }}</p>
+        <div class="about-hero-stats">
+          <div class="about-hero-stat"><i class="bi bi-diagram-3"></i><div><strong>23</strong><span>فرعا مهنيا</span></div></div>
+          <div class="about-hero-stat"><i class="bi bi-mortarboard"></i><div><strong>500+</strong><span>تخصص</span></div></div>
+          <div class="about-hero-stat"><i class="bi bi-calendar-check"></i><div><strong>+15</strong><span>سنة خبرة</span></div></div>
+        </div>
+      </div>
+      <div class="col-lg-5">
+        {% if about.hero_image %}
+          <img src="{{ about.hero_image.url }}" alt="{{ about.hero_title }}" class="about-hero-image">
+        {% else %}
+          <div class="about-hero-image about-hero-image-placeholder"><i class="bi bi-building"></i></div>
+        {% endif %}
+      </div>
+    </div>
   </div>
 </section>
 

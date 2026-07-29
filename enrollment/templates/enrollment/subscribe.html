@@ -4,63 +4,7 @@
 {% block title %}التسجيل — {{ offering.title }}{% endblock %}
 
 {% block extra_head %}
-<link href="{% static 'vendor/fonts/cairo/cairo.css' %}" rel="stylesheet">
-<link href="{% static 'vendor/bootstrap/css/bootstrap.rtl.min.css' %}" rel="stylesheet">
-<link href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}" rel="stylesheet">
-<script src="{% static 'vendor/iconify/iconify-icon.min.js' %}"></script>
-
-<style>
-  :root {
-    --navy: #0f172a; --navy-mid: #1e293b; --accent: #f59e0b; --accent-dark: #d97706;
-    --accent-soft: rgba(245,158,11,.12); --success: #10b981; --danger: #ef4444;
-    --body-bg: #f8fafc; --card-bg: #fff; --card-border: #e2e8f0; --text: #0f172a; --muted: #64748b;
-    --font-head: 'Cairo', sans-serif;
-    --shadow-md: 0 4px 20px rgba(0,0,0,.10);
-  }
-  * { box-sizing: border-box; }
-  body { font-family: var(--font-head); background: var(--body-bg); color: var(--text); }
-
-  #sub-hero { background: var(--navy); padding: 48px 0 76px; position: relative; overflow: hidden; }
-  #sub-hero::before { content:''; position:absolute; inset:0; background: radial-gradient(ellipse 70% 70% at 80% 20%, rgba(245,158,11,.10) 0%, transparent 70%); }
-  #sub-hero h1 { color:#fff; font-size: clamp(24px,3.6vw,32px); font-weight:800; margin-bottom:6px; }
-  #sub-hero p { color:rgba(255,255,255,.55); font-size:14px; }
-  .crumb { color: rgba(255,255,255,.45); font-size: 13px; margin-bottom: 12px; }
-  .crumb a { color: rgba(255,255,255,.6); text-decoration: none; }
-
-  .wrap { max-width: 1040px; margin: -44px auto 0; padding: 0 16px 88px; position: relative; z-index: 2; }
-  .panel { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 30px; box-shadow: var(--shadow-md); }
-
-  .summary-card { background: var(--navy); color: #fff; border-radius: 16px; padding: 26px; position: sticky; top: 4.5rem; }
-  .summary-code { font-family:'Courier New',monospace; font-size:.75rem; color:var(--accent); background:rgba(245,158,11,.12); border:1px solid rgba(245,158,11,.3); border-radius:6px; padding:3px 10px; direction:ltr; }
-  .summary-card h4 { font-size:1.15rem; font-weight:800; margin:12px 0 4px; }
-  .summary-sub { color:rgba(255,255,255,.5); font-size:12.5px; margin-bottom:18px; }
-  .summary-row { display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid rgba(255,255,255,.08); font-size:13.5px; color:rgba(255,255,255,.8); }
-  .summary-row iconify-icon { color:var(--accent); font-size:18px; flex-shrink:0; }
-  .summary-fee { color:var(--success); font-weight:800; font-size:1.05rem; margin-top:10px; }
-
-  .form-section-title { font-family:var(--font-head); font-weight:800; font-size:1rem; color:var(--navy); display:flex; align-items:center; gap:8px; margin:26px 0 14px; }
-  .form-section-title:first-child { margin-top:0; }
-  .form-section-title iconify-icon { color:var(--accent); font-size:19px; }
-
-  label.form-label { font-size:13px; font-weight:700; color:var(--muted); margin-bottom:5px; }
-  .form-control, .form-select { border:1px solid var(--card-border); border-radius:9px; padding:10px 13px; font-family:var(--font-head); font-size:.92rem; }
-  .form-control:focus, .form-select:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft); }
-  .errorlist { list-style:none; color:var(--danger); font-size:.78rem; margin-top:4px; padding:0; }
-  .honeypot { position:absolute; left:-9999px; opacity:0; height:0; }
-
-  .form-check-input:checked { background-color: var(--accent); border-color: var(--accent); }
-  .form-check-label { font-size: .87rem; color: var(--muted); }
-
-  .alert-eems { border-radius:10px; padding:12px 16px; font-size:.88rem; margin-bottom:18px; }
-  .alert-eems.warning { background:var(--accent-soft); color:var(--accent-dark); border:1px solid rgba(245,158,11,.35); }
-
-  .btn-send { width:100%; background:var(--accent); color:var(--navy); font-weight:800; border:none; padding:14px; border-radius:10px; font-size:1rem; margin-top:24px; transition:all .18s; display:flex; align-items:center; justify-content:center; gap:8px; }
-  .btn-send:hover { background:var(--accent-dark); transform:translateY(-1px); box-shadow:0 8px 24px rgba(245,158,11,.35); }
-
-  .progress-steps { display:flex; gap:6px; margin-bottom:22px; }
-  .progress-steps span { height:4px; flex:1; background:var(--card-border); border-radius:3px; }
-  .progress-steps span.done { background:var(--accent); }
-</style>
+<link href="{% static 'enrollment/css/subscribe.css' %}" rel="stylesheet">
 {% endblock %}
 
 {% block content %}
@@ -185,11 +129,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'vendor/bootstrap/js/bootstrap.bundle.min.js' %}"></script>
-<script src="{% static 'vendor/gsap/gsap.min.js' %}"></script>
-<script>
-  gsap.from("#anim-title", { y: 16, opacity: 0, duration: .55, ease: "power2.out" });
-  gsap.from("#anim-summary", { x: 24, opacity: 0, duration: .6, delay: .1, ease: "power2.out" });
-  gsap.from("#anim-form", { y: 20, opacity: 0, duration: .6, delay: .05, ease: "power2.out" });
-</script>
+<script src="{% static 'enrollment/js/subscribe.js' %}"></script>
 {% endblock %}

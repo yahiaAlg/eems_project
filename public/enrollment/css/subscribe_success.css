@@ -1,0 +1,19 @@
+/* subscribe_success.html — standalone full-screen confirmation page.
+   Overrides the shared sticky-footer body layout from css/base.css. */
+body {
+  background: var(--navy); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh; padding: 20px; position: relative; overflow: hidden;
+}
+body::before { content:''; position:absolute; inset:0; background: radial-gradient(ellipse 60% 60% at 50% 30%, rgba(16,185,129,.10) 0%, transparent 70%); }
+.panel { max-width:520px; width:100%; text-align:center; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:18px; padding:48px 32px; position:relative; z-index:1; }
+.icon-badge { width:84px; height:84px; margin:0 auto 18px; border-radius:50%; background:rgba(16,185,129,.12); border:2px solid rgba(16,185,129,.3); display:flex; align-items:center; justify-content:center; }
+.icon-badge iconify-icon { font-size:42px; color:var(--success); }
+h1 { color:#fff; font-size:1.5rem; font-weight:800; margin-bottom:12px; }
+p { color:rgba(255,255,255,.55); line-height:1.9; font-size:.95rem; }
+.steps { text-align:right; margin:26px 0; padding:0; list-style:none; }
+.steps li { display:flex; align-items:flex-start; gap:10px; padding:9px 0; border-top:1px solid rgba(255,255,255,.07); font-size:.85rem; color:rgba(255,255,255,.7); }
+.steps li iconify-icon { color:var(--accent); font-size:17px; margin-top:2px; flex-shrink:0; }
+a.cta { display:inline-flex; align-items:center; gap:8px; margin-top:10px; color:var(--navy); background:var(--accent); text-decoration:none; font-weight:800; padding:12px 26px; border-radius:9px; transition:all .18s; }
+a.cta:hover { background:#fbbf24; color:var(--navy); transform:translateY(-2px); }
+.confetti { position:absolute; width:8px; height:8px; border-radius:2px; opacity:0; }

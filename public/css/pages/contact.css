@@ -1,0 +1,32 @@
+/* contact.html — page-specific styles (tokens/navbar/footer live in css/base.css) */
+.contact-info-card {
+  background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius);
+  padding: 24px; display: flex; align-items: flex-start; gap: 16px; height: 100%;
+}
+.contact-info-icon {
+  width: 44px; height: 44px; border-radius: 10px; background: var(--accent-soft); color: var(--accent);
+  display: flex; align-items: center; justify-content: center; font-size: 19px; flex-shrink: 0;
+}
+.contact-info-label { font-size: 12.5px; color: var(--muted); margin-bottom: 4px; }
+.contact-info-value { font-family: var(--font-head); font-weight: 700; font-size: 15px; color: var(--text); }
+
+.contact-form-card {
+  background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px;
+  padding: 36px; box-shadow: var(--shadow-md);
+}
+.contact-form-card label { font-size: 13.5px; font-weight: 700; color: var(--text); margin-bottom: 6px; display:block; }
+.contact-form-card .form-control, .contact-form-card .form-select {
+  border: 1.5px solid var(--card-border); border-radius: 8px; padding: 11px 14px; font-size: 14px;
+}
+.contact-form-card .form-control:focus, .contact-form-card .form-select:focus {
+  border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.contact-submit-btn {
+  background: var(--accent); color: var(--navy); border: none; border-radius: 8px; padding: 13px 30px;
+  font-family: var(--font-head); font-weight: 700; font-size: 15px; width: 100%; transition: all .15s;
+}
+.contact-submit-btn:hover { background: var(--accent-dark); }
+
+.map-frame { border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-md); border: 1px solid var(--card-border); }
+
+.errorlist { list-style: none; padding: 0; margin: 4px 0 0; color: #dc2626; font-size: 12.5px; }

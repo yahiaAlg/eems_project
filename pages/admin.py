@@ -312,7 +312,7 @@ class FAQItemInline(admin.TabularInline):
 
 @admin.register(FAQCategory)
 class FAQCategoryAdmin(admin.ModelAdmin):
-    list_display = ("name", "order", "item_count")
+    list_display = ("name", "icon_class", "order", "item_count")
     list_editable = ("order",)
     inlines = [FAQItemInline]
 

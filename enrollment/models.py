@@ -1,6 +1,56 @@
 from django.db import models
 from django.conf import settings
 from django.urls import reverse
+from django.utils.text import slugify
+
+
+class Formateur(models.Model):
+    """A trainer/instructor — optionally linked to one or more Offerings."""
+
+    full_name = models.CharField("الاسم الكامل", max_length=150)
+    slug = models.SlugField("المعرف (slug)", unique=True, blank=True)
+    title = models.CharField(
+        "الصفة المهنية", max_length=150, blank=True,
+        help_text="مثال: خبير HSE معتمد — 12 سنة خبرة ميدانية",
+    )
+    photo = models.ImageField(
+        "الصورة الشخصية", upload_to="enrollment/formateurs/", blank=True, null=True,
+    )
+    bio = models.TextField("نبذة تعريفية", blank=True)
+    years_experience = models.PositiveSmallIntegerField(
+        "سنوات الخبرة", null=True, blank=True,
+    )
+    email = models.EmailField("البريد الإلكتروني", blank=True)
+    linkedin_url = models.URLField("رابط LinkedIn", blank=True)
+    is_active = models.BooleanField("مفعّل (يظهر على الموقع)", default=True)
+    order = models.PositiveIntegerField("الترتيب", default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["order", "full_name"]
+        verbose_name = "مكوّن"
+        verbose_name_plural = "👤 المكوّنون (الأساتذة)"
+
+    def __str__(self):
+        return self.full_name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base = slugify(self.full_name, allow_unicode=True) or "formateur"
+            slug = base
+            i = 1
+            while Formateur.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                i += 1
+                slug = f"{base}-{i}"
+            self.slug = slug
+        super().save(*args, **kwargs)
+
+    def get_absolute_url(self):
+        return reverse("enrollment:formateur_detail", args=[self.slug])
+
+    @property
+    def active_offerings(self):
+        return self.offerings.filter(is_active=True, session__is_active=True)
 
 
 class FormationSession(models.Model):
@@ -8,6 +58,7 @@ class FormationSession(models.Model):
 
     name = models.CharField("اسم الدورة", max_length=120)
     slug = models.SlugField("المعرف (slug)", unique=True)
+
     start_date = models.DateField("تاريخ الانطلاق", null=True, blank=True)
     registration_deadline = models.DateField("آخر أجل للتسجيل", null=True, blank=True)
     is_active = models.BooleanField("مفتوحة للتسجيل", default=True)
@@ -58,6 +109,10 @@ class Offering(models.Model):
     specialty = models.ForeignKey(
         "pages.Specialty", on_delete=models.PROTECT, related_name="offerings",
         null=True, blank=True, verbose_name="التخصص (مدونة الشعب)",
+    )
+    formateur = models.ForeignKey(
+        Formateur, on_delete=models.SET_NULL, related_name="offerings",
+        null=True, blank=True, verbose_name="المكوّن (اختياري)",
     )
     code = models.CharField("رمز الاختصاص", max_length=20, help_text="مثال: TAG0701")
     title = models.CharField("عنوان التخصص", max_length=150)
@@ -176,6 +231,27 @@ class Offering(models.Model):
             self.video_url,
         )
         return match.group(1) if match else ""
+
+
+class OfferingImage(models.Model):
+    """A secondary gallery image for an Offering's detail page (shown as a
+    thumbnail strip + lightbox, underneath the main poster image)."""
+
+    offering = models.ForeignKey(
+        Offering, on_delete=models.CASCADE, related_name="gallery_images",
+        verbose_name="التخصص",
+    )
+    image = models.ImageField("الصورة", upload_to="enrollment/offerings/gallery/")
+    caption = models.CharField("تعليق (اختياري)", max_length=150, blank=True)
+    order = models.PositiveIntegerField("الترتيب", default=0)
+
+    class Meta:
+        ordering = ["order", "id"]
+        verbose_name = "صورة إضافية"
+        verbose_name_plural = "🖼️ معرض الصور (صور إضافية)"
+
+    def __str__(self):
+        return self.caption or f"صورة #{self.pk} — {self.offering.code}"
 
 
 SOURCE_CHOICES = [

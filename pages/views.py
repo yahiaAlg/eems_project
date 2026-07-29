@@ -129,9 +129,12 @@ def about(request):
 
 @never_cache
 def faq(request):
+    categories = FAQCategory.objects.prefetch_related("items")
+    total_items = sum(cat.items.count() for cat in categories)
     context = {
         "settings": SiteSettings.load(),
-        "categories": FAQCategory.objects.prefetch_related("items"),
+        "categories": categories,
+        "total_items": total_items,
         "social_links": SocialLink.objects.all(),
         "internal_apps": InternalApp.objects.all(),
         "nav_links": NavLink.objects.all(),

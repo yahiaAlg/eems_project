@@ -1,0 +1,86 @@
+{% extends "pages/base.html" %}
+{% load static enrollment_extras %}
+
+{% block title %}{{ formateur.full_name }} — {{ settings.site_name }}{% endblock %}
+
+{% block meta_description %}
+<meta name="description" content="{{ formateur.full_name }}{% if formateur.title %} — {{ formateur.title }}{% endif %}. تعرّف على مسيرته المهنية والتكوينات التي يقدّمها لدى مؤسسة التميز للإدارة والسلامة (EEMS) بسطيف.">
+{% endblock %}
+
+{% block extra_head %}
+<link href="{% static 'enrollment/css/catalog.css' %}" rel="stylesheet">
+<link href="{% static 'enrollment/css/formateur_detail.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{% include "pages/partials/_navbar.html" %}
+
+<section id="formateur-hero">
+  <div class="container position-relative" style="z-index:1;">
+    <div class="crumb"><a href="{% url 'pages:home' %}">الرئيسية</a> / <a href="{% url 'enrollment:catalog' %}">التخصصات</a> / {{ formateur.full_name }}</div>
+    <div class="formateur-profile">
+      {% if formateur.photo %}
+        <img src="{{ formateur.photo.url }}" alt="{{ formateur.full_name }}" class="formateur-photo">
+      {% else %}
+        <div class="formateur-photo formateur-photo-placeholder"><i class="bi bi-person-fill"></i></div>
+      {% endif %}
+      <div>
+        <h1>{{ formateur.full_name }}</h1>
+        {% if formateur.title %}<div class="formateur-title">{{ formateur.title }}</div>{% endif %}
+        <div class="formateur-stats">
+          <div class="formateur-stat"><i class="bi bi-mortarboard-fill"></i> {{ offerings|length }} تكوين نشط</div>
+          {% if formateur.years_experience %}<div class="formateur-stat"><i class="bi bi-award-fill"></i> {{ formateur.years_experience }} سنة خبرة</div>{% endif %}
+          {% if formateur.email %}<a href="mailto:{{ formateur.email }}" class="formateur-stat formateur-stat-link"><i class="bi bi-envelope-fill"></i> راسله</a>{% endif %}
+          {% if formateur.linkedin_url %}<a href="{{ formateur.linkedin_url }}" target="_blank" rel="noopener" class="formateur-stat formateur-stat-link"><i class="bi bi-linkedin"></i> LinkedIn</a>{% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="formateur-wrap">
+  {% if formateur.bio %}
+  <div class="panel">
+    <div class="section-h"><i class="bi bi-person-lines-fill"></i> نبذة تعريفية</div>
+    <p style="white-space:pre-line;">{{ formateur.bio }}</p>
+  </div>
+  {% endif %}
+
+  <div class="panel">
+    <div class="section-h"><i class="bi bi-collection-play-fill"></i> التكوينات التي يقدّمها</div>
+    <div class="row g-4 mt-1">
+      {% for offering in offerings %}
+      <div class="col-sm-6 col-lg-4 offer-item">
+        <div class="offer-card">
+          <div class="offer-poster">
+            <img src="{{ offering.poster_src }}" alt="{{ offering.title }}" loading="lazy">
+          </div>
+          <div class="offer-top">
+            <span class="offer-code">{{ offering.code }}</span>
+            {% if offering.get_qualification_level_display %}<span class="offer-level">{{ offering.qualification_level }} — {{ offering.get_certificate_type_display }}</span>{% endif %}
+          </div>
+          <h3>{{ offering.title }}</h3>
+          <div class="offer-meta">
+            <span><iconify-icon icon="mdi:calendar-month-outline"></iconify-icon> {{ offering.session.name }}</span>
+            <span><iconify-icon icon="mdi:clock-time-four-outline"></iconify-icon> {{ offering.duration_months }} شهرا</span>
+          </div>
+          {% if offering.monthly_fee %}<div class="offer-fee">{{ offering.monthly_fee|da }} / شهر</div>{% endif %}
+          {% if offering.seats_remaining > 0 %}
+            <a class="btn-detail" href="{% url 'enrollment:detail' offering.session.slug offering.code %}"><iconify-icon icon="mdi:arrow-left-circle-outline"></iconify-icon> التفاصيل والتسجيل</a>
+          {% else %}
+            <a class="btn-detail full" href="{% url 'enrollment:detail' offering.session.slug offering.code %}"><iconify-icon icon="mdi:clock-alert-outline"></iconify-icon> اكتملت المقاعد</a>
+          {% endif %}
+        </div>
+      </div>
+      {% empty %}
+      <div class="no-results">
+        <iconify-icon icon="mdi:calendar-remove-outline"></iconify-icon>
+        <p>لا توجد تكوينات نشطة لهذا المكوّن حاليا.</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+{% include "pages/partials/_footer.html" %}
+{% endblock %}

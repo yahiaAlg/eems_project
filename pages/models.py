@@ -586,6 +586,9 @@ class Milestone(models.Model):
 # ──────────────────────────────────────────────────────────────────
 class FAQCategory(models.Model):
     name = models.CharField("اسم الفئة", max_length=120)
+    icon_class = models.CharField(
+        "أيقونة Bootstrap", max_length=60, default="bi bi-question-circle"
+    )
     order = models.PositiveIntegerField("الترتيب", default=0)
 
     class Meta:

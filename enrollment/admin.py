@@ -6,14 +6,57 @@ from django.shortcuts import render
 from django.urls import path
 from django.utils import timezone
 
+from django.utils.html import format_html
+
 from .models import (
     Client,
     Enrollment,
     EnrollmentNote,
+    Formateur,
     FormationSession,
     Offering,
+    OfferingImage,
     Participant,
 )
+
+
+class OfferingImageInline(admin.TabularInline):
+    model = OfferingImage
+    extra = 1
+    fields = ("image", "thumb", "caption", "order")
+    readonly_fields = ("thumb",)
+
+    def thumb(self, obj):
+        if obj.pk and obj.image:
+            return format_html('<img src="{}" style="height:56px;border-radius:6px;">', obj.image.url)
+        return "—"
+
+    thumb.short_description = "معاينة"
+
+
+@admin.register(Formateur)
+class FormateurAdmin(admin.ModelAdmin):
+    list_display = ("thumb", "full_name", "title", "years_experience", "offering_count", "is_active", "order")
+    list_editable = ("is_active", "order")
+    search_fields = ("full_name", "title")
+    prepopulated_fields = {"slug": ("full_name",)}
+    fieldsets = (
+        ("الهوية", {"fields": ("full_name", "slug", "title", "photo", "years_experience")}),
+        ("النبذة والتواصل", {"fields": ("bio", "email", "linkedin_url")}),
+        ("الحالة", {"fields": ("is_active", "order")}),
+    )
+
+    def offering_count(self, obj):
+        return obj.offerings.count()
+
+    offering_count.short_description = "عدد التكوينات"
+
+    def thumb(self, obj):
+        if obj.photo:
+            return format_html('<img src="{}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">', obj.photo.url)
+        return "—"
+
+    thumb.short_description = ""
 
 
 @admin.register(FormationSession)
@@ -40,13 +83,14 @@ class OfferingAdmin(admin.ModelAdmin):
     list_editable = ("is_active", "is_featured", "order")
     list_filter = ("session", "qualification_level", "is_active", "is_featured")
     search_fields = ("code", "title")
-    autocomplete_fields = ("specialty",)
+    autocomplete_fields = ("specialty", "formateur")
+    inlines = [OfferingImageInline]
     fieldsets = (
         (
             "معلومات عامة",
             {
                 "fields": (
-                    "session", "specialty", "code", "title", "branch_label",
+                    "session", "specialty", "formateur", "code", "title", "branch_label",
                     "qualification_level", "certificate_type", "entry_level",
                     "duration_months", "monthly_fee", "total_fee", "seats_available",
                 )
