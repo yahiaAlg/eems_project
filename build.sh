@@ -2,6 +2,7 @@ pip install -r requirements.txt
 
 python manage.py makemigrations
 python manage.py migrate
+python manage.py flush
 
 python manage.py seed_data         # 1) محتوى الموقع الأساسي: الهيرو، الفروع، التخصصات، الدورات...
 python manage.py seed_enrollment   # 2) كتالوج تكوينات تجريبي (دورة سبتمبر 2025 — 4 تخصصات)
