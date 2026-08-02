@@ -1,7 +1,100 @@
+from django.core.validators import FileExtensionValidator
 from django.db import models
 from django.conf import settings
 from django.urls import reverse
 from django.utils.text import slugify
+
+# Allowed extensions for admin-uploaded "custom" documents (CV / fiche
+# technique / certificates) — no PDF-generation library is used anywhere
+# in this app; when a real PDF is wanted, the admin uploads one here.
+CUSTOM_DOCUMENT_EXTENSIONS = ["pdf", "doc", "docx", "jpg", "jpeg", "png", "webp"]
+
+
+def attachment_kind(filename):
+    """Classify an uploaded file by extension, for icon/label purposes."""
+    ext = filename.rsplit(".", 1)[-1].lower() if filename and "." in filename else ""
+    if ext == "pdf":
+        return "pdf"
+    if ext in ("doc", "docx"):
+        return "doc"
+    if ext in ("jpg", "jpeg", "png", "webp", "gif"):
+        return "image"
+    if ext in ("html", "htm"):
+        return "html"
+    return "file"
+
+
+ATTACHMENT_ICONS = {
+    "pdf": "mdi:file-pdf-box",
+    "doc": "mdi:file-word-box",
+    "image": "mdi:file-image-outline",
+    "html": "mdi:file-document-outline",
+    "file": "mdi:paperclip",
+}
+
+
+class AttachmentBase(models.Model):
+    """Shared behaviour for optional admin-uploaded PDF/image/HTML attachments
+    (fiche technique documents, formateur certificates, ...)."""
+
+    title = models.CharField("العنوان", max_length=150, blank=True)
+    order = models.PositiveIntegerField("الترتيب", default=0)
+    uploaded_at = models.DateTimeField("تاريخ الإضافة", auto_now_add=True)
+
+    class Meta:
+        abstract = True
+
+    @property
+    def kind(self):
+        return attachment_kind(self.file.name) if self.file else "file"
+
+    @property
+    def is_pdf(self):
+        return self.kind == "pdf"
+
+    @property
+    def is_image(self):
+        return self.kind == "image"
+
+    @property
+    def is_html(self):
+        return self.kind == "html"
+
+    @property
+    def is_doc(self):
+        return self.kind == "doc"
+
+    @property
+    def icon(self):
+        return ATTACHMENT_ICONS[self.kind]
+
+    @property
+    def action_icon(self):
+        # HTML documents are viewed/printed in a new tab, not "downloaded"
+        return "mdi:printer-outline" if self.is_html else "mdi:download-outline"
+
+    @property
+    def meta_label(self):
+        if self.is_html:
+            return "معاينة وطباعة (Print / Save as PDF)"
+        if not self.file:
+            return ""
+        from django.template.defaultfilters import filesizeformat
+        try:
+            return filesizeformat(self.file.size)
+        except (OSError, ValueError):
+            return ""
+
+    @property
+    def display_title(self):
+        import os
+        return self.title or (os.path.basename(self.file.name) if self.file else "ملف")
+
+
+CV_MODES = [
+    ("auto", "توليد تلقائي — نموذج قابل للطباعة يُبنى من بيانات الملف الشخصي"),
+    ("custom", "رفع ملف مخصص (PDF / Word / صورة)"),
+]
 
 
 class Formateur(models.Model):
@@ -22,6 +115,19 @@ class Formateur(models.Model):
     )
     email = models.EmailField("البريد الإلكتروني", blank=True)
     linkedin_url = models.URLField("رابط LinkedIn", blank=True)
+    cv_mode = models.CharField(
+        "نمط السيرة الذاتية", max_length=10, choices=CV_MODES, default="auto",
+        help_text=(
+            "توليد تلقائي: يُبنى نموذج CV قابل للطباعة من بيانات هذه الصفحة "
+            "(النبذة، المسار المهني...) تلقائيا وفوريا. مخصص: يُستعمل الملف "
+            "المرفوع أدناه بدل النموذج التلقائي."
+        ),
+    )
+    cv_file = models.FileField(
+        "ملف CV مخصص", upload_to="enrollment/formateurs/cv/",
+        blank=True, null=True, validators=[FileExtensionValidator(CUSTOM_DOCUMENT_EXTENSIONS)],
+        help_text="PDF / Word / صورة — يُستعمل فقط عند اختيار النمط «مخصص» أعلاه.",
+    )
     is_active = models.BooleanField("مفعّل (يظهر على الموقع)", default=True)
     order = models.PositiveIntegerField("الترتيب", default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -51,6 +157,90 @@ class Formateur(models.Model):
     @property
     def active_offerings(self):
         return self.offerings.filter(is_active=True, session__is_active=True)
+
+    @property
+    def cv_is_custom(self):
+        return self.cv_mode == "custom" and bool(self.cv_file)
+
+    @property
+    def cv_url(self):
+        if self.cv_is_custom:
+            return self.cv_file.url
+        return reverse("enrollment:formateur_cv", args=[self.slug])
+
+    @property
+    def cv_kind(self):
+        return attachment_kind(self.cv_file.name) if self.cv_is_custom else "html"
+
+    @property
+    def cv_icon(self):
+        return ATTACHMENT_ICONS[self.cv_kind]
+
+    @property
+    def cv_action_label(self):
+        return "تحميل السيرة الذاتية (CV)" if self.cv_is_custom else "معاينة CV وطباعته"
+
+    @property
+    def cv_action_icon(self):
+        return "mdi:download-outline" if self.cv_is_custom else "mdi:printer-outline"
+
+
+class FormateurCertificate(AttachmentBase):
+    """An optional certificate/credential attachment (PDF or image) shown
+    on the formateur's public profile page — diploma, accreditation, etc."""
+
+    formateur = models.ForeignKey(
+        Formateur, on_delete=models.CASCADE, related_name="certificates",
+        verbose_name="المكوّن",
+    )
+    issuer = models.CharField("الجهة المانحة", max_length=150, blank=True)
+    date_obtained = models.DateField("تاريخ الحصول عليها", null=True, blank=True)
+    file = models.FileField(
+        "ملف الشهادة (PDF / Word / صورة)", upload_to="enrollment/formateurs/certificates/",
+        validators=[FileExtensionValidator(CUSTOM_DOCUMENT_EXTENSIONS)],
+    )
+
+    class Meta:
+        ordering = ["order", "id"]
+        verbose_name = "شهادة / اعتماد"
+        verbose_name_plural = "🎓 الشهادات والاعتمادات"
+
+    def __str__(self):
+        return self.display_title or f"شهادة #{self.pk} — {self.formateur.full_name}"
+
+
+class FormateurCareerEntry(models.Model):
+    """One entry in the formateur's professional timeline (Udemy-style bio 'parcours')."""
+
+    formateur = models.ForeignKey(
+        Formateur, on_delete=models.CASCADE, related_name="career_entries",
+        verbose_name="المكوّن",
+    )
+    role_title = models.CharField("المنصب / الوظيفة", max_length=150)
+    organization = models.CharField("الجهة / المؤسسة", max_length=150, blank=True)
+    start_year = models.PositiveSmallIntegerField("سنة البداية", null=True, blank=True)
+    end_year = models.PositiveSmallIntegerField(
+        "سنة النهاية", null=True, blank=True,
+        help_text="اتركه فارغا إن كان المنصب ساريا حاليا.",
+    )
+    description = models.TextField("وصف مختصر", blank=True)
+    order = models.PositiveIntegerField("الترتيب", default=0)
+
+    class Meta:
+        ordering = ["order", "-start_year"]
+        verbose_name = "محطة مهنية"
+        verbose_name_plural = "🧭 المسار المهني (Parcours)"
+
+    def __str__(self):
+        return f"{self.role_title} — {self.organization}"
+
+    @property
+    def period_label(self):
+        if self.start_year and self.end_year:
+            return f"{self.start_year} – {self.end_year}"
+        if self.start_year and not self.end_year:
+            return f"{self.start_year} – حاليا"
+        return ""
 
 
 class FormationSession(models.Model):
@@ -99,6 +289,12 @@ ENTRY_LEVELS = [
 ]
 
 
+FICHE_TECHNIQUE_MODES = [
+    ("auto", "توليد تلقائي — نموذج قابل للطباعة يُبنى من بيانات هذا التخصص"),
+    ("custom", "رفع ملف مخصص (PDF / Word / صورة)"),
+]
+
+
 class Offering(models.Model):
     """A specialty as taught within a given session — carries pricing/seat data."""
 
@@ -137,6 +333,27 @@ class Offering(models.Model):
     description = models.TextField("تعريف التخصص", blank=True)
     main_tasks = models.TextField(
         "المهام الأساسية", blank=True, help_text="سطر واحد لكل مهمة",
+    )
+    objectives = models.TextField(
+        "أهداف التكوين", blank=True, help_text="سطر واحد لكل هدف — يظهر ضمن الفيشة التقنية.",
+    )
+    program_outline = models.TextField(
+        "برنامج التكوين (المحاور)", blank=True, help_text="سطر واحد لكل محور/وحدة — يظهر ضمن الفيشة التقنية.",
+    )
+    prerequisites = models.TextField(
+        "الشروط المسبقة", blank=True, help_text="سطر واحد لكل شرط — يظهر ضمن الفيشة التقنية.",
+    )
+    fiche_technique_mode = models.CharField(
+        "نمط الفيشة التقنية", max_length=10, choices=FICHE_TECHNIQUE_MODES, default="auto",
+        help_text=(
+            "توليد تلقائي: يُبنى نموذج قابل للطباعة من الحقول أعلاه (الوصف، الأهداف، "
+            "البرنامج...) تلقائيا وفوريا. مخصص: يُستعمل الملف المرفوع أدناه بدل النموذج التلقائي."
+        ),
+    )
+    fiche_technique_file = models.FileField(
+        "ملف الفيشة التقنية المخصص", upload_to="enrollment/offerings/fiche_technique_custom/",
+        blank=True, null=True, validators=[FileExtensionValidator(CUSTOM_DOCUMENT_EXTENSIONS)],
+        help_text="PDF / Word / صورة — يُستعمل فقط عند اختيار النمط «مخصص» أعلاه.",
     )
     image = models.ImageField(
         "صورة (ملف مرفوع)", upload_to="enrollment/offerings/", blank=True, null=True,
@@ -183,6 +400,48 @@ class Offering(models.Model):
     @property
     def tasks_list(self):
         return [line.strip() for line in self.main_tasks.splitlines() if line.strip()]
+
+    @property
+    def objectives_list(self):
+        return [line.strip() for line in self.objectives.splitlines() if line.strip()]
+
+    @property
+    def program_outline_list(self):
+        return [line.strip() for line in self.program_outline.splitlines() if line.strip()]
+
+    @property
+    def prerequisites_list(self):
+        return [line.strip() for line in self.prerequisites.splitlines() if line.strip()]
+
+    @property
+    def has_fiche_technique_extras(self):
+        return bool(self.objectives_list or self.program_outline_list or self.prerequisites_list)
+
+    @property
+    def fiche_technique_is_custom(self):
+        return self.fiche_technique_mode == "custom" and bool(self.fiche_technique_file)
+
+    @property
+    def fiche_technique_url(self):
+        if self.fiche_technique_is_custom:
+            return self.fiche_technique_file.url
+        return reverse("enrollment:fiche_technique", args=[self.session.slug, self.code])
+
+    @property
+    def fiche_technique_kind(self):
+        return attachment_kind(self.fiche_technique_file.name) if self.fiche_technique_is_custom else "html"
+
+    @property
+    def fiche_technique_icon(self):
+        return ATTACHMENT_ICONS[self.fiche_technique_kind]
+
+    @property
+    def fiche_technique_action_label(self):
+        return "تحميل الفيشة التقنية" if self.fiche_technique_is_custom else "معاينة الفيشة وطباعتها"
+
+    @property
+    def fiche_technique_action_icon(self):
+        return "mdi:download-outline" if self.fiche_technique_is_custom else "mdi:printer-outline"
 
     @property
     def approved_comments(self):
@@ -252,6 +511,32 @@ class OfferingImage(models.Model):
 
     def __str__(self):
         return self.caption or f"صورة #{self.pk} — {self.offering.code}"
+
+
+class OfferingAttachment(AttachmentBase):
+    """A supplementary downloadable document for the offering (program
+    brochure, referential excerpt, schedule graphic, ...) — a PDF, Word
+    or image uploaded by the admin. Shown as a piece-jointe list on the
+    offering's detail page, in addition to the primary fiche technique
+    (Offering.fiche_technique_mode / fiche_technique_file, see above)
+    and separate from the visual gallery/slider."""
+
+    offering = models.ForeignKey(
+        Offering, on_delete=models.CASCADE, related_name="attachments",
+        verbose_name="التخصص",
+    )
+    file = models.FileField(
+        "الملف (PDF / Word / صورة)", upload_to="enrollment/offerings/fiche_technique/",
+        validators=[FileExtensionValidator(CUSTOM_DOCUMENT_EXTENSIONS)],
+    )
+
+    class Meta:
+        ordering = ["order", "id"]
+        verbose_name = "وثيقة مرفقة (مرفق إضافي)"
+        verbose_name_plural = "📎 مرفقات إضافية للتخصص"
+
+    def __str__(self):
+        return self.display_title or f"مرفق #{self.pk} — {self.offering.code}"
 
 
 SOURCE_CHOICES = [

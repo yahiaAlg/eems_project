@@ -76,6 +76,20 @@ def formateur_detail(request, slug):
     return render(request, "enrollment/formateur_detail.html", context)
 
 
+def formateur_cv_print(request, slug):
+    """Auto-generated, print-optimized CV — built live from the formateur's
+    current profile data (no PDF library, no stored file: plain HTML with
+    print CSS). Only reachable when the formateur is on 'auto' CV mode;
+    'custom' mode formateurs serve their uploaded file directly instead."""
+    formateur = get_object_or_404(Formateur, slug=slug, is_active=True)
+    context = {
+        "formateur": formateur,
+        "bio_text": formateur.bio or "نبذة تعريفية غير متوفرة بعد.",
+        "settings": SiteSettings.load(),
+    }
+    return render(request, "enrollment/documents/cv_placeholder.html", context)
+
+
 def general_enquiry(request):
     """General 'talk to an advisor' request, not tied to a specific offering."""
     if request.method == "POST":
@@ -137,6 +151,25 @@ def specialty_detail(request, session_slug, code):
         **_shared_chrome_context(),
     }
     return render(request, "enrollment/specialty_detail.html", context)
+
+
+def fiche_technique_print(request, session_slug, code):
+    """Auto-generated, print-optimized fiche technique — built live from
+    the offering's current data (no PDF library, no stored file: plain
+    HTML with print CSS). Only reachable when the offering is on 'auto'
+    mode; 'custom' mode offerings serve their uploaded file directly."""
+    offering = get_object_or_404(
+        Offering, session__slug=session_slug, code=code, is_active=True,
+    )
+    context = {
+        "offering": offering,
+        "qualification_level": offering.get_qualification_level_display(),
+        "certificate_type": offering.get_certificate_type_display(),
+        "entry_level": offering.get_entry_level_display(),
+        "description_text": offering.description or "تعريف مفصل للتخصص متوفر قريبا.",
+        "settings": SiteSettings.load(),
+    }
+    return render(request, "enrollment/documents/fiche_technique_placeholder.html", context)
 
 
 def subscribe(request, session_slug, code):

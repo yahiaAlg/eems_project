@@ -9,6 +9,7 @@
 
 {% block extra_head %}
 <link href="{% static 'enrollment/css/catalog.css' %}" rel="stylesheet">
+<link href="{% static 'enrollment/css/specialty_detail.css' %}" rel="stylesheet">
 <link href="{% static 'enrollment/css/formateur_detail.css' %}" rel="stylesheet">
 {% endblock %}
 
@@ -33,6 +34,9 @@
           {% if formateur.email %}<a href="mailto:{{ formateur.email }}" class="formateur-stat formateur-stat-link"><i class="bi bi-envelope-fill"></i> راسله</a>{% endif %}
           {% if formateur.linkedin_url %}<a href="{{ formateur.linkedin_url }}" target="_blank" rel="noopener" class="formateur-stat formateur-stat-link"><i class="bi bi-linkedin"></i> LinkedIn</a>{% endif %}
         </div>
+        <a href="{{ formateur.cv_url }}" target="_blank" rel="noopener" class="btn-cv">
+          <iconify-icon icon="{{ formateur.cv_action_icon }}"></iconify-icon> {{ formateur.cv_action_label }}
+        </a>
       </div>
     </div>
   </div>
@@ -43,6 +47,42 @@
   <div class="panel">
     <div class="section-h"><i class="bi bi-person-lines-fill"></i> نبذة تعريفية</div>
     <p style="white-space:pre-line;">{{ formateur.bio }}</p>
+  </div>
+  {% endif %}
+
+  {% if formateur.career_entries.all %}
+  <div class="panel">
+    <div class="section-h"><i class="bi bi-signpost-split-fill"></i> المسار المهني</div>
+    <div class="career-timeline">
+      {% for entry in formateur.career_entries.all %}
+      <div class="career-item">
+        <div class="career-dot"></div>
+        <div class="career-content">
+          {% if entry.period_label %}<div class="career-period">{{ entry.period_label }}</div>{% endif %}
+          <div class="career-role">{{ entry.role_title }}{% if entry.organization %} <span class="career-org">— {{ entry.organization }}</span>{% endif %}</div>
+          {% if entry.description %}<p class="career-desc">{{ entry.description }}</p>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if formateur.certificates.all %}
+  <div class="panel">
+    <div class="section-h"><i class="bi bi-patch-check-fill"></i> الشهادات والاعتمادات</div>
+    <div class="attachments-grid">
+      {% for cert in formateur.certificates.all %}
+        <a class="attachment-card {% if cert.is_image %}is-image{% endif %}" href="{{ cert.file.url }}" target="_blank" rel="noopener" data-full="{{ cert.file.url }}">
+          <div class="attachment-icon {{ cert.kind }}"><iconify-icon icon="{{ cert.icon }}"></iconify-icon></div>
+          <div class="attachment-info">
+            <div class="attachment-title">{{ cert.display_title }}</div>
+            <div class="attachment-meta">{% if cert.issuer %}{{ cert.issuer }}{% endif %}{% if cert.date_obtained %} • {{ cert.date_obtained|date:"Y" }}{% endif %}{% if cert.is_html %} • معاينة وطباعة{% endif %}</div>
+          </div>
+          <iconify-icon icon="{{ cert.action_icon }}" class="attachment-dl"></iconify-icon>
+        </a>
+      {% endfor %}
+    </div>
   </div>
   {% endif %}
 
@@ -82,5 +122,17 @@
   </div>
 </div>
 
+<!-- Lightbox preview for image-type certificates -->
+<div id="gallery-lightbox" role="dialog" aria-modal="true" aria-label="معاينة الشهادة">
+  <button type="button" class="lb-close" aria-label="إغلاق"><i class="bi bi-x-lg"></i></button>
+  <button type="button" class="lb-prev" aria-label="السابق"><i class="bi bi-chevron-right"></i></button>
+  <img src="" alt="">
+  <button type="button" class="lb-next" aria-label="التالي"><i class="bi bi-chevron-left"></i></button>
+</div>
+
 {% include "pages/partials/_footer.html" %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'enrollment/js/formateur_detail.js' %}"></script>
 {% endblock %}

@@ -26,15 +26,21 @@
     if (target) setTimeout(() => target.scrollIntoView({ behavior: "smooth", block: "start" }), 200);
   }
 
-  // Gallery lightbox (used when the fiche technique includes secondary images)
-  const thumbs = document.querySelectorAll(".gallery-thumb");
+  // Gallery lightbox — combines the secondary-images slider with any
+  // image-type fiche technique attachment (PDF attachments keep their
+  // normal download/open-in-new-tab behaviour and are not included here).
+  const thumbs = document.querySelectorAll(".gallery-thumb, .attachment-card.is-image");
   const lightbox = document.getElementById("gallery-lightbox");
   if (thumbs.length && lightbox) {
     const lbImg = lightbox.querySelector("img");
-    const urls = Array.from(thumbs).map((t) => t.dataset.full || t.querySelector("img").src);
+    const urls = Array.from(thumbs).map((t) => t.dataset.full || (t.querySelector("img") && t.querySelector("img").src));
     let idx = 0;
     const show = (i) => { idx = (i + urls.length) % urls.length; lbImg.src = urls[idx]; };
-    thumbs.forEach((t, i) => t.addEventListener("click", () => { show(i); lightbox.classList.add("open"); }));
+    thumbs.forEach((t, i) => t.addEventListener("click", (e) => {
+      if (t.tagName === "A") e.preventDefault(); // image attachments are <a> links — preview instead of navigating
+      show(i);
+      lightbox.classList.add("open");
+    }));
     lightbox.querySelector(".lb-close").addEventListener("click", () => lightbox.classList.remove("open"));
     lightbox.querySelector(".lb-prev").addEventListener("click", () => show(idx - 1));
     lightbox.querySelector(".lb-next").addEventListener("click", () => show(idx + 1));

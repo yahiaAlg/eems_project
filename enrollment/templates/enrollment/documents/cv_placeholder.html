@@ -1,0 +1,179 @@
+{% load static %}<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>السيرة الذاتية — {{ formateur.full_name }}</title>
+<link href="{% static 'vendor/fonts/cairo/cairo.css' %}" rel="stylesheet">
+<script src="{% static 'vendor/iconify/iconify-icon.min.js' %}"></script>
+<style>
+  :root {
+    --navy:#0f172a; --navy-mid:#1e293b; --navy-soft:#334155;
+    --accent:#f59e0b; --accent-soft:#fef3c7; --accent-dark:#b45309;
+    --muted:#64748b; --line:#e2e8f0; --paper:#f8fafc;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: "Cairo", "Segoe UI", Tahoma, Arial, sans-serif; margin: 0; background: #e2e8f0; color: #1e293b; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  .toolbar { position: sticky; top: 0; z-index: 20; background: var(--navy); padding: 12px 18px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .toolbar .badge { color: #94a3b8; font-size: 12.5px; display: flex; align-items: center; gap: 6px; }
+  .toolbar .badge iconify-icon { color: var(--accent); font-size: 16px; }
+  .toolbar button { background: var(--accent); color: var(--navy); border: 0; font-weight: 800; font-family: inherit; font-size: 14px; padding: 9px 20px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+  .toolbar button:hover { background: #fbbf24; }
+
+  .page { max-width: 940px; margin: 28px auto 60px; background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 16px 40px rgba(15,23,42,.18); display: grid; grid-template-columns: 300px 1fr; }
+
+  /* ── Sidebar ── */
+  .sidebar { background: linear-gradient(180deg, var(--navy), var(--navy-mid) 60%, var(--navy-soft)); color: #fff; padding: 40px 28px; }
+  .avatar-wrap { text-align: center; margin-bottom: 20px; }
+  .avatar { width: 128px; height: 128px; border-radius: 50%; object-fit: cover; border: 4px solid var(--accent); }
+  .avatar-fallback { width: 128px; height: 128px; border-radius: 50%; border: 4px solid var(--accent); background: rgba(255,255,255,.08); display: flex; align-items: center; justify-content: center; margin: 0 auto; font-size: 48px; color: var(--accent); }
+  .sidebar h1 { text-align: center; font-size: 20px; font-weight: 800; margin: 0 0 4px; }
+  .sidebar .role { text-align: center; color: var(--accent); font-size: 13px; font-weight: 700; margin-bottom: 26px; }
+
+  .side-block { margin-bottom: 26px; }
+  .side-block h3 { font-size: 11.5px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: #94a3b8; margin: 0 0 12px; display: flex; align-items: center; gap: 7px; }
+  .side-block h3 iconify-icon { color: var(--accent); font-size: 15px; }
+
+  .stat-row { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.09); }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-row .n { font-size: 20px; font-weight: 800; color: var(--accent); }
+  .stat-row .l { font-size: 12px; color: #cbd5e1; }
+
+  .contact-line { display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: #e2e8f0; margin-bottom: 11px; word-break: break-word; }
+  .contact-line iconify-icon { color: var(--accent); font-size: 15px; flex-shrink: 0; }
+
+  .brand-foot { margin-top: 34px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.12); font-size: 10.5px; color: #94a3b8; text-align: center; line-height: 1.7; }
+  .brand-foot strong { color: var(--accent); }
+
+  /* ── Main column ── */
+  .main { padding: 40px 42px; }
+  .section { margin-bottom: 28px; page-break-inside: avoid; }
+  .section:last-child { margin-bottom: 0; }
+  .section h2 { font-size: 15.5px; font-weight: 800; color: var(--navy); margin: 0 0 14px; display: flex; align-items: center; gap: 9px; }
+  .section h2 iconify-icon { color: var(--accent); font-size: 19px; }
+  .section h2::after { content: ''; flex: 1; height: 1px; background: var(--line); margin-right: 4px; }
+  .section p { margin: 0; line-height: 1.95; color: #334155; font-size: 14px; }
+
+  .timeline { position: relative; padding-inline-start: 24px; }
+  .timeline::before { content: ''; position: absolute; inset-inline-start: 4px; top: 6px; bottom: 6px; width: 2px; background: var(--line); }
+  .t-item { position: relative; padding-bottom: 20px; page-break-inside: avoid; }
+  .t-item:last-child { padding-bottom: 0; }
+  .t-dot { position: absolute; inset-inline-start: -24px; top: 3px; width: 11px; height: 11px; border-radius: 50%; background: var(--accent); border: 2px solid #fff; box-shadow: 0 0 0 2px var(--accent-soft); }
+  .t-period { display: inline-block; font-size: 11px; font-weight: 700; color: var(--accent-dark); background: var(--accent-soft); padding: 2px 10px; border-radius: 20px; margin-bottom: 5px; }
+  .t-role { font-weight: 800; font-size: 14px; color: var(--navy); }
+  .t-org { font-weight: 600; color: var(--muted); font-size: 13px; }
+  .t-desc { color: var(--muted); font-size: 12.5px; margin: 5px 0 0; line-height: 1.8; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { display: flex; align-items: center; gap: 7px; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 9px 13px; font-size: 12.5px; font-weight: 700; color: var(--navy); }
+  .chip iconify-icon { color: var(--accent); font-size: 15px; }
+  .chip .sub { font-weight: 500; color: var(--muted); font-size: 11px; }
+
+  .cert-list { display: grid; gap: 8px; }
+  .cert-row { display: flex; align-items: center; gap: 10px; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; font-size: 12.5px; }
+  .cert-row iconify-icon { color: var(--accent-dark); font-size: 17px; flex-shrink: 0; }
+  .cert-row .name { font-weight: 700; color: var(--navy); }
+  .cert-row .issuer { color: var(--muted); font-size: 11.5px; }
+
+  .empty-hint { color: var(--muted); font-size: 12.5px; font-style: italic; }
+
+  @media print {
+    .toolbar { display: none; }
+    body { background: #fff; }
+    .page { box-shadow: none; margin: 0; border-radius: 0; max-width: none; grid-template-columns: 270px 1fr; }
+    @page { size: A4; margin: 0; }
+  }
+</style>
+</head>
+<body>
+  <div class="toolbar">
+    <div class="badge"><iconify-icon icon="mdi:flash-outline"></iconify-icon> نموذج تلقائي — يُحدَّث فوريا مع بيانات الملف الشخصي</div>
+    <button onclick="window.print()"><iconify-icon icon="mdi:printer-outline"></iconify-icon> طباعة / حفظ كـ PDF</button>
+  </div>
+
+  <div class="page">
+    <aside class="sidebar">
+      <div class="avatar-wrap">
+        {% if formateur.photo %}
+          <img src="{{ formateur.photo.url }}" alt="{{ formateur.full_name }}" class="avatar">
+        {% else %}
+          <div class="avatar-fallback"><iconify-icon icon="mdi:account"></iconify-icon></div>
+        {% endif %}
+      </div>
+      <h1>{{ formateur.full_name }}</h1>
+      <div class="role">{{ formateur.title|default:"مكوّن لدى مؤسسة التميز EEMS" }}</div>
+
+      <div class="side-block">
+        <h3><iconify-icon icon="mdi:chart-box-outline"></iconify-icon> أبرز المؤشرات</h3>
+        <div class="stat-row"><span class="l">سنوات الخبرة</span><span class="n">{{ formateur.years_experience|default:"—" }}</span></div>
+        <div class="stat-row"><span class="l">تكوينات نشطة</span><span class="n">{{ formateur.active_offerings.count }}</span></div>
+        <div class="stat-row"><span class="l">شهادات واعتمادات</span><span class="n">{{ formateur.certificates.count }}</span></div>
+      </div>
+
+      <div class="side-block">
+        <h3><iconify-icon icon="mdi:card-account-mail-outline"></iconify-icon> التواصل</h3>
+        {% if formateur.email %}<div class="contact-line"><iconify-icon icon="mdi:email-outline"></iconify-icon> {{ formateur.email }}</div>{% endif %}
+        {% if formateur.linkedin_url %}<div class="contact-line"><iconify-icon icon="mdi:linkedin"></iconify-icon> LinkedIn</div>{% endif %}
+        {% if not formateur.email and not formateur.linkedin_url %}<div class="contact-line empty-hint">غير متوفر</div>{% endif %}
+      </div>
+
+      <div class="brand-foot">
+        <strong>EEMS</strong><br>مؤسسة التميز للإدارة والسلامة<br>
+        {% if settings.phone %}{{ settings.phone }}{% endif %}{% if settings.phone and settings.email %} • {% endif %}{% if settings.email %}{{ settings.email }}{% endif %}
+      </div>
+    </aside>
+
+    <div class="main">
+      <div class="section">
+        <h2><iconify-icon icon="mdi:account-details-outline"></iconify-icon> نبذة تعريفية</h2>
+        <p style="white-space:pre-line;">{{ bio_text }}</p>
+      </div>
+
+      <div class="section">
+        <h2><iconify-icon icon="mdi:map-marker-path"></iconify-icon> المسار المهني</h2>
+        {% if formateur.career_entries.all %}
+        <div class="timeline">
+          {% for entry in formateur.career_entries.all %}
+          <div class="t-item">
+            <div class="t-dot"></div>
+            {% if entry.period_label %}<div class="t-period">{{ entry.period_label }}</div>{% endif %}
+            <div class="t-role">{{ entry.role_title }}{% if entry.organization %} <span class="t-org">— {{ entry.organization }}</span>{% endif %}</div>
+            {% if entry.description %}<div class="t-desc">{{ entry.description }}</div>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="empty-hint">المسار المهني غير متوفر بعد.</p>
+        {% endif %}
+      </div>
+
+      <div class="section">
+        <h2><iconify-icon icon="mdi:school-outline"></iconify-icon> التكوينات التي يقدّمها حاليا</h2>
+        {% if formateur.active_offerings.all %}
+        <div class="chip-row">
+          {% for o in formateur.active_offerings.all %}
+          <div class="chip"><iconify-icon icon="mdi:certificate-outline"></iconify-icon> {{ o.title }} <span class="sub">({{ o.code }})</span></div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="empty-hint">لا توجد تكوينات نشطة حاليا.</p>
+        {% endif %}
+      </div>
+
+      {% if formateur.certificates.all %}
+      <div class="section">
+        <h2><iconify-icon icon="mdi:certificate-outline"></iconify-icon> الشهادات والاعتمادات</h2>
+        <div class="cert-list">
+          {% for cert in formateur.certificates.all %}
+          <div class="cert-row">
+            <iconify-icon icon="{{ cert.icon }}"></iconify-icon>
+            <div><span class="name">{{ cert.display_title }}</span>{% if cert.issuer %} <span class="issuer">— {{ cert.issuer }}</span>{% endif %}</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</body>
+</html>

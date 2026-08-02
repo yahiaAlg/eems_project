@@ -1,0 +1,116 @@
+{% load static enrollment_extras %}
+{# ============================================================
+   _fiche_technique.html — the offering's technical data sheet.
+   Renders entirely from admin-fillable Offering fields (duration,
+   fees, certificate, entry level, objectives, program outline,
+   main tasks, prerequisites) plus its optional "pieces jointes"
+   (OfferingAttachment: PDF/image documents). Every section is
+   hidden gracefully when its field is left blank by the admin.
+   Expects "offering" in context (shared context — no isolation).
+   ============================================================ #}
+
+<div class="panel reveal-item">
+  <div class="section-h" style="margin-top:0;"><iconify-icon icon="mdi:file-document-multiple-outline"></iconify-icon> الفيشة التقنية</div>
+
+  <a href="{{ offering.fiche_technique_url }}" target="_blank" rel="noopener" class="fiche-primary-card">
+    <div class="fiche-primary-icon"><iconify-icon icon="{{ offering.fiche_technique_icon }}"></iconify-icon></div>
+    <div class="fiche-primary-info">
+      <div class="fiche-primary-title">الفيشة التقنية الرسمية</div>
+      <div class="fiche-primary-sub">
+        {% if offering.fiche_technique_is_custom %}
+          ملف {{ offering.fiche_technique_kind|upper }} مرفوع من الإدارة
+        {% else %}
+          نموذج تلقائي — قابل للمعاينة والطباعة فوريا
+        {% endif %}
+      </div>
+    </div>
+    <div class="fiche-primary-cta"><iconify-icon icon="{{ offering.fiche_technique_action_icon }}"></iconify-icon> {{ offering.fiche_technique_action_label }}</div>
+  </a>
+
+  {% if offering.attachments.all %}
+    <p class="attachments-subhead">مرفقات إضافية</p>
+    <div class="attachments-grid">
+      {% for att in offering.attachments.all %}
+        <a class="attachment-card {% if att.is_image %}is-image{% endif %}" href="{{ att.file.url }}" target="_blank" rel="noopener" data-full="{{ att.file.url }}">
+          <div class="attachment-icon {{ att.kind }}"><iconify-icon icon="{{ att.icon }}"></iconify-icon></div>
+          <div class="attachment-info">
+            <div class="attachment-title">{{ att.display_title }}</div>
+            <div class="attachment-meta">{{ att.meta_label }}</div>
+          </div>
+          <iconify-icon icon="{{ att.action_icon }}" class="attachment-dl"></iconify-icon>
+        </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>
+
+<div class="panel reveal-item">
+  <div class="info-grid">
+    <div class="info-box"><iconify-icon icon="mdi:clock-time-four-outline"></iconify-icon><div class="label">مدة التكوين</div><div class="value">{{ offering.duration_months }} شهرا</div></div>
+    {% if offering.monthly_fee %}<div class="info-box"><iconify-icon icon="mdi:cash-multiple"></iconify-icon><div class="label">القيمة الشهرية</div><div class="value">{{ offering.monthly_fee|da }}</div></div>{% endif %}
+    {% if offering.total_fee %}<div class="info-box"><iconify-icon icon="mdi:wallet-outline"></iconify-icon><div class="label">القيمة الإجمالية</div><div class="value">{{ offering.total_fee|da }}</div></div>{% endif %}
+    {% if offering.get_certificate_type_display %}<div class="info-box"><iconify-icon icon="mdi:certificate-outline"></iconify-icon><div class="label">الشهادة</div><div class="value" style="font-size:.85rem;">{{ offering.get_certificate_type_display }}</div></div>{% endif %}
+    {% if offering.get_entry_level_display %}<div class="info-box"><iconify-icon icon="mdi:school-outline"></iconify-icon><div class="label">مستوى الدخول</div><div class="value" style="font-size:.85rem;">{{ offering.get_entry_level_display }}</div></div>{% endif %}
+    <div class="info-box"><iconify-icon icon="mdi:account-group-outline"></iconify-icon><div class="label">مقاعد متبقية</div><div class="value">{{ offering.seats_remaining }}</div></div>
+  </div>
+
+  {% if offering.formateur %}
+    <div class="section-h"><iconify-icon icon="mdi:account-tie-outline"></iconify-icon> المكوّن</div>
+    <a href="{{ offering.formateur.get_absolute_url }}" class="formateur-card">
+      {% if offering.formateur.photo %}
+        <img src="{{ offering.formateur.photo.url }}" alt="{{ offering.formateur.full_name }}" class="formateur-avatar">
+      {% else %}
+        <div class="formateur-avatar d-flex align-items-center justify-content-center" style="background:var(--body-bg);color:var(--muted);font-size:22px;"><i class="bi bi-person-fill"></i></div>
+      {% endif %}
+      <div>
+        <div class="formateur-name">{{ offering.formateur.full_name }}</div>
+        {% if offering.formateur.title %}<div class="formateur-title">{{ offering.formateur.title }}</div>{% endif %}
+      </div>
+    </a>
+  {% endif %}
+
+  {% if offering.description %}
+    <div class="section-h"><iconify-icon icon="mdi:file-document-outline"></iconify-icon> تعريف التخصص</div>
+    <p>{{ offering.description }}</p>
+  {% endif %}
+
+  {% if offering.objectives_list %}
+    <div class="section-h"><iconify-icon icon="mdi:target-arrow"></iconify-icon> أهداف التكوين</div>
+    <ul class="tasks">{% for item in offering.objectives_list %}<li>{{ item }}</li>{% endfor %}</ul>
+  {% endif %}
+
+  {% if offering.program_outline_list %}
+    <div class="section-h"><iconify-icon icon="mdi:format-list-numbered"></iconify-icon> برنامج التكوين</div>
+    <ul class="tasks">{% for item in offering.program_outline_list %}<li>{{ item }}</li>{% endfor %}</ul>
+  {% endif %}
+
+  {% if offering.tasks_list %}
+    <div class="section-h"><iconify-icon icon="mdi:clipboard-list-outline"></iconify-icon> المهام الأساسية</div>
+    <ul class="tasks">{% for task in offering.tasks_list %}<li>{{ task }}</li>{% endfor %}</ul>
+  {% endif %}
+
+  {% if offering.prerequisites_list %}
+    <div class="section-h"><iconify-icon icon="mdi:clipboard-check-outline"></iconify-icon> الشروط المسبقة</div>
+    <ul class="tasks">{% for item in offering.prerequisites_list %}<li>{{ item }}</li>{% endfor %}</ul>
+  {% endif %}
+
+  {% if offering.youtube_embed_id %}
+    <div class="section-h"><iconify-icon icon="mdi:youtube"></iconify-icon> فيديو تعريفي</div>
+    <div class="video-wrap">
+      <iframe src="https://www.youtube.com/embed/{{ offering.youtube_embed_id }}"
+              title="فيديو تعريفي — {{ offering.title }}"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen loading="lazy"></iframe>
+    </div>
+  {% endif %}
+
+  <div class="section-h"><iconify-icon icon="mdi:seat-outline"></iconify-icon> المقاعد المتاحة</div>
+  <div class="seats-bar"><span data-fill="{{ offering.fill_rate }}"></span></div>
+  <p style="font-size:.88rem;color:var(--muted);margin-top:6px;">{{ offering.seats_taken }} / {{ offering.seats_available }} مقعد مشغول</p>
+
+  {% if offering.seats_remaining > 0 %}
+    <a class="btn-enroll" href="{% url 'enrollment:subscribe' offering.session.slug offering.code %}"><iconify-icon icon="mdi:pencil-plus-outline"></iconify-icon> سجّل الآن</a>
+  {% else %}
+    <a class="btn-enroll full" href="{% url 'enrollment:subscribe' offering.session.slug offering.code %}"><iconify-icon icon="mdi:timer-sand"></iconify-icon> اكتملت المقاعد — سجّل في قائمة الانتظار</a>
+  {% endif %}
+</div>
