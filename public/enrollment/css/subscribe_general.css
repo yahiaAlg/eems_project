@@ -1,0 +1,4 @@
+/* subscribe_general.html — page-specific tweaks on top of subscribe.css */
+#anim-form .form-select { margin-bottom: 4px; }
+#anim-form .form-select:disabled { background-color: var(--body-bg); color: var(--muted); cursor: not-allowed; }
+#continueBtn:disabled { opacity: .45; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
