@@ -25,7 +25,7 @@
     tbody.innerHTML = '';
     let count = 0;
     data.forEach((row) => {
-      const [code, name, branch] = row;
+      const [code, name, branch, branchCode, branchId] = row;
       const matchBranch = !branchQ || branch === branchQ;
       const matchSearch = !searchQ ||
         code.toLowerCase().includes(searchQ.toLowerCase()) ||
@@ -34,19 +34,40 @@
       if (matchBranch && matchSearch) {
         count++;
         const tr = document.createElement('tr');
+
+        // Row link: filters the catalog by this branch + this specialty.
+        // Branch pill link: filters the catalog by the branch alone.
+        // Both are real <a> tags (hover cursor, ctrl/cmd-click new tab,
+        // crawlable) — the row link is stretched over the whole <tr> via
+        // CSS (.stretched-link), the branch pill sits above it (z-index)
+        // so it stays its own independent click target.
+        let rowHref = '';
+        let branchHref = '';
+        if (catalogUrl) {
+          const rowParams = new URLSearchParams();
+          if (branchId) rowParams.set('branch', branchId);
+          rowParams.set('specialty', code);
+          rowHref = `${catalogUrl}?${rowParams.toString()}`;
+
+          const branchParams = new URLSearchParams();
+          if (branchId) branchParams.set('branch', branchId);
+          branchHref = `${catalogUrl}?${branchParams.toString()}`;
+        }
+
         tr.innerHTML = `
           <td class="nomen-num">${count}</td>
-          <td><span class="nomen-code">${highlight(code, searchQ)}</span></td>
+          <td>
+            ${rowHref
+              ? `<a class="nomen-row-link stretched-link" href="${rowHref}" title="عرض تكوينات هذا التخصص"><span class="nomen-code">${highlight(code, searchQ)}</span></a>`
+              : `<span class="nomen-code">${highlight(code, searchQ)}</span>`}
+          </td>
           <td class="nomen-name">${highlight(name, searchQ)}</td>
-          <td><span class="nomen-branch-badge">${highlight(branch, searchQ)}</span></td>
+          <td>
+            ${branchHref
+              ? `<a class="nomen-branch-badge-link" href="${branchHref}" title="عرض كل تكوينات هذه الشعبة"><span class="nomen-branch-badge">${highlight(branch, searchQ)}</span></a>`
+              : `<span class="nomen-branch-badge">${highlight(branch, searchQ)}</span>`}
+          </td>
         `;
-        if (catalogUrl) {
-          tr.style.cursor = 'pointer';
-          tr.title = 'عرض تكوينات هذا التخصص';
-          tr.addEventListener('click', () => {
-            window.location.href = `${catalogUrl}?specialty=${encodeURIComponent(code)}`;
-          });
-        }
         tbody.appendChild(tr);
       }
     });

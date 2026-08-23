@@ -87,13 +87,18 @@ def nomenclature(request):
         Specialty.objects.select_related("branch")
         .order_by("branch__order", "code")
     )
-    # Same row shape the original static page used: [code, name, branch_name, branch_code]
+    # Row shape: [code, name, branch_name, branch_code, branch_id]. branch_id
+    # is what the catalog's ?branch= filter expects (Branch.pk), branch_code
+    # only drives the #ANCHOR deep-link below.
     # NOTE: keep this a plain Python list — it goes through the `json_script`
     # template filter, which serializes it itself. Pre-serializing it here
     # (e.g. with json.dumps) would double-encode it into a JSON *string*,
     # so `JSON.parse()` in the browser would yield a string back instead of
     # an array, and the table would silently render empty.
-    data = [[s.code, s.name, s.branch.name_ar, s.branch.code] for s in specialties]
+    data = [
+        [s.code, s.name, s.branch.name_ar, s.branch.code, s.branch_id]
+        for s in specialties
+    ]
     context = {
         "settings": SiteSettings.load(),
         "branches": Branch.objects.filter(is_active=True),

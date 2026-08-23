@@ -82,6 +82,10 @@ class SiteSettingsAdmin(admin.ModelAdmin):
                 )
             },
         ),
+        (
+            "فيديو المقدمة والخاتمة",
+            {"fields": ("prologue_video", "epilogue_video")},
+        ),
         ("المعرض", {"fields": ("gallery_label", "gallery_title")}),
         (
             "الموقع/الخريطة",

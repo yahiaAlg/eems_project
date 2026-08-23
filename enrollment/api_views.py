@@ -37,7 +37,7 @@ class FormationSessionViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class OfferingViewSet(viewsets.ReadOnlyModelViewSet):
-    """?session=<slug>&branch=<id>&level=<1-5> query params for filtering."""
+    """?session=<slug>&branch=<id>&specialty=<code>&level=<1-5> query params for filtering."""
 
     serializer_class = OfferingSerializer
     permission_classes = [permissions.AllowAny]
@@ -51,11 +51,14 @@ class OfferingViewSet(viewsets.ReadOnlyModelViewSet):
         params = self.request.query_params
         session_slug = params.get("session")
         branch_id = params.get("branch")
+        specialty_code = params.get("specialty")
         level = params.get("level")
         if session_slug:
             qs = qs.filter(session__slug=session_slug)
         if branch_id:
             qs = qs.filter(specialty__branch_id=branch_id)
+        if specialty_code:
+            qs = qs.filter(specialty__code=specialty_code)
         if level:
             qs = qs.filter(qualification_level=level)
         return qs

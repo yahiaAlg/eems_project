@@ -47,7 +47,6 @@
           </div>
           {% endif %}
           <form method="get" id="filters-form">
-            <input type="hidden" name="specialty" value="{{ selected_specialty }}">
             <div class="filter-group">
               <label>بحث</label>
               <div class="filter-search">
@@ -66,11 +65,22 @@
             </div>
             <div class="filter-group">
               <label>الشعبة المهنية</label>
-              <select name="branch" class="form-select" onchange="this.form.submit()">
+              <select name="branch" id="branchFilter" class="form-select">
                 <option value="">كل الشعب</option>
                 {% for b in branches %}
-                  <option value="{{ b.id }}" {% if b.id == selected_branch %}selected{% endif %}>{{ b.name_ar }}</option>
+                  <option value="{{ b.id }}" data-code="{{ b.code }}" {% if b.id == selected_branch %}selected{% endif %}>{{ b.name_ar }}</option>
                 {% endfor %}
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>التخصص</label>
+              <select name="specialty" id="specialtyFilter" class="form-select" {% if not selected_branch %}disabled{% endif %}>
+                {% if selected_branch %}
+                  <option value="">كل تخصصات هذه الشعبة</option>
+                  {% if selected_specialty %}<option value="{{ selected_specialty }}" selected>{{ selected_specialty }}</option>{% endif %}
+                {% else %}
+                  <option value="">اختر شعبة أولا</option>
+                {% endif %}
               </select>
             </div>
             <div class="filter-group">
@@ -166,5 +176,12 @@
 {% endblock %}
 
 {% block extra_js %}
+<script>
+  window.CATALOG_FILTERS = {
+    specialtiesApiUrl: "{% url 'specialty-list' %}",
+    selectedSpecialty: "{{ selected_specialty|escapejs }}"
+  };
+</script>
+<script src="{% static 'enrollment/js/catalog-filters.js' %}"></script>
 <script src="{% static 'enrollment/js/catalog.js' %}"></script>
 {% endblock %}

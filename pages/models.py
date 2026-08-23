@@ -1,6 +1,9 @@
 import hashlib
 
+from django.core.validators import FileExtensionValidator
 from django.db import models
+
+VIDEO_EXTENSIONS = ["mp4", "webm", "mov"]
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -124,6 +127,25 @@ class SiteSettings(SingletonModel):
         "رابط يوتيوب (embed)",
         blank=True,
         default="https://www.youtube.com/embed/1h4-kRB8OjA?si=6XjJKFKHlIqeWta_",
+    )
+
+    # Prologue / epilogue videos (home page) — uploadable, fall back to the
+    # bundled static file when empty so existing deployments keep working.
+    prologue_video = models.FileField(
+        "فيديو المقدمة (Prologue)",
+        upload_to="site/videos/",
+        blank=True,
+        null=True,
+        validators=[FileExtensionValidator(VIDEO_EXTENSIONS)],
+        help_text="MP4 / WebM / MOV — إن تُرك فارغا يُستعمل الفيديو الافتراضي المرفق بالموقع.",
+    )
+    epilogue_video = models.FileField(
+        "فيديو الخاتمة (Epilogue)",
+        upload_to="site/videos/",
+        blank=True,
+        null=True,
+        validators=[FileExtensionValidator(VIDEO_EXTENSIONS)],
+        help_text="MP4 / WebM / MOV — إن تُرك فارغا يُستعمل الفيديو الافتراضي المرفق بالموقع.",
     )
 
     # Gallery / carousel intro

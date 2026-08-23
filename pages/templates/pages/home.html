@@ -12,7 +12,7 @@
 <!-- ══════════════════ PROLOGUE VIDEO ══════════════════ -->
 <section id="prologue-video">
   <div class="prologue-video-wrap">
-    <video class="prologue-video-el" src="{% static 'pages/videos/prologue.mp4' %}" controls playsinline preload="metadata">
+    <video class="prologue-video-el" src="{% if settings.prologue_video %}{{ settings.prologue_video.url }}{% else %}{% static 'pages/videos/prologue.mp4' %}{% endif %}" controls playsinline preload="metadata">
       متصفحك لا يدعم عرض الفيديو.
     </video>
     <div class="prologue-video-badge">
@@ -484,7 +484,7 @@
     </div>
     <div class="row justify-content-center reveal">
       <div class="col-lg-9">
-        <video class="w-100 d-block" style="border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.35);" src="{% static 'pages/videos/epilogue.mp4' %}" controls playsinline preload="metadata">
+        <video class="w-100 d-block" style="border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.35);" src="{% if settings.epilogue_video %}{{ settings.epilogue_video.url }}{% else %}{% static 'pages/videos/epilogue.mp4' %}{% endif %}" controls playsinline preload="metadata">
           متصفحك لا يدعم عرض الفيديو.
         </video>
       </div>
