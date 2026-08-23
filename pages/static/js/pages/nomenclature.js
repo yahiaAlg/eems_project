@@ -13,6 +13,7 @@
   const noResults = document.getElementById('noResults');
 
   totalCount.textContent = data.length;
+  const catalogUrl = window.CATALOG_URL || '';
 
   function highlight(text, query) {
     if (!query) return text;
@@ -39,6 +40,13 @@
           <td class="nomen-name">${highlight(name, searchQ)}</td>
           <td><span class="nomen-branch-badge">${highlight(branch, searchQ)}</span></td>
         `;
+        if (catalogUrl) {
+          tr.style.cursor = 'pointer';
+          tr.title = 'عرض تكوينات هذا التخصص';
+          tr.addEventListener('click', () => {
+            window.location.href = `${catalogUrl}?specialty=${encodeURIComponent(code)}`;
+          });
+        }
         tbody.appendChild(tr);
       }
     });

@@ -1,112 +1,167 @@
-from datetime import date
+import csv
+from collections import Counter
+from pathlib import Path
 
+from django.conf import settings as django_settings
 from django.core.management.base import BaseCommand
 
-from enrollment.models import FormationSession, Offering
+from enrollment.models import FormationSession, Offering, Formateur
+from pages.models import Branch, Specialty
+
+CSV_DIR = Path(django_settings.BASE_DIR) / "docs"
+
+# These 4 codes were hand-curated (rich Arabic descriptions, images, an existing
+# accepted enrollment and assigned formateurs) for the September 2025 demo
+# session. We never touch/overwrite them here — everything else from the real
+# CSV exports is added alongside them in a separate, general session.
+LEGACY_CODES = {"CIP01Q", "MME07Q", "TAG0701", "TAG0704"}
+
+
+def read_csv(name):
+    with open(CSV_DIR / name, newline="", encoding="utf-8") as f:
+        return list(csv.DictReader(f))
 
 
 class Command(BaseCommand):
-    help = "يعبئ قاعدة البيانات ببيانات دورة سبتمبر 2025 (مطابقة لملصقات EEMS الترويجية)."
+    help = (
+        "يعبئ قاعدة البيانات بالبيانات الحقيقية لمؤسسة إيمس (الفروع، التخصصات، "
+        "عروض التكوين، والمكوّنون) انطلاقا من ملفات CSV الموجودة في docs/ "
+        "(Branch / Specialty / Formation / Trainer). لا يمس هذا الأمر عروض "
+        "التكوين الأربعة المنسّقة يدويا لدورة سبتمبر 2025."
+    )
 
     def handle(self, *args, **options):
+        branches = self.seed_branches()
+        specialties_by_id = self.seed_specialties(branches)
+        session = self.seed_session()
+        self.seed_offerings(session, specialties_by_id)
+        self.seed_formateurs()
+        self.stdout.write(self.style.SUCCESS("تم تحميل بيانات إيمس الحقيقية من ملفات CSV بنجاح."))
+
+    # ------------------------------------------------------------------
+    def seed_branches(self):
+        branches = {}
+        for row in read_csv("Branch-2026-08-23.csv"):
+            branch, _ = Branch.objects.update_or_create(
+                code=row["abbreviation"],
+                defaults=dict(
+                    name_ar=row["name_ar"],
+                    name_fr=row["name"],
+                    is_active=True,
+                ),
+            )
+            branches[row["abbreviation"]] = branch
+        self.stdout.write(self.style.SUCCESS(f"  ✔ {len(branches)} فرع (Branch CSV)"))
+        return branches
+
+    # ------------------------------------------------------------------
+    def seed_specialties(self, branches):
+        by_id = {}
+        for row in read_csv("Specialty-2026-08-23.csv"):
+            branch = branches.get(row["branch_abbreviation"])
+            if not branch:
+                continue
+            code = f"{row['branch_abbreviation']}{row['code']}"
+            name = row["title_ar"].strip() or row["title"].strip()
+            specialty, _ = Specialty.objects.update_or_create(
+                code=code,
+                defaults=dict(name=name, branch=branch),
+            )
+            by_id[row["id"]] = specialty
+        self.stdout.write(self.style.SUCCESS(f"  ✔ {len(by_id)} تخصص (Specialty CSV)"))
+        return by_id
+
+    # ------------------------------------------------------------------
+    def seed_session(self):
         session, _ = FormationSession.objects.update_or_create(
-            slug="septembre-2025",
+            slug="catalogue-eems",
             defaults=dict(
-                name="الدخول المهني — دورة سبتمبر 2025",
-                start_date=date(2025, 9, 1),
-                registration_deadline=date(2025, 9, 20),
+                name="الكتالوج العام لتكوينات إيمس",
                 is_active=True,
-                order=1,
+                order=0,
             ),
         )
+        return session
 
-        offerings = [
-            dict(
-                code="CIP01Q", title="عون الوقاية والأمن",
-                branch_label="الكيمياء الصناعية والبلاستيك",
-                qualification_level=None, certificate_type="qualification",
-                entry_level="sec3", duration_months=6,
-                monthly_fee=10000, total_fee=60000, seats_available=15,
-                description=(
-                    "يعمل عون الوقاية تحت سلطة رئيسه على احترام قواعد الأمن داخل "
-                    "المنشآت ووقاية العمال والمعدات من حوادث العمل."
-                ),
-                main_tasks=(
-                    "إتقان أساليب المراقبة والتدخل والإجراءات الوقائية للحوادث\n"
-                    "معرفة قوانين وتشريعات السلامة والصحة المهنية والبيئية\n"
-                    "تحديد وتقييم المخاطر وطرق الوقاية في مكان العمل\n"
-                    "رصد فعالية تطبيق قواعد السلامة من طرف المهنيين\n"
-                    "المساعدة في إدارة الأزمة بعد وقوع الحادث\n"
-                    "المشاركة في دورة IOSH Managing البريطانية"
-                ),
-                poster_url="https://picsum.photos/seed/CIP01Q/700/500",
-                background_url="https://picsum.photos/seed/CIP01Q-bg/1600/900",
-                video_url="https://www.youtube.com/watch?v=aXaQ6O5ao9Y",
-                order=1,
-            ),
-            dict(
-                code="MME07Q", title="سائق رافعة الأثقال",
-                branch_label="ميكانيك المحركات والآلات",
-                qualification_level=None, certificate_type="qualification",
-                entry_level="none", duration_months=3,
-                monthly_fee=8000, total_fee=24000, seats_available=12,
-                description="تكوين تأهيلي لقيادة الرافعة الشوكية (Chariot élévateur) وفق معايير السلامة.",
-                main_tasks="قيادة الرافعة الشوكية بأمان\nمناولة ونقل البضائع داخل المخازن\nاحترام قواعد السلامة أثناء المناولة",
-                poster_url="https://picsum.photos/seed/MME07Q/700/500",
-                background_url="https://picsum.photos/seed/MME07Q-bg/1600/900",
-                video_url="https://www.youtube.com/watch?v=8u2QRvhAdKU",
-                order=2,
-            ),
-            dict(
-                code="TAG0701", title="أمين مخزن (Magasinier)",
-                branch_label="تقنيات الإدارة والتسيير",
-                qualification_level=2, certificate_type="bpm",
-                entry_level="middle4", duration_months=12,
-                monthly_fee=10000, total_fee=120000, seats_available=12,
-                description=(
-                    "يتولى القيام بالواجبات والمهام المتعلقة بتخزين البضائع، "
-                    "ينظم المخزن ويحافظ على سلامته."
-                ),
-                main_tasks=(
-                    "استقبال وفحص البضائع الواردة\n"
-                    "تجهيز طلبات العملاء وشحنها\n"
-                    "ضبط ومراقبة ما يخرج من المخزن\n"
-                    "القيام بعمليات الجرد الدورية\n"
-                    "إدارة وتنسيق مساحات التخزين"
-                ),
-                poster_url="https://picsum.photos/seed/TAG0701/700/500",
-                background_url="https://picsum.photos/seed/TAG0701-bg/1600/900",
-                order=3,
-            ),
-            dict(
-                code="TAG0704", title="التأمينات",
-                branch_label="تقنيات الإدارة والتسيير",
-                qualification_level=3, certificate_type="bpm",
-                entry_level="middle4", duration_months=18,
-                monthly_fee=12000, total_fee=216000, seats_available=12,
-                description=(
-                    "يقدم استشارات ومعلومات للزبائن الخواص والمؤسسات حول منتوج "
-                    "التأمينات (الحريق، الحياة...)."
-                ),
-                main_tasks=(
-                    "الإشراف على سوق التأمين (استشارة ومساعدة)\n"
-                    "بيع منتوجات التأمينات\n"
-                    "التحاور مع الزبائن لتحديد نمط التأمين وشروط الضمانات\n"
-                    "متابعة ملفات الزبائن وتقييم المخاطر"
-                ),
-                poster_url="https://picsum.photos/seed/TAG0704/700/500",
-                background_url="https://picsum.photos/seed/TAG0704-bg/1600/900",
-                order=4,
-            ),
-        ]
+    # ------------------------------------------------------------------
+    def seed_offerings(self, session, specialties_by_id):
+        rows = read_csv("Formation-2026-08-23.csv")
+        code_counts = Counter(r["code"].strip() for r in rows)
 
-        for data in offerings:
-            code = data.pop("code")
-            title = data.pop("title")
+        # A handful of certificate-producing courses get featured on the home page.
+        featured_ids = {
+            r["id"] for r in rows
+            if r["produces_certificate"] == "1" and r["code"].strip() not in LEGACY_CODES
+        }
+        featured_ids = set(list(featured_ids)[:4])
+
+        created = 0
+        for row in rows:
+            base_code = row["code"].strip() or f"FORM{row['id']}"
+            if base_code in LEGACY_CODES:
+                continue  # preserve curated demo content untouched
+
+            code = base_code if code_counts[base_code] == 1 else f"{base_code}-{row['id']}"
+
+            specialty = None
+            specialty_id = row["specialty_id"].strip()
+            if specialty_id:
+                specialty = specialties_by_id.get(specialty_id)
+            if specialty is None:
+                specialty = Specialty.objects.filter(code=base_code).first()
+
+            title = row["title_ar"].strip() or row["title"].strip()
+            category = row["category_name"].strip()
+            branch_label = (specialty.branch.name_ar if specialty else "") or category or "تكوين عام"
+
+            try:
+                duration_days = int(row["duration_days"] or 0)
+            except ValueError:
+                duration_days = 0
+            duration_months = max(1, round(duration_days / 30)) if duration_days else 1
+
+            try:
+                seats = int(row["max_participants"] or 0)
+            except ValueError:
+                seats = 0
+
+            description = f"دورة تكوينية ضمن مجال {category}." if category else ""
+            if duration_days:
+                hours = row["duration_hours"].strip()
+                description += f" المدة: {duration_days} يوم ({hours} ساعة تكوين)."
+
             Offering.objects.update_or_create(
                 session=session, code=code,
-                defaults=dict(title=title, is_active=True, **data),
+                defaults=dict(
+                    title=title,
+                    branch_label=branch_label,
+                    specialty=specialty,
+                    duration_months=duration_months,
+                    seats_available=seats,
+                    description=description.strip(),
+                    is_active=True,
+                    is_featured=row["id"] in featured_ids,
+                    order=int(row["id"]),
+                ),
             )
-            self.stdout.write(self.style.SUCCESS(f"✔ {code} — {title}"))
+            created += 1
+        self.stdout.write(self.style.SUCCESS(f"  ✔ {created} عرض تكوين (Formation CSV)"))
 
-        self.stdout.write(self.style.SUCCESS("تم تحميل بيانات دورة سبتمبر 2025 بنجاح."))
+    # ------------------------------------------------------------------
+    def seed_formateurs(self):
+        created = 0
+        for row in read_csv("Trainer-2026-08-23.csv"):
+            first_ar = row["first_name_ar"].strip()
+            last_ar = row["last_name_ar"].strip()
+            full_name = (
+                f"{first_ar} {last_ar}".strip() if (first_ar or last_ar)
+                else f"{row['first_name'].strip()} {row['last_name'].strip()}".strip()
+            )
+            if not full_name:
+                continue
+            _, is_new = Formateur.objects.get_or_create(
+                full_name=full_name,
+                defaults=dict(is_active=row["is_active"] == "1"),
+            )
+            created += 1 if is_new else 0
+        self.stdout.write(self.style.SUCCESS(f"  ✔ {created} مكوّن جديد (Trainer CSV)"))

@@ -26,6 +26,7 @@ def catalog(request):
     branch_id = request.GET.get("branch") or ""
     level = request.GET.get("level") or ""
     formateur_slug = request.GET.get("formateur") or ""
+    specialty_code = request.GET.get("specialty") or ""
     query = request.GET.get("q") or ""
 
     offerings = (
@@ -40,6 +41,8 @@ def catalog(request):
         offerings = offerings.filter(qualification_level=level)
     if formateur_slug:
         offerings = offerings.filter(formateur__slug=formateur_slug)
+    if specialty_code:
+        offerings = offerings.filter(specialty__code=specialty_code)
     if query:
         offerings = offerings.filter(
             Q(title__icontains=query) | Q(code__icontains=query) | Q(branch_label__icontains=query)
@@ -55,6 +58,7 @@ def catalog(request):
         "selected_branch": int(branch_id) if branch_id.isdigit() else None,
         "selected_level": int(level) if level.isdigit() else None,
         "selected_formateur": formateur_slug,
+        "selected_specialty": specialty_code,
         "query": query,
         **_shared_chrome_context(),
     }

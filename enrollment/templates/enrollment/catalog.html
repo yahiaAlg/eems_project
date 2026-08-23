@@ -20,6 +20,9 @@
       <div class="stat-pill"><iconify-icon icon="mdi:calendar-check-outline"></iconify-icon><div><b>{{ sessions.count }}</b> <span class="d-block">دورة نشطة</span></div></div>
       <div class="stat-pill"><iconify-icon icon="mdi:sitemap-outline"></iconify-icon><div><b>{{ branches.count }}</b> <span class="d-block">شعبة مهنية</span></div></div>
     </div>
+    <a href="{% url 'pages:nomenclature' %}" class="d-inline-flex align-items-center gap-2 mt-4" style="color:rgba(255,255,255,.75);font-weight:700;font-size:13.5px;text-decoration:none;">
+      <i class="bi bi-list-ul"></i> تصفّح مدونة الشعب والتخصصات الرسمية (2019) <i class="bi bi-arrow-left"></i>
+    </a>
   </div>
 </section>
 
@@ -31,11 +34,20 @@
         <div id="filters-panel">
           <div class="filters-panel-head">
             <span><i class="bi bi-funnel-fill"></i> فلترة التخصصات</span>
-            {% if query or selected_session or selected_branch or selected_level or selected_formateur %}
+            {% if query or selected_session or selected_branch or selected_level or selected_formateur or selected_specialty %}
             <a href="{% url 'enrollment:catalog' %}" class="filters-clear"><i class="bi bi-x-lg"></i> مسح</a>
             {% endif %}
           </div>
+          {% if selected_specialty %}
+          <div class="filter-group" style="background:rgba(245,158,11,.08);border-radius:8px;padding:10px 12px;">
+            <span style="font-size:12.5px;font-weight:700;">
+              <i class="bi bi-bookmark-star-fill" style="color:var(--accent);"></i>
+              مصفّى حسب رمز التخصص: <span dir="ltr">{{ selected_specialty }}</span>
+            </span>
+          </div>
+          {% endif %}
           <form method="get" id="filters-form">
+            <input type="hidden" name="specialty" value="{{ selected_specialty }}">
             <div class="filter-group">
               <label>بحث</label>
               <div class="filter-search">
@@ -91,7 +103,7 @@
       <!-- ── Results ── -->
       <div class="col-lg-9">
         <div id="results-toolbar">
-          <div class="results-count"><strong>{{ offerings|length }}</strong> تخصص{% if query or selected_session or selected_branch or selected_level or selected_formateur %} مطابق للفلاتر{% endif %}</div>
+          <div class="results-count"><strong>{{ offerings|length }}</strong> تخصص{% if query or selected_session or selected_branch or selected_level or selected_formateur or selected_specialty %} مطابق للفلاتر{% endif %}</div>
           <div class="view-toggle">
             <button type="button" data-view="grid"><i class="bi bi-grid-3x3-gap-fill"></i> شبكة</button>
             <button type="button" data-view="list"><i class="bi bi-list-ul"></i> قائمة</button>

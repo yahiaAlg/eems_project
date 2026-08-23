@@ -9,6 +9,13 @@
 
 {% include "pages/partials/_navbar.html" with active_nav="home" %}
 
+<!-- ══════════════════ PROLOGUE VIDEO ══════════════════ -->
+<section id="prologue-video" style="padding:0;background:var(--navy);">
+  <video class="w-100 d-block" style="max-height:82vh;object-fit:cover;" src="{% static 'pages/videos/prologue.mp4' %}" controls playsinline preload="metadata">
+    متصفحك لا يدعم عرض الفيديو.
+  </video>
+</section>
+
 <!-- ══════════════════ HERO ══════════════════ -->
 <section id="hero">
   <div class="container position-relative" style="z-index:1;">
@@ -226,7 +233,7 @@
     <div class="row g-3" id="branches-grid">
       {% for branch in branches %}
       <div class="col-sm-6 col-md-4 col-xl-3 reveal" style="transition-delay:{{ forloop.counter0 }}.03s">
-        <a href="{% url 'pages:nomenclature' %}#{{ branch.code }}" class="branch-card">
+        <a href="{% url 'enrollment:catalog' %}?branch={{ branch.id }}" class="branch-card">
           <div class="branch-dot" style="background:{{ branch.color }}"></div>
           <div style="min-width:0;">
             <div class="branch-code">{{ branch.code }}</div>
@@ -460,6 +467,23 @@
   </div>
 </section>
 {% endif %}
+
+<!-- ══════════════════ EPILOGUE VIDEO ══════════════════ -->
+<section id="epilogue-video" style="padding:64px 0;background:var(--navy);">
+  <div class="container position-relative" style="z-index:1;">
+    <div class="text-center mb-4 reveal">
+      <div class="section-label" style="color:var(--accent)">خاتمة</div>
+      <h2 class="section-title" style="color:#fff;">كلمة أخيرة</h2>
+    </div>
+    <div class="row justify-content-center reveal">
+      <div class="col-lg-9">
+        <video class="w-100 d-block" style="border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.35);" src="{% static 'pages/videos/epilogue.mp4' %}" controls playsinline preload="metadata">
+          متصفحك لا يدعم عرض الفيديو.
+        </video>
+      </div>
+    </div>
+  </div>
+</section>
 
 {% include "pages/partials/_footer.html" %}
 

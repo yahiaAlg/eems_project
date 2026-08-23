@@ -68,5 +68,6 @@
 
 {% block extra_js %}
 {{ specialties_data|json_script:"specialties-data" }}
+<script>window.CATALOG_URL = "{% url 'enrollment:catalog' %}";</script>
 <script src="{% static 'js/pages/nomenclature.js' %}"></script>
 {% endblock %}

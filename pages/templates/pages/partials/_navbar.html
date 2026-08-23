@@ -39,8 +39,9 @@
         <li class="nav-item dropdown">
           <a class="nav-link dropdown-toggle {% if active_nav == 'nomenclature' %}active{% endif %}" href="#" data-bs-toggle="dropdown">التكوينات</a>
           <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="{% url 'pages:home' %}#formations"><i class="bi bi-collection-fill"></i> الفروع المهنية</a></li>
-            <li><a class="dropdown-item" href="{% url 'pages:nomenclature' %}"><i class="bi bi-list-ul"></i> تصنيف التخصصات</a></li>
+            <li><a class="dropdown-item" href="{% url 'enrollment:catalog' %}"><i class="bi bi-collection-fill"></i> التخصصات والتكوينات</a></li>
+            <li><a class="dropdown-item" href="{% url 'pages:home' %}#formations"><i class="bi bi-diagram-3-fill"></i> الفروع المهنية</a></li>
+            <li><a class="dropdown-item" href="{% url 'pages:nomenclature' %}"><i class="bi bi-list-ul"></i> تصنيف التخصصات (المدونة الرسمية)</a></li>
             <li><a class="dropdown-item" href="{% url 'pages:home' %}#sessions"><i class="bi bi-calendar3-fill"></i> الدورات القادمة</a></li>
           </ul>
         </li>
