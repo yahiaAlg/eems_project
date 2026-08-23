@@ -10,10 +10,17 @@
 {% include "pages/partials/_navbar.html" with active_nav="home" %}
 
 <!-- ══════════════════ PROLOGUE VIDEO ══════════════════ -->
-<section id="prologue-video" style="padding:0;background:var(--navy);">
-  <video class="w-100 d-block" style="max-height:82vh;object-fit:cover;" src="{% static 'pages/videos/prologue.mp4' %}" controls playsinline preload="metadata">
-    متصفحك لا يدعم عرض الفيديو.
-  </video>
+<section id="prologue-video">
+  <div class="prologue-video-wrap">
+    <video class="prologue-video-el" src="{% static 'pages/videos/prologue.mp4' %}" controls playsinline preload="metadata">
+      متصفحك لا يدعم عرض الفيديو.
+    </video>
+    <div class="prologue-video-badge">
+      <span class="section-label" style="color:var(--accent)">مرحبا بكم في</span>
+      <strong>{{ settings.site_full_name }}</strong>
+    </div>
+    <div class="prologue-video-fade"></div>
+  </div>
 </section>
 
 <!-- ══════════════════ HERO ══════════════════ -->
@@ -279,7 +286,7 @@
     <div class="row g-3">
       {% for session in sessions %}
       <div class="col-lg-6 reveal" style="transition-delay:{{ forloop.counter0 }}.07s">
-        <div class="session-card">
+        <a href="{% url 'enrollment:catalog' %}{% if session.branch_id %}?branch={{ session.branch_id }}{% endif %}" class="session-card" title="عرض تكوينات هذه الدورة في الكتالوج">
           <div class="session-date-box">
             <div class="session-date-day">{{ session.start_date|date:"d" }}</div>
             <div class="session-date-mon">{{ session.start_date|dz_month }}</div>
@@ -292,7 +299,7 @@
             </div>
           </div>
           <span class="session-badge {% if session.status == 'open' %}badge-open{% else %}badge-planned{% endif %}">{{ session.get_status_display }}</span>
-        </div>
+        </a>
       </div>
       {% endfor %}
     </div>

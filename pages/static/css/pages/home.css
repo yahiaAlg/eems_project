@@ -1,5 +1,53 @@
 /* home.html — page-specific styles (tokens/navbar/footer/reveal/back-top live in css/base.css) */
 
+/* ── Prologue video (cinematic opener, right under the navbar) ───── */
+#prologue-video { background: var(--navy); }
+.prologue-video-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 21 / 9;
+  min-height: 320px;
+  max-height: 78vh;
+  overflow: hidden;
+  background: var(--navy);
+}
+.prologue-video-el {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.prologue-video-badge {
+  position: absolute;
+  top: 28px;
+  inset-inline-start: 28px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  pointer-events: none;
+  text-shadow: 0 2px 12px rgba(0,0,0,.55);
+}
+.prologue-video-badge .section-label { margin-bottom: 0; }
+.prologue-video-badge strong {
+  font-family: var(--font-head);
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff;
+}
+.prologue-video-fade {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 90px;
+  background: linear-gradient(to bottom, transparent, var(--navy));
+  pointer-events: none;
+  z-index: 1;
+}
+@media (max-width: 767.98px) {
+  .prologue-video-wrap { aspect-ratio: 9 / 12; min-height: 380px; max-height: 88vh; }
+}
+
 /* ── Hero ────────────────────────────────────────────────── */
 #hero {
   background: var(--navy);
@@ -161,6 +209,7 @@
 .session-card {
   background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 22px 24px;
   display: flex; align-items: center; gap: 18px; box-shadow: var(--shadow); transition: all .18s;
+  text-decoration: none; color: inherit; cursor: pointer;
 }
 .session-card:hover { box-shadow: var(--shadow-md); border-color: rgba(245,158,11,.4); transform: translateX(-4px); }
 .session-date-box { background: var(--navy); color: #fff; border-radius: 10px; width: 54px; flex-shrink: 0; text-align: center; padding: 10px 0; }

@@ -1,8 +1,15 @@
 """
-Seed sample Formateur (instructor) profiles, with a tasteful generated
-initials-avatar photo (brand-colored, no external assets), and assign
-them round-robin to a handful of existing active Offerings so the
-catalogue/detail/profile pages have something real to show.
+Give the real formateurs (imported from docs/Trainer-2026-08-23.csv by
+seed_enrollment) a tasteful generated initials-avatar photo (brand-colored,
+no external assets), and assign them round-robin to a handful of existing
+active Offerings so the catalogue/detail/profile pages have something real
+to show.
+
+This command deliberately does NOT invent trainer names, titles, bios, or
+years of experience. The Trainer CSV export only contains a name and an
+employment_type/is_active flag — no specialty, no biography, no years of
+experience — so those fields are intentionally left blank here for an
+admin to fill in later from real records, rather than fabricated.
 
 Idempotent: safe to run multiple times.
 
@@ -20,47 +27,6 @@ from enrollment.models import Formateur, Offering
 
 NAVY = (15, 23, 42)
 ACCENT = (245, 158, 11)
-
-FORMATEURS = [
-    {
-        "full_name": "أ. كريم بوزيدي",
-        "title": "خبير HSE معتمد — مدقق ISO 45001",
-        "years_experience": 14,
-        "bio": (
-            "مهندس في السلامة الصناعية بخبرة تفوق 14 سنة في قطاعي المحروقات والبناء. "
-            "شارك في تكوين أكثر من 1200 متربص، ومدقق معتمد لأنظمة إدارة الصحة والسلامة "
-            "المهنية ISO 45001. يركّز في تكويناته على الجانب التطبيقي والحالات الميدانية الحقيقية."
-        ),
-    },
-    {
-        "full_name": "أ. سميرة حاجي",
-        "title": "أخصائية بيئة وتسيير المخاطر الصناعية",
-        "years_experience": 9,
-        "bio": (
-            "حاصلة على ماجستير في علوم البيئة، عملت لسنوات كمسؤولة بيئة في مؤسسات صناعية "
-            "كبرى قبل الانضمام إلى فريق التكوين بمؤسسة التميز. تُدرّس تخصصات إدارة النفايات "
-            "والتدقيق البيئي بأسلوب عملي قريب من واقع المؤسسات الجزائرية."
-        ),
-    },
-    {
-        "full_name": "أ. ياسين مرزوقي",
-        "title": "مكوّن معتمد في البناء والأشغال العمومية",
-        "years_experience": 11,
-        "bio": (
-            "مهندس مدني بخبرة ميدانية واسعة في مشاريع البناء والأشغال العمومية بالجزائر. "
-            "يجمع بين التكوين النظري والتطبيق الميداني المباشر في الورشات الشريكة للمؤسسة."
-        ),
-    },
-    {
-        "full_name": "أ. أمينة شريف",
-        "title": "مكوّنة في التسيير الإداري والمحاسبي",
-        "years_experience": 7,
-        "bio": (
-            "خبيرة في التسيير الإداري والمحاسبي للمؤسسات الصغيرة والمتوسطة، عملت مستشارة "
-            "لدى عدة مؤسسات ناشئة بسطيف قبل التفرغ للتكوين المهني بدوام كامل."
-        ),
-    },
-]
 
 
 def _initials(name):
@@ -81,12 +47,19 @@ def _avatar_photo(name, size=(400, 400)):
 
     initials = _initials(name)
     try:
-        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 140)
+        font = ImageFont.truetype(
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 140
+        )
     except OSError:
         font = ImageFont.load_default()
     bbox = draw.textbbox((0, 0), initials, font=font)
     tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-    draw.text(((w - tw) / 2 - bbox[0], (h - th) / 2 - bbox[1]), initials, fill=(255, 255, 255), font=font)
+    draw.text(
+        ((w - tw) / 2 - bbox[0], (h - th) / 2 - bbox[1]),
+        initials,
+        fill=(255, 255, 255),
+        font=font,
+    )
 
     buf = io.BytesIO()
     img.save(buf, format="JPEG", quality=88)
@@ -94,33 +67,44 @@ def _avatar_photo(name, size=(400, 400)):
 
 
 class Command(BaseCommand):
-    help = "Seed sample Formateur profiles and assign them round-robin to existing active offerings."
+    help = (
+        "Give real (Trainer-CSV-imported) formateurs a placeholder avatar "
+        "photo and assign them round-robin to existing active offerings."
+    )
 
     @transaction.atomic
     def handle(self, *args, **options):
-        formateurs = []
-        for i, data in enumerate(FORMATEURS, start=1):
-            f, _ = Formateur.objects.update_or_create(
-                full_name=data["full_name"],
-                defaults={
-                    "title": data["title"],
-                    "bio": data["bio"],
-                    "years_experience": data["years_experience"],
-                    "order": i,
-                    "is_active": True,
-                },
+        formateurs = list(
+            Formateur.objects.filter(is_active=True).order_by("full_name")
+        )
+        if not formateurs:
+            self.stdout.write(
+                self.style.WARNING(
+                    "↷ لا يوجد مكوّنون — شغّل 'python manage.py seed_enrollment' أولا "
+                    "لاستيراد المكوّنين الحقيقيين من ملف Trainer CSV."
+                )
             )
+            return
+
+        avatars = 0
+        for f in formateurs:
             if not f.photo:
                 f.photo.save(f"{f.slug}.jpg", _avatar_photo(f.full_name), save=False)
-                f.save()
-            formateurs.append(f)
-        self.stdout.write(self.style.SUCCESS(f"✔ {len(formateurs)} formateurs"))
+                f.save(update_fields=["photo"])
+                avatars += 1
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"✔ {avatars} صورة رمزية جديدة عبر {len(formateurs)} مكوّن حقيقي (Trainer CSV)"
+            )
+        )
 
         offerings = list(Offering.objects.filter(is_active=True).order_by("order"))
         if not offerings:
-            self.stdout.write(self.style.WARNING(
-                "↷ لا توجد تخصصات — شغّل 'python manage.py seed_enrollment' أولا لربط المكوّنين بتكوينات."
-            ))
+            self.stdout.write(
+                self.style.WARNING(
+                    "↷ لا توجد تخصصات — شغّل 'python manage.py seed_enrollment' أولا لربط المكوّنين بتكوينات."
+                )
+            )
             return
 
         assigned = 0
@@ -130,4 +114,6 @@ class Command(BaseCommand):
             offering.formateur = formateurs[i % len(formateurs)]
             offering.save(update_fields=["formateur"])
             assigned += 1
-        self.stdout.write(self.style.SUCCESS(f"✔ assigned formateurs to {assigned} offering(s)"))
+        self.stdout.write(
+            self.style.SUCCESS(f"✔ assigned formateurs to {assigned} offering(s)")
+        )

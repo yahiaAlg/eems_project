@@ -6,40 +6,50 @@
 #   source venv/bin/activate
 #   ./reseed_all.sh
 #
-# Invoice numbering (proforma_reference) is generated from a shared,
-# per-year sequence. The sequel scripts force that sequence to specific
-# historical numbers, so any leftover invoices from a previous partial
-# run WILL collide. We therefore always flush invoices/sequences first —
-# clients and formations are left untouched (get_or_create, safe to reuse).
+# All seed commands below are idempotent (update_or_create / get_or_create),
+# so this is safe to re-run at any time — nothing is flushed first.
+#
+# Order matters:
+#   1. seed_data          — base site content + official 2019 nomenclature
+#                            (23 branches / ~500 specialties)
+#   2. seed_enrollment     — real institutional data from the CSV exports in
+#                            docs/ (Branch/Specialty/Formation/Trainer),
+#                            layered on top of the nomenclature by code
+#   3. seed_samples        — partners, process steps, testimonials
+#   4. seed_formateurs      — avatar photo + offering assignment for the
+#                            real formateurs imported from the Trainer CSV
+#   5. seed_formateur_profiles — certificate/career-timeline placeholders,
+#                            only for formateurs an admin has actually
+#                            curated (title/bio set) — never fabricated
+#                            for CSV-only trainers
+#   6. seed_fiche_technique — offering objectives / program / prerequisites
+#   7. seed_gallery         — secondary gallery images for sample offerings
+#   8. seed_about_faq       — About + FAQ page content
 set -euo pipefail
 
-echo "== 0/7: flush invoices & sequences (clients/formations kept) =="
-python manage.py shell -c "
-from financial.models import Invoice, InvoiceItem, InvoiceSequence
-InvoiceItem.objects.all().delete()
-Invoice.objects.all().delete()
-InvoiceSequence.objects.all().delete()
-print('  ✓ Invoice / InvoiceItem / InvoiceSequence cleared')
-"
+echo "== 1/8: base site content + official nomenclature =="
+python manage.py flush
+python manage.py seed_data
 
+echo "== 2/8: real institutional data (Branch/Specialty/Formation/Trainer CSVs) =="
+python manage.py seed_enrollment
 
+echo "== 3/8: home-page samples (partners, process steps, testimonials) =="
+python manage.py seed_samples
 
-echo "== 1/7: core formation catalog + clients + invoices =="
-python manage.py seed_formations
+echo "== 4/8: formateur profiles + offering assignment =="
+python manage.py seed_formateurs
 
-echo "== 3/7: sequel P0 =="
-python manage.py sequel_formations_seed_p0
+echo "== 5/8: formateur certificates, career timeline, CV placeholders =="
+python manage.py seed_formateur_profiles
 
-echo "== 4/7: sequel P1 =="
-python manage.py sequel_formations_seed_p1
+echo "== 6/8: fiche technique content =="
+python manage.py seed_fiche_technique
 
-echo "== 5/7: sequel P2 =="
-python manage.py sequel_formations_seed_p2
+echo "== 7/8: offering gallery images =="
+python manage.py seed_gallery
 
-echo "== 6/7: sequel P3 =="
-python manage.py sequel_formations_seed_p3
-
-echo "== 7/7: sequel P4 =="
-python manage.py sequel_formations_seed_p4
+echo "== 8/8: About + FAQ pages =="
+python manage.py seed_about_faq
 
 echo "✓ Full re-seed completed."
