@@ -150,14 +150,14 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "public"
 # STATICFILES_DIRS = [BASE_DIR / "pages" / "static"]   # remove this line —
 # "pages" is already in INSTALLED_APPS, so AppDirectoriesFinder finds
 # pages/static/ automatically. Listing it again in STATICFILES_DIRS
 # duplicates every file and causes "Found another file" warnings.
 
-MEDIA_URL = "media/"
+MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
