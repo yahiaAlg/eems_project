@@ -35,9 +35,19 @@
   text-decoration: none;
 }
 
+/* .wrap sits directly in <body>, which is a column flexbox (base.css, for
+   the sticky-footer trick). A flex item with horizontal auto-margins does
+   NOT get flexbox's default "stretch" cross-axis sizing — per spec, auto
+   margins on the cross axis opt the item OUT of stretch and shrink-wrap it
+   to its content instead, so max-width becomes a no-op ceiling that's
+   rarely reached and the box ends up far narrower than intended (worse the
+   less "wide" content it happens to contain). align-self:center replaces
+   the auto-margin centering so the item still stretches to max-width. */
 .wrap {
   max-width: 1040px;
-  margin: -44px auto 0;
+  align-self: center;
+  width: 100%;
+  margin: -44px 0 0;
   padding: 0 16px 88px;
   position: relative;
   z-index: 2;
