@@ -14,18 +14,39 @@
   <div class="container position-relative" style="z-index:1;">
     <div class="crumb"><a href="{% url 'pages:home' %}">الرئيسية</a> / مساحتي</div>
     <h1><iconify-icon icon="mdi:account-circle-outline"></iconify-icon> مساحتي</h1>
-    <p>أدخل رقم الهاتف الذي استعملته عند التسجيل لمتابعة حالة تسجيلاتك.</p>
+    <p>أدخل رقم الهاتف أو البريد الإلكتروني الذي استعملته عند التسجيل لمتابعة حالة تسجيلاتك.</p>
   </div>
 </section>
 
 <div class="wrap" style="max-width:520px;">
   <div class="panel">
-    <form method="post" novalidate>
+    <form method="post" novalidate id="loginForm">
       {% csrf_token %}
-      <div class="form-section-title"><iconify-icon icon="mdi:phone-outline"></iconify-icon> رقم الهاتف</div>
-      <label class="form-label">{{ form.phone.label }} *</label>
-      {{ form.phone }}
-      {% if form.phone.errors %}<ul class="errorlist">{% for e in form.phone.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+
+      <div class="login-method-toggle">
+        <label class="login-method-option">
+          <input type="radio" name="login_method" value="phone"
+            {% if form.login_method.value|default:"phone" != "email" %}checked{% endif %}>
+          <span><iconify-icon icon="mdi:phone-outline"></iconify-icon> الهاتف</span>
+        </label>
+        <label class="login-method-option">
+          <input type="radio" name="login_method" value="email"
+            {% if form.login_method.value == "email" %}checked{% endif %}>
+          <span><iconify-icon icon="mdi:email-outline"></iconify-icon> البريد الإلكتروني</span>
+        </label>
+      </div>
+
+      <div class="login-field" data-method="phone">
+        <label class="form-label">{{ form.phone.label }} *</label>
+        {{ form.phone }}
+        {% if form.phone.errors %}<ul class="errorlist">{% for e in form.phone.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+      </div>
+
+      <div class="login-field" data-method="email">
+        <label class="form-label">{{ form.email.label }} *</label>
+        {{ form.email }}
+        {% if form.email.errors %}<ul class="errorlist">{% for e in form.email.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+      </div>
 
       <button type="submit" class="btn-send"><iconify-icon icon="mdi:login-variant"></iconify-icon> الدخول إلى مساحتي</button>
     </form>
@@ -37,4 +58,27 @@
 </div>
 
 {% include "pages/partials/_footer.html" %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const form = document.getElementById('loginForm');
+  if (!form) return;
+  const radios = form.querySelectorAll('input[name="login_method"]');
+  const fields = form.querySelectorAll('.login-field');
+  function sync() {
+    const checked = form.querySelector('input[name="login_method"]:checked');
+    const method = checked ? checked.value : 'phone';
+    fields.forEach((f) => {
+      const active = f.dataset.method === method;
+      f.style.display = active ? '' : 'none';
+      const input = f.querySelector('input');
+      if (input && active) input.focus({ preventScroll: true });
+    });
+  }
+  radios.forEach((r) => r.addEventListener('change', sync));
+  sync();
+})();
+</script>
 {% endblock %}

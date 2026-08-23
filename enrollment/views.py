@@ -8,11 +8,31 @@ from django.views.decorators.http import require_POST
 
 from pages.emails import send_branded_mail
 from pages.forms import NewsletterForm
-from pages.models import Branch, InternalApp, NavLink, SiteSettings, SocialLink, Specialty
+from pages.models import (
+    Branch,
+    InternalApp,
+    NavLink,
+    SiteSettings,
+    SocialLink,
+    Specialty,
+)
 from pages.views import _visitor_stats
 
-from .forms import CommentForm, DashboardLoginForm, EnquiryForm, GeneralEnquiryForm, IndividualSubscribeForm
-from .models import Client, Enrollment, Formateur, FormationSession, Offering, Participant
+from .forms import (
+    CommentForm,
+    DashboardLoginForm,
+    EnquiryForm,
+    GeneralEnquiryForm,
+    IndividualSubscribeForm,
+)
+from .models import (
+    Client,
+    Enrollment,
+    Formateur,
+    FormationSession,
+    Offering,
+    Participant,
+)
 
 CLIENT_PHONE_SESSION_KEY = "client_phone"
 
@@ -36,10 +56,9 @@ def catalog(request):
     specialty_code = request.GET.get("specialty") or ""
     query = request.GET.get("q") or ""
 
-    offerings = (
-        Offering.objects.filter(is_active=True, session__is_active=True)
-        .select_related("session", "specialty__branch", "formateur")
-    )
+    offerings = Offering.objects.filter(
+        is_active=True, session__is_active=True
+    ).select_related("session", "specialty__branch", "formateur")
     if session_slug:
         offerings = offerings.filter(session__slug=session_slug)
     if branch_id:
@@ -52,14 +71,18 @@ def catalog(request):
         offerings = offerings.filter(specialty__code=specialty_code)
     if query:
         offerings = offerings.filter(
-            Q(title__icontains=query) | Q(code__icontains=query) | Q(branch_label__icontains=query)
+            Q(title__icontains=query)
+            | Q(code__icontains=query)
+            | Q(branch_label__icontains=query)
         )
 
     context = {
         "settings": SiteSettings.load(),
         "sessions": FormationSession.objects.filter(is_active=True),
         "branches": Branch.objects.filter(is_active=True),
-        "formateurs": Formateur.objects.filter(is_active=True, offerings__isnull=False).distinct(),
+        "formateurs": Formateur.objects.filter(
+            is_active=True, offerings__isnull=False
+        ).distinct(),
         "offerings": offerings,
         "selected_session": session_slug,
         "selected_branch": int(branch_id) if branch_id.isdigit() else None,
@@ -74,10 +97,9 @@ def catalog(request):
 
 def formateur_detail(request, slug):
     formateur = get_object_or_404(Formateur, slug=slug, is_active=True)
-    offerings = (
-        formateur.offerings.filter(is_active=True, session__is_active=True)
-        .select_related("session", "specialty__branch")
-    )
+    offerings = formateur.offerings.filter(
+        is_active=True, session__is_active=True
+    ).select_related("session", "specialty__branch")
     context = {
         "settings": SiteSettings.load(),
         "formateur": formateur,
@@ -120,7 +142,10 @@ def general_enquiry(request):
 
 def specialty_detail(request, session_slug, code):
     offering = get_object_or_404(
-        Offering, session__slug=session_slug, code=code, is_active=True,
+        Offering,
+        session__slug=session_slug,
+        code=code,
+        is_active=True,
     )
 
     comment_form = CommentForm()
@@ -157,7 +182,8 @@ def specialty_detail(request, session_slug, code):
         "comment_form": comment_form,
         "enquiry_form": enquiry_form,
         "related_offerings": Offering.objects.filter(
-            is_active=True, session=offering.session,
+            is_active=True,
+            session=offering.session,
         ).exclude(pk=offering.pk)[:3],
         **_shared_chrome_context(),
     }
@@ -170,7 +196,10 @@ def fiche_technique_print(request, session_slug, code):
     HTML with print CSS). Only reachable when the offering is on 'auto'
     mode; 'custom' mode offerings serve their uploaded file directly."""
     offering = get_object_or_404(
-        Offering, session__slug=session_slug, code=code, is_active=True,
+        Offering,
+        session__slug=session_slug,
+        code=code,
+        is_active=True,
     )
     context = {
         "offering": offering,
@@ -180,16 +209,24 @@ def fiche_technique_print(request, session_slug, code):
         "description_text": offering.description or "تعريف مفصل للتخصص متوفر قريبا.",
         "settings": SiteSettings.load(),
     }
-    return render(request, "enrollment/documents/fiche_technique_placeholder.html", context)
+    return render(
+        request, "enrollment/documents/fiche_technique_placeholder.html", context
+    )
 
 
 def subscribe(request, session_slug, code):
     offering = get_object_or_404(
-        Offering, session__slug=session_slug, code=code, is_active=True,
+        Offering,
+        session__slug=session_slug,
+        code=code,
+        is_active=True,
     )
 
     if offering.seats_remaining <= 0:
-        messages.warning(request, "تنبيه: اكتملت المقاعد المتاحة لهذا التخصص، يمكنكم التسجيل في قائمة الانتظار.")
+        messages.warning(
+            request,
+            "تنبيه: اكتملت المقاعد المتاحة لهذا التخصص، يمكنكم التسجيل في قائمة الانتظار.",
+        )
 
     if request.method == "POST":
         form = IndividualSubscribeForm(request.POST)
@@ -221,12 +258,16 @@ def subscribe(request, session_slug, code):
             if data.get("employment_status"):
                 extra.append(
                     "الوضعية المهنية: "
-                    + dict(form.fields["employment_status"].choices).get(data["employment_status"], "")
+                    + dict(form.fields["employment_status"].choices).get(
+                        data["employment_status"], ""
+                    )
                 )
             if data.get("preferred_contact_time"):
                 extra.append(
                     "الوقت المفضل للاتصال: "
-                    + dict(form.fields["preferred_contact_time"].choices).get(data["preferred_contact_time"], "")
+                    + dict(form.fields["preferred_contact_time"].choices).get(
+                        data["preferred_contact_time"], ""
+                    )
                 )
             if extra:
                 motivation_lines.append("\n".join(extra))
@@ -248,7 +289,12 @@ def subscribe(request, session_slug, code):
     else:
         form = IndividualSubscribeForm()
 
-    context = {"settings": SiteSettings.load(), "form": form, "offering": offering, **_shared_chrome_context()}
+    context = {
+        "settings": SiteSettings.load(),
+        "form": form,
+        "offering": offering,
+        **_shared_chrome_context(),
+    }
     return render(request, "enrollment/subscribe.html", context)
 
 
@@ -303,7 +349,9 @@ def ajax_offerings_for_specialty(request):
     specialty_code = request.GET.get("specialty") or ""
     offerings = (
         Offering.objects.filter(
-            specialty__code=specialty_code, is_active=True, session__is_active=True,
+            specialty__code=specialty_code,
+            is_active=True,
+            session__is_active=True,
         )
         .select_related("session")
         .order_by("session__order", "code")
@@ -314,7 +362,9 @@ def ajax_offerings_for_specialty(request):
             "title": o.title,
             "session_name": o.session.name,
             "seats_remaining": o.seats_remaining,
-            "subscribe_url": reverse("enrollment:subscribe", args=[o.session.slug, o.code]),
+            "subscribe_url": reverse(
+                "enrollment:subscribe", args=[o.session.slug, o.code]
+            ),
         }
         for o in offerings
     ]
@@ -326,20 +376,40 @@ def _dashboard_phone(request):
 
 
 def dashboard_login(request):
-    """Return access to 'مساحتي' with just the phone number used at
-    subscription time — there is no password anywhere in this flow."""
+    """Return access to 'مساحتي' with just the phone number or email used
+    at subscription time — there is no password anywhere in this flow."""
     if request.method == "POST":
         form = DashboardLoginForm(request.POST)
         if form.is_valid():
-            phone = form.cleaned_data["phone"]
-            if Client.objects.filter(phone=phone).exists():
-                request.session[CLIENT_PHONE_SESSION_KEY] = phone
+            method = form.cleaned_data.get("login_method") or "phone"
+            if method == "email":
+                email = form.cleaned_data["email"]
+                client = Client.objects.filter(email__iexact=email).first()
+                error_field = "email"
+                error_msg = "لم نجد أي تسجيل بهذا البريد الإلكتروني. تأكد منه أو سجّل في تكوين أولا."
+            else:
+                phone = form.cleaned_data["phone"]
+                client = Client.objects.filter(phone=phone).first()
+                error_field = "phone"
+                error_msg = (
+                    "لم نجد أي تسجيل بهذا الرقم. تأكد من الرقم أو سجّل في تكوين أولا."
+                )
+
+            if client:
+                # The dashboard/confirm/cancel views all key off the phone
+                # number, so a client found via email is logged in the
+                # same way as one found via phone.
+                request.session[CLIENT_PHONE_SESSION_KEY] = client.phone
                 return redirect("enrollment:dashboard")
-            form.add_error("phone", "لم نجد أي تسجيل بهذا الرقم. تأكد من الرقم أو سجّل في تكوين أولا.")
+            form.add_error(error_field, error_msg)
     else:
         form = DashboardLoginForm()
 
-    context = {"settings": SiteSettings.load(), "form": form, **_shared_chrome_context()}
+    context = {
+        "settings": SiteSettings.load(),
+        "form": form,
+        **_shared_chrome_context(),
+    }
     return render(request, "enrollment/dashboard_login.html", context)
 
 
@@ -358,7 +428,9 @@ def dashboard(request):
 
     enrollments = (
         Enrollment.objects.filter(client__phone=phone)
-        .select_related("offering__session", "offering__specialty__branch", "participant", "client")
+        .select_related(
+            "offering__session", "offering__specialty__branch", "participant", "client"
+        )
         .order_by("-created_at")
     )
     context = {
@@ -394,7 +466,9 @@ def dashboard_confirm(request, pk):
                     "session_name": enrollment.offering.session.name,
                 },
             )
-        messages.success(request, "تم تأكيد تسجيلك بنجاح. لم يعد بالإمكان إلغاؤه بعد الآن.")
+        messages.success(
+            request, "تم تأكيد تسجيلك بنجاح. لم يعد بالإمكان إلغاؤه بعد الآن."
+        )
     else:
         messages.warning(request, "لا يمكن تأكيد هذا التسجيل في وضعه الحالي.")
     return redirect("enrollment:dashboard")
