@@ -1,0 +1,66 @@
+{% extends "pages/base.html" %}
+{% load static %}
+
+{% block title %}التسجيل الإلكتروني — اختر تخصصك{% endblock %}
+
+{% block extra_head %}
+<link href="{% static 'enrollment/css/subscribe.css' %}" rel="stylesheet">
+<link href="{% static 'enrollment/css/subscribe_general.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{% include "pages/partials/_navbar.html" %}
+
+<section id="sub-hero">
+  <div class="container position-relative" style="z-index:1;">
+    <div class="crumb"><a href="{% url 'pages:home' %}">الرئيسية</a> / التسجيل الإلكتروني</div>
+    <h1 id="anim-title"><iconify-icon icon="mdi:pencil-plus-outline"></iconify-icon> التسجيل الإلكتروني</h1>
+    <p>اختر الشعبة المهنية، ثم التخصص، ثم التكوين المتاح — وسننقلك مباشرة إلى استمارة التسجيل.</p>
+  </div>
+</section>
+
+<div class="wrap" style="max-width:760px;">
+  <div class="panel" id="anim-form">
+    <div class="progress-steps"><span id="step-dot-1" class="done"></span><span id="step-dot-2"></span><span id="step-dot-3"></span></div>
+
+    <div class="form-section-title"><iconify-icon icon="mdi:sitemap-outline"></iconify-icon> 1. اختر الشعبة المهنية</div>
+    <select id="branchSelect" class="form-select">
+      <option value="">-- اختر شعبة مهنية --</option>
+      {% for b in branches %}
+        <option value="{{ b.id }}">{{ b.name_ar }}</option>
+      {% endfor %}
+    </select>
+
+    <div class="form-section-title"><iconify-icon icon="mdi:bookmark-outline"></iconify-icon> 2. اختر التخصص</div>
+    <select id="specialtySelect" class="form-select" disabled>
+      <option value="">اختر شعبة أولا</option>
+    </select>
+
+    <div class="form-section-title"><iconify-icon icon="mdi:school-outline"></iconify-icon> 3. اختر التكوين المتاح</div>
+    <select id="offeringSelect" class="form-select" disabled>
+      <option value="">اختر تخصصا أولا</option>
+    </select>
+
+    <button type="button" id="continueBtn" class="btn-send" disabled>
+      <iconify-icon icon="mdi:arrow-left-circle-outline"></iconify-icon> متابعة إلى استمارة التسجيل
+    </button>
+
+    <p class="mt-3" style="font-size:.85rem;color:var(--muted);text-align:center;">
+      تعرف على تخصص محدد من قبل؟ يمكنك أيضا التسجيل مباشرة من
+      <a href="{% url 'enrollment:catalog' %}">صفحة كل التخصصات</a>.
+    </p>
+  </div>
+</div>
+
+{% include "pages/partials/_footer.html" %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  window.SUBSCRIBE_GENERAL = {
+    specialtiesApiUrl: "{% url 'enrollment:ajax_specialties' %}",
+    offeringsApiUrl: "{% url 'enrollment:ajax_offerings' %}"
+  };
+</script>
+<script src="{% static 'enrollment/js/subscribe_general.js' %}"></script>
+{% endblock %}

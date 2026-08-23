@@ -1,0 +1,40 @@
+{% extends "pages/base.html" %}
+{% load static %}
+
+{% block title %}مساحتي — الدخول{% endblock %}
+
+{% block extra_head %}
+<link href="{% static 'enrollment/css/subscribe.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{% include "pages/partials/_navbar.html" %}
+
+<section id="sub-hero">
+  <div class="container position-relative" style="z-index:1;">
+    <div class="crumb"><a href="{% url 'pages:home' %}">الرئيسية</a> / مساحتي</div>
+    <h1><iconify-icon icon="mdi:account-circle-outline"></iconify-icon> مساحتي</h1>
+    <p>أدخل رقم الهاتف الذي استعملته عند التسجيل لمتابعة حالة تسجيلاتك.</p>
+  </div>
+</section>
+
+<div class="wrap" style="max-width:520px;">
+  <div class="panel">
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div class="form-section-title"><iconify-icon icon="mdi:phone-outline"></iconify-icon> رقم الهاتف</div>
+      <label class="form-label">{{ form.phone.label }} *</label>
+      {{ form.phone }}
+      {% if form.phone.errors %}<ul class="errorlist">{% for e in form.phone.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+
+      <button type="submit" class="btn-send"><iconify-icon icon="mdi:login-variant"></iconify-icon> الدخول إلى مساحتي</button>
+    </form>
+
+    <p class="mt-3" style="font-size:.85rem;color:var(--muted);text-align:center;">
+      لم تسجّل بعد؟ <a href="{% url 'enrollment:subscribe_general' %}">سجّل في تكوين</a>
+    </p>
+  </div>
+</div>
+
+{% include "pages/partials/_footer.html" %}
+{% endblock %}

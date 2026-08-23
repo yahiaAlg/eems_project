@@ -372,7 +372,7 @@ class Command(BaseCommand):
                 "التسجيل الإلكتروني",
                 "الدخول المهني — سجّل مباشرة عبر الموقع",
                 "bi bi-pencil-square",
-                "/formations/",
+                "/formations/inscription/",
                 "amber",
                 False,
                 2,
@@ -396,7 +396,7 @@ class Command(BaseCommand):
             ("الرئيسية", "/", 1),
             ("المهمة والرؤية", "/#mission", 2),
             ("الفروع المهنية", "/#formations", 3),
-            ("سجّل في تكوين", "/formations/", 4),
+            ("سجّل في تكوين", "/formations/inscription/", 4),
             ("الدورات", "/#sessions", 5),
             ("الاتصال", "/#map-section", 6),
         ]

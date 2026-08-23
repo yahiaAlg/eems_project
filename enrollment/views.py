@@ -1,13 +1,20 @@
 from django.contrib import messages
 from django.db.models import Q
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils import timezone
+from django.views.decorators.http import require_POST
 
+from pages.emails import send_branded_mail
 from pages.forms import NewsletterForm
-from pages.models import Branch, InternalApp, NavLink, SiteSettings, SocialLink
+from pages.models import Branch, InternalApp, NavLink, SiteSettings, SocialLink, Specialty
 from pages.views import _visitor_stats
 
-from .forms import CommentForm, EnquiryForm, GeneralEnquiryForm, IndividualSubscribeForm
+from .forms import CommentForm, DashboardLoginForm, EnquiryForm, GeneralEnquiryForm, IndividualSubscribeForm
 from .models import Client, Enrollment, Formateur, FormationSession, Offering, Participant
+
+CLIENT_PHONE_SESSION_KEY = "client_phone"
 
 
 def _shared_chrome_context():
@@ -229,7 +236,15 @@ def subscribe(request, session_slug, code):
                 offering=offering,
                 motivation="\n\n".join(line for line in motivation_lines if line),
             )
-            return redirect("enrollment:subscribe_success")
+            # Log the client into their self-service space (no password —
+            # the phone they just typed is their identity) and send them
+            # straight to their dashboard instead of a static thank-you page.
+            request.session[CLIENT_PHONE_SESSION_KEY] = client.phone
+            messages.success(
+                request,
+                "تم استلام طلب تسجيلكم بنجاح. يمكنكم متابعة حالته وتأكيده من مساحتي أدناه.",
+            )
+            return redirect("enrollment:dashboard")
     else:
         form = IndividualSubscribeForm()
 
@@ -240,3 +255,163 @@ def subscribe(request, session_slug, code):
 def subscribe_success(request):
     context = {"settings": SiteSettings.load()}
     return render(request, "enrollment/subscribe_success.html", context)
+
+
+def subscribe_general(request):
+    """Branch-first entry point for 'التسجيل الإلكتروني': pick a branch,
+    then a specialty (AJAX, scoped to specialties that actually have an
+    open offering), then a training (AJAX), then continue into the normal
+    per-offering subscribe form above."""
+    branches = (
+        Branch.objects.filter(
+            is_active=True,
+            specialties__offerings__is_active=True,
+            specialties__offerings__session__is_active=True,
+        )
+        .distinct()
+        .order_by("order", "code")
+    )
+    context = {
+        "settings": SiteSettings.load(),
+        "branches": branches,
+        **_shared_chrome_context(),
+    }
+    return render(request, "enrollment/subscribe_general.html", context)
+
+
+def ajax_specialties_for_branch(request):
+    """GET ?branch=<id> -> [{code, name}] — only specialties of this branch
+    that currently have at least one open offering (not the full ~500-entry
+    nomenclature, which pages:SpecialtyViewSet already serves elsewhere)."""
+    branch_id = request.GET.get("branch") or ""
+    specialties = (
+        Specialty.objects.filter(
+            branch_id=branch_id,
+            offerings__is_active=True,
+            offerings__session__is_active=True,
+        )
+        .distinct()
+        .order_by("code")
+    )
+    data = [{"code": sp.code, "name": sp.name} for sp in specialties]
+    return JsonResponse({"results": data})
+
+
+def ajax_offerings_for_specialty(request):
+    """GET ?specialty=<code> -> open offerings/trainings for that specialty,
+    each carrying the URL of its per-offering subscribe form."""
+    specialty_code = request.GET.get("specialty") or ""
+    offerings = (
+        Offering.objects.filter(
+            specialty__code=specialty_code, is_active=True, session__is_active=True,
+        )
+        .select_related("session")
+        .order_by("session__order", "code")
+    )
+    data = [
+        {
+            "code": o.code,
+            "title": o.title,
+            "session_name": o.session.name,
+            "seats_remaining": o.seats_remaining,
+            "subscribe_url": reverse("enrollment:subscribe", args=[o.session.slug, o.code]),
+        }
+        for o in offerings
+    ]
+    return JsonResponse({"results": data})
+
+
+def _dashboard_phone(request):
+    return request.session.get(CLIENT_PHONE_SESSION_KEY)
+
+
+def dashboard_login(request):
+    """Return access to 'مساحتي' with just the phone number used at
+    subscription time — there is no password anywhere in this flow."""
+    if request.method == "POST":
+        form = DashboardLoginForm(request.POST)
+        if form.is_valid():
+            phone = form.cleaned_data["phone"]
+            if Client.objects.filter(phone=phone).exists():
+                request.session[CLIENT_PHONE_SESSION_KEY] = phone
+                return redirect("enrollment:dashboard")
+            form.add_error("phone", "لم نجد أي تسجيل بهذا الرقم. تأكد من الرقم أو سجّل في تكوين أولا.")
+    else:
+        form = DashboardLoginForm()
+
+    context = {"settings": SiteSettings.load(), "form": form, **_shared_chrome_context()}
+    return render(request, "enrollment/dashboard_login.html", context)
+
+
+def dashboard_logout(request):
+    request.session.pop(CLIENT_PHONE_SESSION_KEY, None)
+    messages.success(request, "تم تسجيل خروجك من مساحتي.")
+    return redirect("pages:home")
+
+
+def dashboard(request):
+    """'مساحتي' — the subscriber's own dashboard: every enrollment tied to
+    the phone number in their session, with self-service confirm/cancel."""
+    phone = _dashboard_phone(request)
+    if not phone:
+        return redirect("enrollment:dashboard_login")
+
+    enrollments = (
+        Enrollment.objects.filter(client__phone=phone)
+        .select_related("offering__session", "offering__specialty__branch", "participant", "client")
+        .order_by("-created_at")
+    )
+    context = {
+        "settings": SiteSettings.load(),
+        "phone": phone,
+        "enrollments": enrollments,
+        **_shared_chrome_context(),
+    }
+    return render(request, "enrollment/dashboard.html", context)
+
+
+@require_POST
+def dashboard_confirm(request, pk):
+    phone = _dashboard_phone(request)
+    if not phone:
+        return redirect("enrollment:dashboard_login")
+
+    enrollment = get_object_or_404(Enrollment, pk=pk, client__phone=phone)
+    if enrollment.can_confirm:
+        enrollment.status = "confirmed"
+        enrollment.confirmed_at = timezone.now()
+        enrollment.save(update_fields=["status", "confirmed_at", "updated_at"])
+        if enrollment.client.email:
+            send_branded_mail(
+                template="emails/enrollment_confirmed.html",
+                subject="تأكيد تسجيلك — إيمس",
+                to=[enrollment.client.email],
+                context={
+                    "client_name": enrollment.client.display_name,
+                    "participant_name": enrollment.participant.full_name,
+                    "offering_title": enrollment.offering.title,
+                    "offering_code": enrollment.offering.code,
+                    "session_name": enrollment.offering.session.name,
+                },
+            )
+        messages.success(request, "تم تأكيد تسجيلك بنجاح. لم يعد بالإمكان إلغاؤه بعد الآن.")
+    else:
+        messages.warning(request, "لا يمكن تأكيد هذا التسجيل في وضعه الحالي.")
+    return redirect("enrollment:dashboard")
+
+
+@require_POST
+def dashboard_cancel(request, pk):
+    phone = _dashboard_phone(request)
+    if not phone:
+        return redirect("enrollment:dashboard_login")
+
+    enrollment = get_object_or_404(Enrollment, pk=pk, client__phone=phone)
+    if enrollment.can_cancel:
+        enrollment.status = "cancelled"
+        enrollment.cancelled_at = timezone.now()
+        enrollment.save(update_fields=["status", "cancelled_at", "updated_at"])
+        messages.success(request, "تم إلغاء تسجيلك.")
+    else:
+        messages.warning(request, "لا يمكن إلغاء تسجيل تم تأكيده مسبقا.")
+    return redirect("enrollment:dashboard")

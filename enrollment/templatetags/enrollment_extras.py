@@ -6,8 +6,10 @@ STATUS_COLORS = {
     "pending": "#c9a227",
     "contacted": "#3b82f6",
     "accepted": "#2ea043",
+    "confirmed": "#0f766e",
     "waitlisted": "#8b949e",
     "rejected": "#f85149",
+    "cancelled": "#94a3b8",
 }
 
 

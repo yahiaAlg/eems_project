@@ -62,6 +62,9 @@
           <i class="{{ app.icon_class }}"></i> {{ app.title }}
         </a>
         {% endif %}{% endfor %}
+        <a href="{% url 'enrollment:dashboard' %}" class="btn-app btn-app-outline" title="مساحتي — متابعة تسجيلاتي">
+          <i class="bi bi-person-circle"></i> مساحتي
+        </a>
       </div>
     </div>
   </div>

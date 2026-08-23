@@ -1,0 +1,92 @@
+{% extends "pages/base.html" %}
+{% load static enrollment_extras %}
+
+{% block title %}مساحتي — تسجيلاتي{% endblock %}
+
+{% block extra_head %}
+<link href="{% static 'enrollment/css/subscribe.css' %}" rel="stylesheet">
+<link href="{% static 'enrollment/css/dashboard.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{% include "pages/partials/_navbar.html" %}
+
+<section id="sub-hero">
+  <div class="container position-relative" style="z-index:1;">
+    <div class="crumb"><a href="{% url 'pages:home' %}">الرئيسية</a> / مساحتي</div>
+    <h1><iconify-icon icon="mdi:view-dashboard-outline"></iconify-icon> مساحتي</h1>
+    <p>
+      متابعة تسجيلاتك (<span dir="ltr">{{ phone }}</span>) —
+      <a href="{% url 'enrollment:dashboard_logout' %}" style="color:rgba(255,255,255,.7);">تسجيل الخروج</a>
+    </p>
+  </div>
+</section>
+
+<div class="wrap" style="max-width:900px;">
+
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h2 style="font-size:1.1rem;font-weight:800;margin:0;">تسجيلاتي ({{ enrollments.count }})</h2>
+    <a href="{% url 'enrollment:subscribe_general' %}" class="btn-add-more">
+      <iconify-icon icon="mdi:plus-circle-outline"></iconify-icon> تسجيل في تكوين آخر
+    </a>
+  </div>
+
+  {% for e in enrollments %}
+  <div class="enrollment-card">
+    <div class="enrollment-card-head">
+      <div>
+        <span class="enrollment-code">{{ e.offering.code }}</span>
+        <h4>{{ e.offering.title }}</h4>
+        <div class="enrollment-sub">{{ e.offering.session.name }} — المشارك: {{ e.participant.full_name }}</div>
+      </div>
+      <span class="status-badge" style="--badge-color: {{ e.status|status_color }};">{{ e.get_status_display }}</span>
+    </div>
+
+    <div class="enrollment-meta">
+      <span><iconify-icon icon="mdi:calendar-outline"></iconify-icon> تاريخ التسجيل: {{ e.created_at|date:"d/m/Y" }}</span>
+      {% if e.confirmed_at %}<span><iconify-icon icon="mdi:check-decagram-outline"></iconify-icon> تم التأكيد: {{ e.confirmed_at|date:"d/m/Y" }}</span>{% endif %}
+      {% if e.cancelled_at %}<span><iconify-icon icon="mdi:close-circle-outline"></iconify-icon> تم الإلغاء: {{ e.cancelled_at|date:"d/m/Y" }}</span>{% endif %}
+    </div>
+
+    <div class="enrollment-actions">
+      <a href="{% url 'enrollment:detail' e.offering.session.slug e.offering.code %}" class="btn-mini btn-mini-outline">
+        <iconify-icon icon="mdi:information-outline"></iconify-icon> تفاصيل التخصص
+      </a>
+
+      {% if e.can_confirm %}
+      <form method="post" action="{% url 'enrollment:dashboard_confirm' e.pk %}" onsubmit="return confirm('تأكيد هذا التسجيل؟ لن يكون بالإمكان إلغاؤه بعد ذلك.');">
+        {% csrf_token %}
+        <button type="submit" class="btn-mini btn-mini-confirm"><iconify-icon icon="mdi:check-circle-outline"></iconify-icon> تأكيد التسجيل</button>
+      </form>
+      {% endif %}
+
+      {% if e.can_cancel %}
+      <form method="post" action="{% url 'enrollment:dashboard_cancel' e.pk %}" onsubmit="return confirm('هل أنت متأكد من إلغاء هذا التسجيل؟');">
+        {% csrf_token %}
+        <button type="submit" class="btn-mini btn-mini-cancel"><iconify-icon icon="mdi:close-circle-outline"></iconify-icon> إلغاء التسجيل</button>
+      </form>
+      {% endif %}
+
+      {% if not e.can_confirm and not e.can_cancel %}
+      <span class="locked-note">
+        {% if e.status == 'confirmed' %}
+          <iconify-icon icon="mdi:lock-check-outline"></iconify-icon> تسجيل مؤكد ونهائي
+        {% else %}
+          <iconify-icon icon="mdi:lock-outline"></iconify-icon> تسجيل ملغى
+        {% endif %}
+      </span>
+      {% endif %}
+    </div>
+  </div>
+  {% empty %}
+  <div class="panel" style="text-align:center;padding:50px 20px;">
+    <iconify-icon icon="mdi:folder-search-outline" style="font-size:40px;color:var(--muted);"></iconify-icon>
+    <p style="margin-top:12px;color:var(--muted);">لا توجد تسجيلات مرتبطة بهذا الرقم بعد.</p>
+    <a href="{% url 'enrollment:subscribe_general' %}" class="cta"><iconify-icon icon="mdi:pencil-plus-outline"></iconify-icon> سجّل في تكوين الآن</a>
+  </div>
+  {% endfor %}
+
+</div>
+
+{% include "pages/partials/_footer.html" %}
+{% endblock %}

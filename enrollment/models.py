@@ -385,7 +385,9 @@ class Offering(models.Model):
 
     @property
     def seats_taken(self):
-        return self.enrollments.filter(status__in=["pending", "contacted", "accepted"]).count()
+        return self.enrollments.filter(
+            status__in=["pending", "contacted", "accepted", "confirmed"],
+        ).count()
 
     @property
     def seats_remaining(self):
@@ -552,8 +554,10 @@ STATUS_CHOICES = [
     ("pending", "قيد الدراسة"),
     ("contacted", "تم التواصل"),
     ("accepted", "مقبول"),
+    ("confirmed", "مؤكد من طرف المشترك"),
     ("waitlisted", "قائمة انتظار"),
     ("rejected", "مرفوض"),
+    ("cancelled", "ملغى من طرف المشترك"),
 ]
 
 GENDER_CHOICES = [("m", "ذكر"), ("f", "أنثى")]
@@ -674,6 +678,8 @@ class Enrollment(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
         verbose_name="عولجت من طرف",
     )
+    confirmed_at = models.DateTimeField("تاريخ التأكيد", null=True, blank=True)
+    cancelled_at = models.DateTimeField("تاريخ الإلغاء", null=True, blank=True)
     created_at = models.DateTimeField("تاريخ التسجيل", auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -685,6 +691,18 @@ class Enrollment(models.Model):
 
     def __str__(self):
         return f"{self.participant} → {self.offering.code}"
+
+    @property
+    def can_confirm(self):
+        """Self-service confirmation is only offered while the subscriber
+        hasn't already confirmed or cancelled it themselves."""
+        return self.status not in ("confirmed", "cancelled")
+
+    @property
+    def can_cancel(self):
+        """Once confirmed, an enrollment is locked and can no longer be
+        self-cancelled from the client dashboard."""
+        return self.status not in ("confirmed", "cancelled")
 
 
 class EnrollmentNote(models.Model):

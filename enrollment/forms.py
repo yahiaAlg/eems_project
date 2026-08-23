@@ -108,6 +108,18 @@ class IndividualSubscribeForm(forms.Form):
         return value
 
 
+class DashboardLoginForm(forms.Form):
+    """Access 'مساحتي' (my subscriptions dashboard) using the same phone
+    number provided at subscription time — no password, matching the
+    fact that clients aren't asked to create one anywhere in the flow."""
+
+    phone = forms.RegexField(
+        label="رقم الهاتف", regex=r"^0(5|6|7)\d{8}$",
+        error_messages={"invalid": "رقم هاتف جزائري غير صالح، مثال: 0770123456"},
+        widget=forms.TextInput(attrs={**WIDGET_ATTRS, "placeholder": "0770 12 34 56", "dir": "ltr", "autofocus": True}),
+    )
+
+
 class CommentForm(forms.ModelForm):
     class Meta:
         model = Comment
