@@ -152,7 +152,10 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "public"
-STATICFILES_DIRS = [BASE_DIR / "pages" / "static"]
+# STATICFILES_DIRS = [BASE_DIR / "pages" / "static"]   # remove this line —
+# "pages" is already in INSTALLED_APPS, so AppDirectoriesFinder finds
+# pages/static/ automatically. Listing it again in STATICFILES_DIRS
+# duplicates every file and causes "Found another file" warnings.
 
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
