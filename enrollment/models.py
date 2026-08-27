@@ -80,6 +80,7 @@ class AttachmentBase(models.Model):
         if not self.file:
             return ""
         from django.template.defaultfilters import filesizeformat
+
         try:
             return filesizeformat(self.file.size)
         except (OSError, ValueError):
@@ -88,6 +89,7 @@ class AttachmentBase(models.Model):
     @property
     def display_title(self):
         import os
+
         return self.title or (os.path.basename(self.file.name) if self.file else "ملف")
 
 
@@ -103,20 +105,30 @@ class Formateur(models.Model):
     full_name = models.CharField("الاسم الكامل", max_length=150)
     slug = models.SlugField("المعرف (slug)", unique=True, blank=True)
     title = models.CharField(
-        "الصفة المهنية", max_length=150, blank=True,
+        "الصفة المهنية",
+        max_length=150,
+        blank=True,
         help_text="مثال: خبير HSE معتمد — 12 سنة خبرة ميدانية",
     )
     photo = models.ImageField(
-        "الصورة الشخصية", upload_to="enrollment/formateurs/", blank=True, null=True,
+        "الصورة الشخصية",
+        upload_to="enrollment/formateurs/",
+        blank=True,
+        null=True,
     )
     bio = models.TextField("نبذة تعريفية", blank=True)
     years_experience = models.PositiveSmallIntegerField(
-        "سنوات الخبرة", null=True, blank=True,
+        "سنوات الخبرة",
+        null=True,
+        blank=True,
     )
     email = models.EmailField("البريد الإلكتروني", blank=True)
     linkedin_url = models.URLField("رابط LinkedIn", blank=True)
     cv_mode = models.CharField(
-        "نمط السيرة الذاتية", max_length=10, choices=CV_MODES, default="auto",
+        "نمط السيرة الذاتية",
+        max_length=10,
+        choices=CV_MODES,
+        default="auto",
         help_text=(
             "توليد تلقائي: يُبنى نموذج CV قابل للطباعة من بيانات هذه الصفحة "
             "(النبذة، المسار المهني...) تلقائيا وفوريا. مخصص: يُستعمل الملف "
@@ -124,8 +136,11 @@ class Formateur(models.Model):
         ),
     )
     cv_file = models.FileField(
-        "ملف CV مخصص", upload_to="enrollment/formateurs/cv/",
-        blank=True, null=True, validators=[FileExtensionValidator(CUSTOM_DOCUMENT_EXTENSIONS)],
+        "ملف CV مخصص",
+        upload_to="enrollment/formateurs/cv/",
+        blank=True,
+        null=True,
+        validators=[FileExtensionValidator(CUSTOM_DOCUMENT_EXTENSIONS)],
         help_text="PDF / Word / صورة — يُستعمل فقط عند اختيار النمط «مخصص» أعلاه.",
     )
     is_active = models.BooleanField("مفعّل (يظهر على الموقع)", default=True)
@@ -190,13 +205,16 @@ class FormateurCertificate(AttachmentBase):
     on the formateur's public profile page — diploma, accreditation, etc."""
 
     formateur = models.ForeignKey(
-        Formateur, on_delete=models.CASCADE, related_name="certificates",
+        Formateur,
+        on_delete=models.CASCADE,
+        related_name="certificates",
         verbose_name="المكوّن",
     )
     issuer = models.CharField("الجهة المانحة", max_length=150, blank=True)
     date_obtained = models.DateField("تاريخ الحصول عليها", null=True, blank=True)
     file = models.FileField(
-        "ملف الشهادة (PDF / Word / صورة)", upload_to="enrollment/formateurs/certificates/",
+        "ملف الشهادة (PDF / Word / صورة)",
+        upload_to="enrollment/formateurs/certificates/",
         validators=[FileExtensionValidator(CUSTOM_DOCUMENT_EXTENSIONS)],
     )
 
@@ -213,14 +231,18 @@ class FormateurCareerEntry(models.Model):
     """One entry in the formateur's professional timeline (Udemy-style bio 'parcours')."""
 
     formateur = models.ForeignKey(
-        Formateur, on_delete=models.CASCADE, related_name="career_entries",
+        Formateur,
+        on_delete=models.CASCADE,
+        related_name="career_entries",
         verbose_name="المكوّن",
     )
     role_title = models.CharField("المنصب / الوظيفة", max_length=150)
     organization = models.CharField("الجهة / المؤسسة", max_length=150, blank=True)
     start_year = models.PositiveSmallIntegerField("سنة البداية", null=True, blank=True)
     end_year = models.PositiveSmallIntegerField(
-        "سنة النهاية", null=True, blank=True,
+        "سنة النهاية",
+        null=True,
+        blank=True,
         help_text="اتركه فارغا إن كان المنصب ساريا حاليا.",
     )
     description = models.TextField("وصف مختصر", blank=True)
@@ -299,79 +321,128 @@ class Offering(models.Model):
     """A specialty as taught within a given session — carries pricing/seat data."""
 
     session = models.ForeignKey(
-        FormationSession, on_delete=models.CASCADE, related_name="offerings",
+        FormationSession,
+        on_delete=models.CASCADE,
+        related_name="offerings",
         verbose_name="الدورة",
     )
     specialty = models.ForeignKey(
-        "pages.Specialty", on_delete=models.PROTECT, related_name="offerings",
-        null=True, blank=True, verbose_name="التخصص (مدونة الشعب)",
+        "pages.Specialty",
+        on_delete=models.PROTECT,
+        related_name="offerings",
+        null=True,
+        blank=True,
+        verbose_name="التخصص (مدونة الشعب)",
     )
     formateur = models.ForeignKey(
-        Formateur, on_delete=models.SET_NULL, related_name="offerings",
-        null=True, blank=True, verbose_name="المكوّن (اختياري)",
+        Formateur,
+        on_delete=models.SET_NULL,
+        related_name="offerings",
+        null=True,
+        blank=True,
+        verbose_name="المكوّن (اختياري)",
     )
     code = models.CharField("رمز الاختصاص", max_length=20, help_text="مثال: TAG0701")
     title = models.CharField("عنوان التخصص", max_length=150)
     branch_label = models.CharField("الشعبة", max_length=100, blank=True)
     qualification_level = models.PositiveSmallIntegerField(
-        "مستوى التأهيل", choices=QUALIFICATION_LEVELS, null=True, blank=True,
+        "مستوى التأهيل",
+        choices=QUALIFICATION_LEVELS,
+        null=True,
+        blank=True,
     )
     certificate_type = models.CharField(
-        "الشهادة المسلمة", max_length=20, choices=CERT_TYPES, blank=True,
+        "الشهادة المسلمة",
+        max_length=20,
+        choices=CERT_TYPES,
+        blank=True,
     )
     entry_level = models.CharField(
-        "مستوى الدخول", max_length=20, choices=ENTRY_LEVELS, blank=True,
+        "مستوى الدخول",
+        max_length=20,
+        choices=ENTRY_LEVELS,
+        blank=True,
     )
     duration_months = models.PositiveSmallIntegerField("مدة التكوين (أشهر)")
     monthly_fee = models.DecimalField(
-        "القيمة الشهرية (دج)", max_digits=10, decimal_places=2, null=True, blank=True,
+        "القيمة الشهرية (دج)",
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
     )
     total_fee = models.DecimalField(
-        "القيمة الإجمالية (دج)", max_digits=10, decimal_places=2, null=True, blank=True,
+        "القيمة الإجمالية (دج)",
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
     )
     seats_available = models.PositiveSmallIntegerField("قدرة الاستيعاب", default=0)
     description = models.TextField("تعريف التخصص", blank=True)
     main_tasks = models.TextField(
-        "المهام الأساسية", blank=True, help_text="سطر واحد لكل مهمة",
+        "المهام الأساسية",
+        blank=True,
+        help_text="سطر واحد لكل مهمة",
     )
     objectives = models.TextField(
-        "أهداف التكوين", blank=True, help_text="سطر واحد لكل هدف — يظهر ضمن الفيشة التقنية.",
+        "أهداف التكوين",
+        blank=True,
+        help_text="سطر واحد لكل هدف — يظهر ضمن الملف التقني.",
     )
     program_outline = models.TextField(
-        "برنامج التكوين (المحاور)", blank=True, help_text="سطر واحد لكل محور/وحدة — يظهر ضمن الفيشة التقنية.",
+        "برنامج التكوين (المحاور)",
+        blank=True,
+        help_text="سطر واحد لكل محور/وحدة — يظهر ضمن الملف التقني.",
     )
     prerequisites = models.TextField(
-        "الشروط المسبقة", blank=True, help_text="سطر واحد لكل شرط — يظهر ضمن الفيشة التقنية.",
+        "الشروط المسبقة",
+        blank=True,
+        help_text="سطر واحد لكل شرط — يظهر ضمن الملف التقني.",
     )
     fiche_technique_mode = models.CharField(
-        "نمط الفيشة التقنية", max_length=10, choices=FICHE_TECHNIQUE_MODES, default="auto",
+        "نمط الملف التقني",
+        max_length=10,
+        choices=FICHE_TECHNIQUE_MODES,
+        default="auto",
         help_text=(
             "توليد تلقائي: يُبنى نموذج قابل للطباعة من الحقول أعلاه (الوصف، الأهداف، "
             "البرنامج...) تلقائيا وفوريا. مخصص: يُستعمل الملف المرفوع أدناه بدل النموذج التلقائي."
         ),
     )
     fiche_technique_file = models.FileField(
-        "ملف الفيشة التقنية المخصص", upload_to="enrollment/offerings/fiche_technique_custom/",
-        blank=True, null=True, validators=[FileExtensionValidator(CUSTOM_DOCUMENT_EXTENSIONS)],
+        "ملف الملف التقني المخصص",
+        upload_to="enrollment/offerings/fiche_technique_custom/",
+        blank=True,
+        null=True,
+        validators=[FileExtensionValidator(CUSTOM_DOCUMENT_EXTENSIONS)],
         help_text="PDF / Word / صورة — يُستعمل فقط عند اختيار النمط «مخصص» أعلاه.",
     )
     image = models.ImageField(
-        "صورة (ملف مرفوع)", upload_to="enrollment/offerings/", blank=True, null=True,
+        "صورة (ملف مرفوع)",
+        upload_to="enrollment/offerings/",
+        blank=True,
+        null=True,
     )
     poster_url = models.URLField(
-        "رابط صورة الملصق (بطاقة العرض)", blank=True,
+        "رابط صورة الملصق (بطاقة العرض)",
+        blank=True,
         help_text="يُستعمل إن لم يتم رفع صورة أعلاه. يمكن استعمال رابط من خدمة صور مجانية.",
     )
     background_url = models.URLField(
-        "رابط صورة الخلفية (صفحة التفاصيل)", blank=True,
+        "رابط صورة الخلفية (صفحة التفاصيل)",
+        blank=True,
         help_text="تُعرض كخلفية لرأس صفحة التخصص.",
     )
     video_url = models.URLField(
-        "رابط فيديو تعريفي (YouTube)", blank=True,
+        "رابط فيديو تعريفي (YouTube)",
+        blank=True,
         help_text="ألصق رابط فيديو يوتيوب ترويجي لهذا التخصص (اختياري).",
     )
     is_active = models.BooleanField("معروضة على الموقع", default=True)
-    is_featured = models.BooleanField("تخصص مميز (يظهر في الصفحة الرئيسية)", default=False)
+    is_featured = models.BooleanField(
+        "تخصص مميز (يظهر في الصفحة الرئيسية)", default=False
+    )
     order = models.PositiveIntegerField("الترتيب", default=0)
 
     class Meta:
@@ -409,15 +480,21 @@ class Offering(models.Model):
 
     @property
     def program_outline_list(self):
-        return [line.strip() for line in self.program_outline.splitlines() if line.strip()]
+        return [
+            line.strip() for line in self.program_outline.splitlines() if line.strip()
+        ]
 
     @property
     def prerequisites_list(self):
-        return [line.strip() for line in self.prerequisites.splitlines() if line.strip()]
+        return [
+            line.strip() for line in self.prerequisites.splitlines() if line.strip()
+        ]
 
     @property
     def has_fiche_technique_extras(self):
-        return bool(self.objectives_list or self.program_outline_list or self.prerequisites_list)
+        return bool(
+            self.objectives_list or self.program_outline_list or self.prerequisites_list
+        )
 
     @property
     def fiche_technique_is_custom(self):
@@ -427,11 +504,17 @@ class Offering(models.Model):
     def fiche_technique_url(self):
         if self.fiche_technique_is_custom:
             return self.fiche_technique_file.url
-        return reverse("enrollment:fiche_technique", args=[self.session.slug, self.code])
+        return reverse(
+            "enrollment:fiche_technique", args=[self.session.slug, self.code]
+        )
 
     @property
     def fiche_technique_kind(self):
-        return attachment_kind(self.fiche_technique_file.name) if self.fiche_technique_is_custom else "html"
+        return (
+            attachment_kind(self.fiche_technique_file.name)
+            if self.fiche_technique_is_custom
+            else "html"
+        )
 
     @property
     def fiche_technique_icon(self):
@@ -439,11 +522,19 @@ class Offering(models.Model):
 
     @property
     def fiche_technique_action_label(self):
-        return "تحميل الفيشة التقنية" if self.fiche_technique_is_custom else "معاينة الفيشة وطباعتها"
+        return (
+            "تحميل الملف التقني"
+            if self.fiche_technique_is_custom
+            else "معاينة الفيشة وطباعتها"
+        )
 
     @property
     def fiche_technique_action_icon(self):
-        return "mdi:download-outline" if self.fiche_technique_is_custom else "mdi:printer-outline"
+        return (
+            "mdi:download-outline"
+            if self.fiche_technique_is_custom
+            else "mdi:printer-outline"
+        )
 
     @property
     def approved_comments(self):
@@ -485,6 +576,7 @@ class Offering(models.Model):
     def youtube_embed_id(self):
         """Extract the YouTube video id from common URL formats."""
         import re
+
         if not self.video_url:
             return ""
         match = re.search(
@@ -499,7 +591,9 @@ class OfferingImage(models.Model):
     thumbnail strip + lightbox, underneath the main poster image)."""
 
     offering = models.ForeignKey(
-        Offering, on_delete=models.CASCADE, related_name="gallery_images",
+        Offering,
+        on_delete=models.CASCADE,
+        related_name="gallery_images",
         verbose_name="التخصص",
     )
     image = models.ImageField("الصورة", upload_to="enrollment/offerings/gallery/")
@@ -524,11 +618,14 @@ class OfferingAttachment(AttachmentBase):
     and separate from the visual gallery/slider."""
 
     offering = models.ForeignKey(
-        Offering, on_delete=models.CASCADE, related_name="attachments",
+        Offering,
+        on_delete=models.CASCADE,
+        related_name="attachments",
         verbose_name="التخصص",
     )
     file = models.FileField(
-        "الملف (PDF / Word / صورة)", upload_to="enrollment/offerings/fiche_technique/",
+        "الملف (PDF / Word / صورة)",
+        upload_to="enrollment/offerings/fiche_technique/",
         validators=[FileExtensionValidator(CUSTOM_DOCUMENT_EXTENSIONS)],
     )
 
@@ -572,7 +669,10 @@ class Client(models.Model):
     """The subscriber: either a private individual, or an enterprise sending participants."""
 
     client_type = models.CharField(
-        "نوع الزبون", max_length=20, choices=CLIENT_TYPE_CHOICES, default="individual",
+        "نوع الزبون",
+        max_length=20,
+        choices=CLIENT_TYPE_CHOICES,
+        default="individual",
     )
 
     # --- shared contact fields ---
@@ -589,15 +689,22 @@ class Client(models.Model):
 
     # --- enterprise-only fields ---
     company_name = models.CharField("اسم المؤسسة", max_length=200, blank=True)
-    trade_register_number = models.CharField("رقم السجل التجاري", max_length=60, blank=True)
+    trade_register_number = models.CharField(
+        "رقم السجل التجاري", max_length=60, blank=True
+    )
     sector = models.CharField("قطاع النشاط", max_length=120, blank=True)
     responsible_name = models.CharField(
-        "الشخص المسؤول عن التنسيق", max_length=150, blank=True,
+        "الشخص المسؤول عن التنسيق",
+        max_length=150,
+        blank=True,
     )
     responsible_position = models.CharField("منصب المسؤول", max_length=100, blank=True)
 
     source = models.CharField(
-        "مصدر التسجيل", max_length=20, choices=SOURCE_CHOICES, default="web",
+        "مصدر التسجيل",
+        max_length=20,
+        choices=SOURCE_CHOICES,
+        default="web",
     )
     created_at = models.DateTimeField("تاريخ التسجيل", auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -620,6 +727,7 @@ class Client(models.Model):
 
     def clean(self):
         from django.core.exceptions import ValidationError
+
         if self.client_type == "individual" and not self.full_name:
             raise ValidationError("الاسم الكامل مطلوب بالنسبة للأفراد.")
         if self.client_type == "enterprise" and not self.company_name:
@@ -632,7 +740,9 @@ class Participant(models.Model):
     is one of possibly many employees sent to the training."""
 
     client = models.ForeignKey(
-        Client, on_delete=models.CASCADE, related_name="participants",
+        Client,
+        on_delete=models.CASCADE,
+        related_name="participants",
         verbose_name="الزبون",
     )
     full_name = models.CharField("الاسم واللقب", max_length=150)
@@ -642,7 +752,9 @@ class Participant(models.Model):
     gender = models.CharField("الجنس", max_length=1, choices=GENDER_CHOICES, blank=True)
     education_level = models.CharField("المستوى الدراسي", max_length=100, blank=True)
     position = models.CharField(
-        "المنصب داخل المؤسسة", max_length=100, blank=True,
+        "المنصب داخل المؤسسة",
+        max_length=100,
+        blank=True,
         help_text="يُستعمل فقط عندما يكون الزبون مؤسسة",
     )
 
@@ -659,23 +771,35 @@ class Enrollment(models.Model):
     """One participant's registration in one offering."""
 
     client = models.ForeignKey(
-        Client, on_delete=models.CASCADE, related_name="enrollments",
+        Client,
+        on_delete=models.CASCADE,
+        related_name="enrollments",
         verbose_name="الزبون",
     )
     participant = models.ForeignKey(
-        Participant, on_delete=models.CASCADE, related_name="enrollments",
+        Participant,
+        on_delete=models.CASCADE,
+        related_name="enrollments",
         verbose_name="المشارك",
     )
     offering = models.ForeignKey(
-        Offering, on_delete=models.CASCADE, related_name="enrollments",
+        Offering,
+        on_delete=models.CASCADE,
+        related_name="enrollments",
         verbose_name="التخصص المطلوب",
     )
     motivation = models.TextField("ملاحظات / دافع الترشح", blank=True)
     status = models.CharField(
-        "الحالة", max_length=20, choices=STATUS_CHOICES, default="pending",
+        "الحالة",
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="pending",
     )
     handled_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         verbose_name="عولجت من طرف",
     )
     confirmed_at = models.DateTimeField("تاريخ التأكيد", null=True, blank=True)
@@ -707,10 +831,15 @@ class Enrollment(models.Model):
 
 class EnrollmentNote(models.Model):
     enrollment = models.ForeignKey(
-        Enrollment, on_delete=models.CASCADE, related_name="notes",
+        Enrollment,
+        on_delete=models.CASCADE,
+        related_name="notes",
     )
     author = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
     )
     text = models.TextField("ملاحظة")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -731,13 +860,17 @@ class Comment(models.Model):
     """A public review/comment left by a visitor on a specific offering (moderated)."""
 
     offering = models.ForeignKey(
-        Offering, on_delete=models.CASCADE, related_name="comments",
+        Offering,
+        on_delete=models.CASCADE,
+        related_name="comments",
         verbose_name="التخصص",
     )
     name = models.CharField("الاسم", max_length=120)
     email = models.EmailField("البريد الإلكتروني", blank=True)
     rating = models.PositiveSmallIntegerField(
-        "التقييم", choices=RATING_CHOICES, default=5,
+        "التقييم",
+        choices=RATING_CHOICES,
+        default=5,
     )
     text = models.TextField("التعليق")
     is_approved = models.BooleanField("موافق عليه (يظهر في الموقع)", default=False)
@@ -756,8 +889,12 @@ class Enquiry(models.Model):
     """A public question about an offering (or a general enquiry), answered by staff."""
 
     offering = models.ForeignKey(
-        Offering, on_delete=models.CASCADE, related_name="enquiries",
-        verbose_name="التخصص", null=True, blank=True,
+        Offering,
+        on_delete=models.CASCADE,
+        related_name="enquiries",
+        verbose_name="التخصص",
+        null=True,
+        blank=True,
     )
     name = models.CharField("الاسم", max_length=120)
     phone = models.CharField("الهاتف", max_length=20, blank=True)
@@ -766,7 +903,10 @@ class Enquiry(models.Model):
     answer = models.TextField("الرد", blank=True)
     is_answered = models.BooleanField("تمت الإجابة", default=False)
     answered_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         verbose_name="أجاب عليه",
     )
     created_at = models.DateTimeField("تاريخ الإرسال", auto_now_add=True)

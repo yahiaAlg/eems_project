@@ -7,65 +7,191 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('enrollment', '0006_offeringimage'),
+        ("enrollment", "0006_offeringimage"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='formateur',
-            name='cv_file',
-            field=models.FileField(blank=True, help_text='ملف PDF قابل للتحميل من صفحة الملف الشخصي للمكوّن (اختياري).', null=True, upload_to='enrollment/formateurs/cv/', verbose_name='السيرة الذاتية (CV — PDF)'),
+            model_name="formateur",
+            name="cv_file",
+            field=models.FileField(
+                blank=True,
+                help_text="ملف PDF قابل للتحميل من صفحة الملف الشخصي للمكوّن (اختياري).",
+                null=True,
+                upload_to="enrollment/formateurs/cv/",
+                verbose_name="السيرة الذاتية (CV — PDF)",
+            ),
         ),
         migrations.CreateModel(
-            name='FormateurCareerEntry',
+            name="FormateurCareerEntry",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('role_title', models.CharField(max_length=150, verbose_name='المنصب / الوظيفة')),
-                ('organization', models.CharField(blank=True, max_length=150, verbose_name='الجهة / المؤسسة')),
-                ('start_year', models.PositiveSmallIntegerField(blank=True, null=True, verbose_name='سنة البداية')),
-                ('end_year', models.PositiveSmallIntegerField(blank=True, help_text='اتركه فارغا إن كان المنصب ساريا حاليا.', null=True, verbose_name='سنة النهاية')),
-                ('description', models.TextField(blank=True, verbose_name='وصف مختصر')),
-                ('order', models.PositiveIntegerField(default=0, verbose_name='الترتيب')),
-                ('formateur', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='career_entries', to='enrollment.formateur', verbose_name='المكوّن')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "role_title",
+                    models.CharField(max_length=150, verbose_name="المنصب / الوظيفة"),
+                ),
+                (
+                    "organization",
+                    models.CharField(
+                        blank=True, max_length=150, verbose_name="الجهة / المؤسسة"
+                    ),
+                ),
+                (
+                    "start_year",
+                    models.PositiveSmallIntegerField(
+                        blank=True, null=True, verbose_name="سنة البداية"
+                    ),
+                ),
+                (
+                    "end_year",
+                    models.PositiveSmallIntegerField(
+                        blank=True,
+                        help_text="اتركه فارغا إن كان المنصب ساريا حاليا.",
+                        null=True,
+                        verbose_name="سنة النهاية",
+                    ),
+                ),
+                ("description", models.TextField(blank=True, verbose_name="وصف مختصر")),
+                (
+                    "order",
+                    models.PositiveIntegerField(default=0, verbose_name="الترتيب"),
+                ),
+                (
+                    "formateur",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="career_entries",
+                        to="enrollment.formateur",
+                        verbose_name="المكوّن",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'محطة مهنية',
-                'verbose_name_plural': '🧭 المسار المهني (Parcours)',
-                'ordering': ['order', '-start_year'],
+                "verbose_name": "محطة مهنية",
+                "verbose_name_plural": "🧭 المسار المهني (Parcours)",
+                "ordering": ["order", "-start_year"],
             },
         ),
         migrations.CreateModel(
-            name='FormateurCertificate',
+            name="FormateurCertificate",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('title', models.CharField(blank=True, max_length=150, verbose_name='العنوان')),
-                ('order', models.PositiveIntegerField(default=0, verbose_name='الترتيب')),
-                ('uploaded_at', models.DateTimeField(auto_now_add=True, verbose_name='تاريخ الإضافة')),
-                ('issuer', models.CharField(blank=True, max_length=150, verbose_name='الجهة المانحة')),
-                ('date_obtained', models.DateField(blank=True, null=True, verbose_name='تاريخ الحصول عليها')),
-                ('file', models.FileField(upload_to='enrollment/formateurs/certificates/', verbose_name='ملف الشهادة (PDF أو صورة)')),
-                ('formateur', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='certificates', to='enrollment.formateur', verbose_name='المكوّن')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "title",
+                    models.CharField(
+                        blank=True, max_length=150, verbose_name="العنوان"
+                    ),
+                ),
+                (
+                    "order",
+                    models.PositiveIntegerField(default=0, verbose_name="الترتيب"),
+                ),
+                (
+                    "uploaded_at",
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="تاريخ الإضافة"
+                    ),
+                ),
+                (
+                    "issuer",
+                    models.CharField(
+                        blank=True, max_length=150, verbose_name="الجهة المانحة"
+                    ),
+                ),
+                (
+                    "date_obtained",
+                    models.DateField(
+                        blank=True, null=True, verbose_name="تاريخ الحصول عليها"
+                    ),
+                ),
+                (
+                    "file",
+                    models.FileField(
+                        upload_to="enrollment/formateurs/certificates/",
+                        verbose_name="ملف الشهادة (PDF أو صورة)",
+                    ),
+                ),
+                (
+                    "formateur",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="certificates",
+                        to="enrollment.formateur",
+                        verbose_name="المكوّن",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'شهادة / اعتماد',
-                'verbose_name_plural': '🎓 الشهادات والاعتمادات',
-                'ordering': ['order', 'id'],
+                "verbose_name": "شهادة / اعتماد",
+                "verbose_name_plural": "🎓 الشهادات والاعتمادات",
+                "ordering": ["order", "id"],
             },
         ),
         migrations.CreateModel(
-            name='OfferingAttachment',
+            name="OfferingAttachment",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('title', models.CharField(blank=True, max_length=150, verbose_name='العنوان')),
-                ('order', models.PositiveIntegerField(default=0, verbose_name='الترتيب')),
-                ('uploaded_at', models.DateTimeField(auto_now_add=True, verbose_name='تاريخ الإضافة')),
-                ('file', models.FileField(upload_to='enrollment/offerings/fiche_technique/', verbose_name='الملف (PDF أو صورة)')),
-                ('offering', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='attachments', to='enrollment.offering', verbose_name='التخصص')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "title",
+                    models.CharField(
+                        blank=True, max_length=150, verbose_name="العنوان"
+                    ),
+                ),
+                (
+                    "order",
+                    models.PositiveIntegerField(default=0, verbose_name="الترتيب"),
+                ),
+                (
+                    "uploaded_at",
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="تاريخ الإضافة"
+                    ),
+                ),
+                (
+                    "file",
+                    models.FileField(
+                        upload_to="enrollment/offerings/fiche_technique/",
+                        verbose_name="الملف (PDF أو صورة)",
+                    ),
+                ),
+                (
+                    "offering",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="attachments",
+                        to="enrollment.offering",
+                        verbose_name="التخصص",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'وثيقة مرفقة (فيشة تقنية)',
-                'verbose_name_plural': '📎 الفيشة التقنية — الوثائق المرفقة',
-                'ordering': ['order', 'id'],
+                "verbose_name": "وثيقة مرفقة (فيشة تقنية)",
+                "verbose_name_plural": "📎 الملف التقني — الوثائق المرفقة",
+                "ordering": ["order", "id"],
             },
         ),
     ]

@@ -53,3 +53,13 @@ echo "== 8/8: About + FAQ pages =="
 python manage.py seed_about_faq
 
 echo "✓ Full re-seed completed."
+
+
+# 3. Re-run the batch prep so the ledger knows about the new formation_ids
+python manage.py prep_fiche_batches
+
+# 4. Re-seed so Offerings exist for the newly-added codes
+python manage.py seed_enrollment
+
+# 5. Now apply — new_formations_candidates.csv is included this time
+python manage.py apply_fiche_batches --overwrite

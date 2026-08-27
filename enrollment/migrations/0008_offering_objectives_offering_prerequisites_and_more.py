@@ -6,23 +6,35 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('enrollment', '0007_formateur_cv_file_formateurcareerentry_and_more'),
+        ("enrollment", "0007_formateur_cv_file_formateurcareerentry_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='offering',
-            name='objectives',
-            field=models.TextField(blank=True, help_text='سطر واحد لكل هدف — يظهر ضمن الفيشة التقنية.', verbose_name='أهداف التكوين'),
+            model_name="offering",
+            name="objectives",
+            field=models.TextField(
+                blank=True,
+                help_text="سطر واحد لكل هدف — يظهر ضمن الملف التقني.",
+                verbose_name="أهداف التكوين",
+            ),
         ),
         migrations.AddField(
-            model_name='offering',
-            name='prerequisites',
-            field=models.TextField(blank=True, help_text='سطر واحد لكل شرط — يظهر ضمن الفيشة التقنية.', verbose_name='الشروط المسبقة'),
+            model_name="offering",
+            name="prerequisites",
+            field=models.TextField(
+                blank=True,
+                help_text="سطر واحد لكل شرط — يظهر ضمن الملف التقني.",
+                verbose_name="الشروط المسبقة",
+            ),
         ),
         migrations.AddField(
-            model_name='offering',
-            name='program_outline',
-            field=models.TextField(blank=True, help_text='سطر واحد لكل محور/وحدة — يظهر ضمن الفيشة التقنية.', verbose_name='برنامج التكوين (المحاور)'),
+            model_name="offering",
+            name="program_outline",
+            field=models.TextField(
+                blank=True,
+                help_text="سطر واحد لكل محور/وحدة — يظهر ضمن الملف التقني.",
+                verbose_name="برنامج التكوين (المحاور)",
+            ),
         ),
     ]

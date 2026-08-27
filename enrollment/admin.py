@@ -31,7 +31,9 @@ class OfferingImageInline(admin.TabularInline):
 
     def thumb(self, obj):
         if obj.pk and obj.image:
-            return format_html('<img src="{}" style="height:56px;border-radius:6px;">', obj.image.url)
+            return format_html(
+                '<img src="{}" style="height:56px;border-radius:6px;">', obj.image.url
+            )
         return "—"
 
     thumb.short_description = "معاينة"
@@ -43,14 +45,16 @@ class OfferingAttachmentInline(admin.TabularInline):
     fields = ("file", "title", "kind_display", "order")
     readonly_fields = ("kind_display",)
     verbose_name = "مرفق إضافي"
-    verbose_name_plural = "📎 مرفقات إضافية (PDF / Word / صور، اختياري) — بالإضافة إلى الفيشة التقنية الرسمية أعلاه"
+    verbose_name_plural = "📎 مرفقات إضافية (PDF / Word / صور، اختياري) — بالإضافة إلى الملف التقني الرسمية أعلاه"
 
     def kind_display(self, obj):
         if not obj.pk or not obj.file:
             return "—"
         labels = {"pdf": "PDF", "doc": "Word", "image": "صورة", "file": "ملف"}
         icons = {"pdf": "📄", "doc": "📝", "image": "🖼️", "file": "📎"}
-        return format_html("{} {}", icons.get(obj.kind, "📎"), labels.get(obj.kind, "ملف"))
+        return format_html(
+            "{} {}", icons.get(obj.kind, "📎"), labels.get(obj.kind, "ملف")
+        )
 
     kind_display.short_description = "النوع"
 
@@ -66,20 +70,38 @@ class FormateurCertificateInline(admin.TabularInline):
 class FormateurCareerEntryInline(admin.TabularInline):
     model = FormateurCareerEntry
     extra = 0
-    fields = ("role_title", "organization", "start_year", "end_year", "description", "order")
+    fields = (
+        "role_title",
+        "organization",
+        "start_year",
+        "end_year",
+        "description",
+        "order",
+    )
     verbose_name = "محطة مهنية"
     verbose_name_plural = "🧭 المسار المهني (اختياري)"
 
 
 @admin.register(Formateur)
 class FormateurAdmin(admin.ModelAdmin):
-    list_display = ("thumb", "full_name", "title", "years_experience", "offering_count", "is_active", "order")
+    list_display = (
+        "thumb",
+        "full_name",
+        "title",
+        "years_experience",
+        "offering_count",
+        "is_active",
+        "order",
+    )
     list_editable = ("is_active", "order")
     search_fields = ("full_name", "title")
     prepopulated_fields = {"slug": ("full_name",)}
     inlines = [FormateurCareerEntryInline, FormateurCertificateInline]
     fieldsets = (
-        ("الهوية", {"fields": ("full_name", "slug", "title", "photo", "years_experience")}),
+        (
+            "الهوية",
+            {"fields": ("full_name", "slug", "title", "photo", "years_experience")},
+        ),
         ("النبذة والتواصل", {"fields": ("bio", "email", "linkedin_url")}),
         (
             "السيرة الذاتية (CV)",
@@ -102,7 +124,10 @@ class FormateurAdmin(admin.ModelAdmin):
 
     def thumb(self, obj):
         if obj.photo:
-            return format_html('<img src="{}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">', obj.photo.url)
+            return format_html(
+                '<img src="{}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">',
+                obj.photo.url,
+            )
         return "—"
 
     thumb.short_description = ""
@@ -139,22 +164,32 @@ class OfferingAdmin(admin.ModelAdmin):
             "معلومات عامة",
             {
                 "fields": (
-                    "session", "specialty", "formateur", "code", "title", "branch_label",
-                    "qualification_level", "certificate_type", "entry_level",
-                    "duration_months", "monthly_fee", "total_fee", "seats_available",
+                    "session",
+                    "specialty",
+                    "formateur",
+                    "code",
+                    "title",
+                    "branch_label",
+                    "qualification_level",
+                    "certificate_type",
+                    "entry_level",
+                    "duration_months",
+                    "monthly_fee",
+                    "total_fee",
+                    "seats_available",
                 )
             },
         ),
         ("المحتوى", {"fields": ("description", "main_tasks")}),
         (
-            "📋 الفيشة التقنية — تفاصيل إضافية",
+            "📋 الملف التقني — تفاصيل إضافية",
             {
                 "fields": ("objectives", "program_outline", "prerequisites"),
-                "description": "حقول اختيارية، سطر واحد لكل عنصر — تُعرض ضمن الفيشة التقنية إن مُلئت.",
+                "description": "حقول اختيارية، سطر واحد لكل عنصر — تُعرض ضمن الملف التقني إن مُلئت.",
             },
         ),
         (
-            "📄 الفيشة التقنية — نمط الوثيقة",
+            "📄 الملف التقني — نمط الوثيقة",
             {
                 "fields": ("fiche_technique_mode", "fiche_technique_file"),
                 "description": (

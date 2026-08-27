@@ -7,42 +7,108 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('enrollment', '0008_offering_objectives_offering_prerequisites_and_more'),
+        ("enrollment", "0008_offering_objectives_offering_prerequisites_and_more"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='offeringattachment',
-            options={'ordering': ['order', 'id'], 'verbose_name': 'وثيقة مرفقة (مرفق إضافي)', 'verbose_name_plural': '📎 مرفقات إضافية للتخصص'},
+            name="offeringattachment",
+            options={
+                "ordering": ["order", "id"],
+                "verbose_name": "وثيقة مرفقة (مرفق إضافي)",
+                "verbose_name_plural": "📎 مرفقات إضافية للتخصص",
+            },
         ),
         migrations.AddField(
-            model_name='formateur',
-            name='cv_mode',
-            field=models.CharField(choices=[('auto', 'توليد تلقائي — نموذج قابل للطباعة يُبنى من بيانات الملف الشخصي'), ('custom', 'رفع ملف مخصص (PDF / Word / صورة)')], default='auto', help_text='توليد تلقائي: يُبنى نموذج CV قابل للطباعة من بيانات هذه الصفحة (النبذة، المسار المهني...) تلقائيا وفوريا. مخصص: يُستعمل الملف المرفوع أدناه بدل النموذج التلقائي.', max_length=10, verbose_name='نمط السيرة الذاتية'),
+            model_name="formateur",
+            name="cv_mode",
+            field=models.CharField(
+                choices=[
+                    (
+                        "auto",
+                        "توليد تلقائي — نموذج قابل للطباعة يُبنى من بيانات الملف الشخصي",
+                    ),
+                    ("custom", "رفع ملف مخصص (PDF / Word / صورة)"),
+                ],
+                default="auto",
+                help_text="توليد تلقائي: يُبنى نموذج CV قابل للطباعة من بيانات هذه الصفحة (النبذة، المسار المهني...) تلقائيا وفوريا. مخصص: يُستعمل الملف المرفوع أدناه بدل النموذج التلقائي.",
+                max_length=10,
+                verbose_name="نمط السيرة الذاتية",
+            ),
         ),
         migrations.AddField(
-            model_name='offering',
-            name='fiche_technique_file',
-            field=models.FileField(blank=True, help_text='PDF / Word / صورة — يُستعمل فقط عند اختيار النمط «مخصص» أعلاه.', null=True, upload_to='enrollment/offerings/fiche_technique_custom/', validators=[django.core.validators.FileExtensionValidator(['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'webp'])], verbose_name='ملف الفيشة التقنية المخصص'),
+            model_name="offering",
+            name="fiche_technique_file",
+            field=models.FileField(
+                blank=True,
+                help_text="PDF / Word / صورة — يُستعمل فقط عند اختيار النمط «مخصص» أعلاه.",
+                null=True,
+                upload_to="enrollment/offerings/fiche_technique_custom/",
+                validators=[
+                    django.core.validators.FileExtensionValidator(
+                        ["pdf", "doc", "docx", "jpg", "jpeg", "png", "webp"]
+                    )
+                ],
+                verbose_name="ملف الملف التقني المخصص",
+            ),
         ),
         migrations.AddField(
-            model_name='offering',
-            name='fiche_technique_mode',
-            field=models.CharField(choices=[('auto', 'توليد تلقائي — نموذج قابل للطباعة يُبنى من بيانات هذا التخصص'), ('custom', 'رفع ملف مخصص (PDF / Word / صورة)')], default='auto', help_text='توليد تلقائي: يُبنى نموذج قابل للطباعة من الحقول أعلاه (الوصف، الأهداف، البرنامج...) تلقائيا وفوريا. مخصص: يُستعمل الملف المرفوع أدناه بدل النموذج التلقائي.', max_length=10, verbose_name='نمط الفيشة التقنية'),
+            model_name="offering",
+            name="fiche_technique_mode",
+            field=models.CharField(
+                choices=[
+                    (
+                        "auto",
+                        "توليد تلقائي — نموذج قابل للطباعة يُبنى من بيانات هذا التخصص",
+                    ),
+                    ("custom", "رفع ملف مخصص (PDF / Word / صورة)"),
+                ],
+                default="auto",
+                help_text="توليد تلقائي: يُبنى نموذج قابل للطباعة من الحقول أعلاه (الوصف، الأهداف، البرنامج...) تلقائيا وفوريا. مخصص: يُستعمل الملف المرفوع أدناه بدل النموذج التلقائي.",
+                max_length=10,
+                verbose_name="نمط الملف التقني",
+            ),
         ),
         migrations.AlterField(
-            model_name='formateur',
-            name='cv_file',
-            field=models.FileField(blank=True, help_text='PDF / Word / صورة — يُستعمل فقط عند اختيار النمط «مخصص» أعلاه.', null=True, upload_to='enrollment/formateurs/cv/', validators=[django.core.validators.FileExtensionValidator(['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'webp'])], verbose_name='ملف CV مخصص'),
+            model_name="formateur",
+            name="cv_file",
+            field=models.FileField(
+                blank=True,
+                help_text="PDF / Word / صورة — يُستعمل فقط عند اختيار النمط «مخصص» أعلاه.",
+                null=True,
+                upload_to="enrollment/formateurs/cv/",
+                validators=[
+                    django.core.validators.FileExtensionValidator(
+                        ["pdf", "doc", "docx", "jpg", "jpeg", "png", "webp"]
+                    )
+                ],
+                verbose_name="ملف CV مخصص",
+            ),
         ),
         migrations.AlterField(
-            model_name='formateurcertificate',
-            name='file',
-            field=models.FileField(upload_to='enrollment/formateurs/certificates/', validators=[django.core.validators.FileExtensionValidator(['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'webp'])], verbose_name='ملف الشهادة (PDF / Word / صورة)'),
+            model_name="formateurcertificate",
+            name="file",
+            field=models.FileField(
+                upload_to="enrollment/formateurs/certificates/",
+                validators=[
+                    django.core.validators.FileExtensionValidator(
+                        ["pdf", "doc", "docx", "jpg", "jpeg", "png", "webp"]
+                    )
+                ],
+                verbose_name="ملف الشهادة (PDF / Word / صورة)",
+            ),
         ),
         migrations.AlterField(
-            model_name='offeringattachment',
-            name='file',
-            field=models.FileField(upload_to='enrollment/offerings/fiche_technique/', validators=[django.core.validators.FileExtensionValidator(['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'webp'])], verbose_name='الملف (PDF / Word / صورة)'),
+            model_name="offeringattachment",
+            name="file",
+            field=models.FileField(
+                upload_to="enrollment/offerings/fiche_technique/",
+                validators=[
+                    django.core.validators.FileExtensionValidator(
+                        ["pdf", "doc", "docx", "jpg", "jpeg", "png", "webp"]
+                    )
+                ],
+                verbose_name="الملف (PDF / Word / صورة)",
+            ),
         ),
     ]
