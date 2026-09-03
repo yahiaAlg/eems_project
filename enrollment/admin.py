@@ -1,12 +1,14 @@
 from datetime import timedelta
 
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.db.models import Count
 from django.shortcuts import render
 from django.urls import path
 from django.utils import timezone
 
 from django.utils.html import format_html
+
+from accounts.services import activate_client_and_send_credentials
 
 from .models import (
     Client,
@@ -237,9 +239,11 @@ class ClientAdmin(admin.ModelAdmin):
         "participant_count",
         "enrollment_count",
         "source",
+        "account_status",
+        "is_vip",
         "created_at",
     )
-    list_filter = ("client_type", "source", "wilaya")
+    list_filter = ("client_type", "source", "wilaya", "account_status", "is_vip")
     search_fields = (
         "full_name",
         "company_name",
@@ -249,6 +253,7 @@ class ClientAdmin(admin.ModelAdmin):
     )
     date_hierarchy = "created_at"
     inlines = [ParticipantInline]
+    actions = ["activate_and_send_credentials"]
 
     fieldsets = (
         ("نوع الزبون", {"fields": ("client_type", "source")}),
@@ -273,7 +278,9 @@ class ClientAdmin(admin.ModelAdmin):
                 "description": "تُملأ فقط عندما يكون نوع الزبون «مؤسسة».",
             },
         ),
+        ("الحساب", {"fields": ("account_status", "is_vip", "user")}),
     )
+    raw_id_fields = ("user",)
 
     def participant_count(self, obj):
         return obj.participants.count()
@@ -284,6 +291,26 @@ class ClientAdmin(admin.ModelAdmin):
         return obj.enrollments.count()
 
     enrollment_count.short_description = "عدد التسجيلات"
+
+    @admin.action(description="✅ تفعيل الحساب وإرسال بيانات الدخول")
+    def activate_and_send_credentials(self, request, queryset):
+        """TODO 1.4 — generate a password, activate the linked User, mark
+        the Client active, and email the credentials. Never surfaces the
+        plaintext password anywhere in the admin (only in the email)."""
+        ok_count = 0
+        for client in queryset:
+            ok, message = activate_client_and_send_credentials(client)
+            self.message_user(
+                request, message, level=messages.SUCCESS if ok else messages.WARNING
+            )
+            if ok:
+                ok_count += 1
+        if ok_count:
+            self.message_user(
+                request,
+                f"إجمالي: تم تفعيل {ok_count} حساب/حسابات بنجاح.",
+                level=messages.INFO,
+            )
 
 
 @admin.register(Participant)

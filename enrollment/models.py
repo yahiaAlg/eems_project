@@ -664,6 +664,17 @@ CLIENT_TYPE_CHOICES = [
     ("enterprise", "مؤسسة"),
 ]
 
+# Auth-account status for a Client (see `accounts` app — Phase 1 of TODO.md).
+# A Client only gets a linked django.contrib.auth.User once they register;
+# walk-in/legacy clients created by staff without a login default to
+# "active" so they are never accidentally blocked from anything that
+# checks this field.
+ACCOUNT_STATUS_CHOICES = [
+    ("pending", "قيد المراجعة"),
+    ("active", "نشط"),
+    ("rejected", "مرفوض"),
+]
+
 
 class Client(models.Model):
     """The subscriber: either a private individual, or an enterprise sending participants."""
@@ -706,6 +717,34 @@ class Client(models.Model):
         choices=SOURCE_CHOICES,
         default="web",
     )
+
+    # --- account fields (Phase 1 — Auth Foundation, see accounts app) ---
+    is_vip = models.BooleanField(
+        "زبون VIP",
+        default=False,
+        help_text="يُفعَّل فقط من طرف الإدارة أو المحاسب.",
+    )
+    account_status = models.CharField(
+        "حالة الحساب",
+        max_length=10,
+        choices=ACCOUNT_STATUS_CHOICES,
+        default="active",
+        help_text="pending: بانتظار موافقة الإدارة — active: مفعّل — rejected: مرفوض.",
+    )
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="client",
+        verbose_name="حساب الدخول",
+        help_text=(
+            "يُربط تلقائيا عند التسجيل عبر النموذج العمومي (المرحلة 1.3). "
+            "فارغ لزبائن الحضور المباشر/الإدخال اليدوي القدامى الذين لا "
+            "يملكون حساب دخول."
+        ),
+    )
+
     created_at = models.DateTimeField("تاريخ التسجيل", auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

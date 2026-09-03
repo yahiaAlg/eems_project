@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "pages",
     "enrollment",
+    "accounts",
 ]
 
 MIDDLEWARE = [
@@ -132,6 +133,22 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
+]
+
+# Auth — User-based login (accounts app, TODO 1.5). Distinct from the
+# legacy phone/session dashboard login in `enrollment`, which still works
+# independently until it's retired in TODO 1.8.
+LOGIN_URL = "accounts:login"
+LOGIN_REDIRECT_URL = "pages:home"
+LOGOUT_REDIRECT_URL = "pages:home"
+
+# AllowAllUsersModelBackend (rather than the default ModelBackend) lets
+# authenticate() return `is_active=False` users too, so
+# EEMSAuthenticationForm.confirm_login_allowed() gets a chance to raise the
+# branded "your account is pending approval" message instead of a generic
+# invalid-login error.
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.AllowAllUsersModelBackend",
 ]
 
 

@@ -1,0 +1,23 @@
+{% extends "pages/base.html" %}
+{% load static %}
+
+{% block title %}تم إرسال طلب إنشاء الحساب — إيمس{% endblock %}
+
+{% block extra_head %}
+<link href="{% static 'enrollment/css/subscribe_success.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="panel" id="success-panel">
+  <div class="icon-badge"><iconify-icon icon="mdi:clock-check-outline"></iconify-icon></div>
+  <h1>تم استلام طلب إنشاء حسابكم</h1>
+  <p>حسابكم الآن قيد المراجعة من طرف الإدارة. بمجرد الموافقة، ستصلكم رسالة على بريدكم الإلكتروني تحتوي على اسم المستخدم وكلمة المرور لتسجيل الدخول.</p>
+
+  <ul class="steps">
+    <li><iconify-icon icon="mdi:shield-check-outline"></iconify-icon> ستراجع الإدارة طلبكم في أقرب وقت ممكن.</li>
+    <li><iconify-icon icon="mdi:email-check-outline"></iconify-icon> ستصلكم بيانات الدخول عبر البريد الإلكتروني عند التفعيل.</li>
+  </ul>
+
+  <a href="{% url 'pages:home' %}" class="cta"><iconify-icon icon="mdi:arrow-left-circle-outline"></iconify-icon> العودة إلى الصفحة الرئيسية</a>
+</div>
+{% endblock %}

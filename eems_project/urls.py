@@ -26,6 +26,7 @@ urlpatterns = [
         "api/pages/", include("pages.api_urls")
     ),  # /api/pages/branches/, /api/pages/specialties/...
     path("", include("enrollment.urls")),  # <-- أضف هذا قبل include("pages.urls")
+    path("account/", include("accounts.urls")),  # /account/register/, ... (login/logout: TODO 1.5)
     path("", include("pages.urls")),
 ]
 

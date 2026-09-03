@@ -1,0 +1,154 @@
+{% extends "pages/base.html" %}
+{% load static %}
+
+{% block title %}إنشاء حساب — إيمس{% endblock %}
+
+{% block extra_head %}
+<link href="{% static 'enrollment/css/subscribe.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{% include "pages/partials/_navbar.html" %}
+
+<section id="sub-hero">
+  <div class="container position-relative" style="z-index:1;">
+    <div class="crumb"><a href="{% url 'pages:home' %}">الرئيسية</a> / إنشاء حساب</div>
+    <h1><iconify-icon icon="mdi:account-plus-outline"></iconify-icon> إنشاء حساب جديد</h1>
+    <p>سجّل كفرد أو كمؤسسة — سيراجع فريقنا طلبك ويرسل لك بيانات الدخول عبر البريد الإلكتروني بمجرد التفعيل.</p>
+  </div>
+</section>
+
+<div class="wrap" style="max-width:760px;">
+  <div class="panel">
+    {% for message in messages %}<div class="alert-eems warning"><iconify-icon icon="mdi:alert-outline"></iconify-icon> {{ message }}</div>{% endfor %}
+
+    <form method="post" novalidate id="registerForm">
+      {% csrf_token %}
+      <div class="honeypot">{{ form.website }}</div>
+
+      <div class="form-section-title"><iconify-icon icon="mdi:account-question-outline"></iconify-icon> نوع الحساب</div>
+      <div class="login-method-toggle">
+        <label class="login-method-option">
+          <input type="radio" name="client_type" value="individual"
+            {% if form.client_type.value|default:"individual" != "enterprise" %}checked{% endif %}>
+          <span><iconify-icon icon="mdi:account-outline"></iconify-icon> فرد (خاص)</span>
+        </label>
+        <label class="login-method-option">
+          <input type="radio" name="client_type" value="enterprise"
+            {% if form.client_type.value == "enterprise" %}checked{% endif %}>
+          <span><iconify-icon icon="mdi:domain"></iconify-icon> مؤسسة</span>
+        </label>
+      </div>
+      {% if form.client_type.errors %}<ul class="errorlist">{% for e in form.client_type.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+
+      <div class="form-section-title"><iconify-icon icon="mdi:phone-outline"></iconify-icon> معلومات الاتصال</div>
+      <div class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label">{{ form.phone.label }} *</label>
+          {{ form.phone }}
+          <div style="font-size:.76rem;color:var(--muted);margin-top:4px;">{{ form.phone.help_text }}</div>
+          {% if form.phone.errors %}<ul class="errorlist">{% for e in form.phone.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">{{ form.email.label }} *</label>
+          {{ form.email }}
+          <div style="font-size:.76rem;color:var(--muted);margin-top:4px;">{{ form.email.help_text }}</div>
+          {% if form.email.errors %}<ul class="errorlist">{% for e in form.email.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">{{ form.wilaya.label }}</label>
+          {{ form.wilaya }}
+        </div>
+        <div class="col-12">
+          <label class="form-label">{{ form.address.label }}</label>
+          {{ form.address }}
+        </div>
+      </div>
+
+      <div class="login-field" data-type="individual">
+        <div class="form-section-title"><iconify-icon icon="mdi:account-outline"></iconify-icon> بيانات الفرد</div>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">{{ form.full_name.label }} *</label>
+            {{ form.full_name }}
+            {% if form.full_name.errors %}<ul class="errorlist">{% for e in form.full_name.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">{{ form.birth_date.label }}</label>
+            {{ form.birth_date }}
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">{{ form.gender.label }}</label>
+            {{ form.gender }}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">{{ form.education_level.label }}</label>
+            {{ form.education_level }}
+          </div>
+        </div>
+      </div>
+
+      <div class="login-field" data-type="enterprise">
+        <div class="form-section-title"><iconify-icon icon="mdi:domain"></iconify-icon> بيانات المؤسسة</div>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">{{ form.company_name.label }} *</label>
+            {{ form.company_name }}
+            {% if form.company_name.errors %}<ul class="errorlist">{% for e in form.company_name.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">{{ form.trade_register_number.label }}</label>
+            {{ form.trade_register_number }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">{{ form.sector.label }}</label>
+            {{ form.sector }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">{{ form.responsible_name.label }}</label>
+            {{ form.responsible_name }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">{{ form.responsible_position.label }}</label>
+            {{ form.responsible_position }}
+          </div>
+        </div>
+      </div>
+
+      <div class="form-check mt-3">
+        {{ form.agree_terms }}
+        <label class="form-check-label" for="{{ form.agree_terms.id_for_label }}">{{ form.agree_terms.label }}</label>
+        {% if form.agree_terms.errors %}<ul class="errorlist">{% for e in form.agree_terms.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+      </div>
+
+      <button type="submit" class="btn-send"><iconify-icon icon="mdi:account-plus-outline"></iconify-icon> إنشاء الحساب</button>
+    </form>
+
+    <p class="mt-3" style="font-size:.85rem;color:var(--muted);text-align:center;">
+      لديك حساب بالفعل؟ <a href="{% url 'accounts:login' %}">سجّل الدخول</a>
+    </p>
+  </div>
+</div>
+
+{% include "pages/partials/_footer.html" %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  const form = document.getElementById('registerForm');
+  if (!form) return;
+  const radios = form.querySelectorAll('input[name="client_type"]');
+  const fields = form.querySelectorAll('.login-field');
+  function sync() {
+    const checked = form.querySelector('input[name="client_type"]:checked');
+    const type = checked ? checked.value : 'individual';
+    fields.forEach((f) => {
+      f.style.display = f.dataset.type === type ? '' : 'none';
+    });
+  }
+  radios.forEach((r) => r.addEventListener('change', sync));
+  sync();
+})();
+</script>
+{% endblock %}

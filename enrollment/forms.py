@@ -140,55 +140,6 @@ class IndividualSubscribeForm(forms.Form):
         return value
 
 
-class DashboardLoginForm(forms.Form):
-    """Access 'مساحتي' (my subscriptions dashboard) using either the phone
-    number or the email address provided at subscription time — no
-    password, matching the fact that clients aren't asked to create one
-    anywhere in the flow."""
-
-    LOGIN_METHOD_CHOICES = [("phone", "الهاتف"), ("email", "البريد الإلكتروني")]
-
-    login_method = forms.ChoiceField(
-        choices=LOGIN_METHOD_CHOICES,
-        initial="phone",
-        required=False,
-        widget=forms.RadioSelect,
-    )
-    phone = forms.RegexField(
-        label="رقم الهاتف",
-        regex=r"^0(5|6|7)\d{8}$",
-        required=False,
-        error_messages={"invalid": "رقم هاتف جزائري غير صالح، مثال: 0770123456"},
-        widget=forms.TextInput(
-            attrs={
-                **WIDGET_ATTRS,
-                "placeholder": "0770 12 34 56",
-                "dir": "ltr",
-                "autofocus": True,
-            }
-        ),
-    )
-    email = forms.EmailField(
-        label="البريد الإلكتروني",
-        required=False,
-        error_messages={"invalid": "بريد إلكتروني غير صالح."},
-        widget=forms.EmailInput(
-            attrs={**WIDGET_ATTRS, "placeholder": "example@email.com", "dir": "ltr"}
-        ),
-    )
-
-    def clean(self):
-        cleaned = super().clean()
-        method = cleaned.get("login_method") or "phone"
-        if method == "email":
-            if not cleaned.get("email"):
-                self.add_error("email", "الرجاء إدخال بريدك الإلكتروني.")
-        else:
-            if not cleaned.get("phone"):
-                self.add_error("phone", "الرجاء إدخال رقم هاتفك.")
-        return cleaned
-
-
 class CommentForm(forms.ModelForm):
     class Meta:
         model = Comment

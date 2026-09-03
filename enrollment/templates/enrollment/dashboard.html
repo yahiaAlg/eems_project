@@ -17,7 +17,10 @@
     <h1><iconify-icon icon="mdi:view-dashboard-outline"></iconify-icon> مساحتي</h1>
     <p>
       متابعة تسجيلاتك (<span dir="ltr">{{ phone }}</span>) —
-      <a href="{% url 'enrollment:dashboard_logout' %}" style="color:rgba(255,255,255,.7);">تسجيل الخروج</a>
+      <form method="post" action="{% url 'accounts:logout' %}" class="dashboard-logout-form">
+        {% csrf_token %}
+        <button type="submit" class="dashboard-logout-btn">تسجيل الخروج</button>
+      </form>
     </p>
   </div>
 </section>

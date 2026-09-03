@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -20,7 +21,6 @@ from pages.views import _visitor_stats
 
 from .forms import (
     CommentForm,
-    DashboardLoginForm,
     EnquiryForm,
     GeneralEnquiryForm,
     IndividualSubscribeForm,
@@ -33,8 +33,6 @@ from .models import (
     Offering,
     Participant,
 )
-
-CLIENT_PHONE_SESSION_KEY = "client_phone"
 
 
 def _shared_chrome_context():
@@ -277,15 +275,15 @@ def subscribe(request, session_slug, code):
                 offering=offering,
                 motivation="\n\n".join(line for line in motivation_lines if line),
             )
-            # Log the client into their self-service space (no password —
-            # the phone they just typed is their identity) and send them
-            # straight to their dashboard instead of a static thank-you page.
-            request.session[CLIENT_PHONE_SESSION_KEY] = client.phone
+            # This quick-subscribe path creates a Client with no linked
+            # User (mon-espace now requires a real account, see TODO
+            # 1.8), so there's no self-service space to send them to yet —
+            # land on the static thank-you page instead.
             messages.success(
                 request,
-                "تم استلام طلب تسجيلكم بنجاح. يمكنكم متابعة حالته وتأكيده من مساحتي أدناه.",
+                "تم استلام طلب تسجيلكم بنجاح. سيتواصل معكم فريقنا لتأكيد التسجيل.",
             )
-            return redirect("enrollment:dashboard")
+            return redirect("enrollment:subscribe_success")
     else:
         form = IndividualSubscribeForm()
 
@@ -371,63 +369,21 @@ def ajax_offerings_for_specialty(request):
     return JsonResponse({"results": data})
 
 
-def _dashboard_phone(request):
-    return request.session.get(CLIENT_PHONE_SESSION_KEY)
-
-
-def dashboard_login(request):
-    """Return access to 'مساحتي' with just the phone number or email used
-    at subscription time — there is no password anywhere in this flow."""
-    if request.method == "POST":
-        form = DashboardLoginForm(request.POST)
-        if form.is_valid():
-            method = form.cleaned_data.get("login_method") or "phone"
-            if method == "email":
-                email = form.cleaned_data["email"]
-                client = Client.objects.filter(email__iexact=email).first()
-                error_field = "email"
-                error_msg = "لم نجد أي تسجيل بهذا البريد الإلكتروني. تأكد منه أو سجّل في تكوين أولا."
-            else:
-                phone = form.cleaned_data["phone"]
-                client = Client.objects.filter(phone=phone).first()
-                error_field = "phone"
-                error_msg = (
-                    "لم نجد أي تسجيل بهذا الرقم. تأكد من الرقم أو سجّل في تكوين أولا."
-                )
-
-            if client:
-                # The dashboard/confirm/cancel views all key off the phone
-                # number, so a client found via email is logged in the
-                # same way as one found via phone.
-                request.session[CLIENT_PHONE_SESSION_KEY] = client.phone
-                return redirect("enrollment:dashboard")
-            form.add_error(error_field, error_msg)
-    else:
-        form = DashboardLoginForm()
-
-    context = {
-        "settings": SiteSettings.load(),
-        "form": form,
-        **_shared_chrome_context(),
-    }
-    return render(request, "enrollment/dashboard_login.html", context)
-
-
-def dashboard_logout(request):
-    request.session.pop(CLIENT_PHONE_SESSION_KEY, None)
-    messages.success(request, "تم تسجيل خروجك من مساحتي.")
-    return redirect("pages:home")
-
-
+@login_required
 def dashboard(request):
     """'مساحتي' — the subscriber's own dashboard: every enrollment tied to
-    the phone number in their session, with self-service confirm/cancel."""
-    phone = _dashboard_phone(request)
-    if not phone:
-        return redirect("enrollment:dashboard_login")
+    the Client account linked to the logged-in user (TODO 1.8 — replaces
+    the retired phone/session login), with self-service confirm/cancel."""
+    client = getattr(request.user, "client", None)
+    if client is None:
+        messages.info(
+            request,
+            "لا يوجد حساب زبون مرتبط بحسابك بعد. تواصل مع الإدارة إذا كنت تعتقد أن هذا خطأ.",
+        )
+        return redirect("pages:home")
 
     enrollments = (
-        Enrollment.objects.filter(client__phone=phone)
+        Enrollment.objects.filter(client=client)
         .select_related(
             "offering__session", "offering__specialty__branch", "participant", "client"
         )
@@ -435,20 +391,19 @@ def dashboard(request):
     )
     context = {
         "settings": SiteSettings.load(),
-        "phone": phone,
+        "client": client,
+        "phone": client.phone,
         "enrollments": enrollments,
         **_shared_chrome_context(),
     }
     return render(request, "enrollment/dashboard.html", context)
 
 
+@login_required
 @require_POST
 def dashboard_confirm(request, pk):
-    phone = _dashboard_phone(request)
-    if not phone:
-        return redirect("enrollment:dashboard_login")
-
-    enrollment = get_object_or_404(Enrollment, pk=pk, client__phone=phone)
+    client = getattr(request.user, "client", None)
+    enrollment = get_object_or_404(Enrollment, pk=pk, client=client)
     if enrollment.can_confirm:
         enrollment.status = "confirmed"
         enrollment.confirmed_at = timezone.now()
@@ -474,13 +429,11 @@ def dashboard_confirm(request, pk):
     return redirect("enrollment:dashboard")
 
 
+@login_required
 @require_POST
 def dashboard_cancel(request, pk):
-    phone = _dashboard_phone(request)
-    if not phone:
-        return redirect("enrollment:dashboard_login")
-
-    enrollment = get_object_or_404(Enrollment, pk=pk, client__phone=phone)
+    client = getattr(request.user, "client", None)
+    enrollment = get_object_or_404(Enrollment, pk=pk, client=client)
     if enrollment.can_cancel:
         enrollment.status = "cancelled"
         enrollment.cancelled_at = timezone.now()
