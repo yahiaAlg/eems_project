@@ -46,78 +46,81 @@ Do not skip ahead — later tasks depend on models/fields created earlier.
 
 ## Phase 2 — Client Profile & Enterprise Legal Info
 
-- [ ] **2.1** Extend `Client` with the full enterprise legal fields needed for accounting exports
+- [x] **2.1** Extend `Client` with the full enterprise legal fields needed for accounting exports
   (cross-check against the uploaded `revenus_par_client` CSV columns): legal form
   (`forme_juridique`), commercial-register number (already `trade_register_number` — rename/alias
   to RC if needed), `nif`, `nis`, `article_imposition`, `rib`, `tva_exempt` (bool), postal code,
   city, website, and a distinct "main contact" name/phone/email (separate from
   `responsible_name`/`responsible_position` if those mean something different).
-- [ ] **2.2** Build a "My Profile" page in the client space: edit personal/contact fields for
+- [x] **2.2** Build a "My Profile" page in the client space: edit personal/contact fields for
   individuals, and personal + legal/enterprise fields for enterprises, reusing the
   individual/enterprise conditional pattern from `IndividualSubscribeForm`.
-- [ ] **2.3** Add a validation gate: an enterprise VIP client cannot submit a proforma request
+- [x] **2.3** Add a validation gate: an enterprise VIP client cannot submit a proforma request
   (Phase 5) until required legal fields are filled in on their profile. Show a clear prompt
   linking to the profile page if incomplete.
 
 ## Phase 3 — Role-Based Pricing Visibility
 
-- [ ] **3.1** Confirm/extend `Offering` pricing fields to support both billing bases: price
+- [x] **3.1** Confirm/extend `Offering` pricing fields to support both billing bases: price
   per day and price per participant (reuse `monthly_fee`/`total_fee` or add
   `price_per_day` / `price_per_participant` — pick whichever fits the existing data best).
-- [ ] **3.2** In `specialty_detail.html` (offering detail page), show the base price block only
+- [x] **3.2** In `specialty_detail.html` (offering detail page), show the base price block only
   when `request.user.is_authenticated and request.user.client.is_vip`. Non-VIP and anonymous
   visitors must not see prices at all (not blurred — fully absent from the rendered HTML).
-- [ ] **3.3** Apply the same visibility rule everywhere else prices could leak: catalog cards,
+- [x] **3.3** Apply the same visibility rule everywhere else prices could leak: catalog cards,
   cart page, checkout confirmation, order-history/proforma pages.
 
 ## Phase 4 — Cart & Wishlist
 
-- [ ] **4.1** Create `Cart` (one active cart per `Client`) and `CartItem` (`offering`,
+- [x] **4.1** Create `Cart` (one active cart per `Client`) and `CartItem` (`offering`,
   `participant_count`, `billing_basis` [`per_day`/`per_participant`], `trainer` FK to `Formateur`
   nullable, `notes`) models. `trainer` selection is only ever settable/visible for VIP carts —
   enforce in the form/view layer, not just the template.
-- [ ] **4.2** Replace the single-offering `subscribe` flow's entry points with "Add to cart"
+- [x] **4.2** Replace the single-offering `subscribe` flow's entry points with "Add to cart"
   buttons on the catalog and specialty-detail pages, supporting multiple formations queued
   before checkout. Keep the old direct-subscribe route working for backward compatibility if
   easy, otherwise redirect it into "add to cart + go to cart".
-- [ ] **4.3** Build the cart page: list items, edit participant count, remove item, VIP-only
+- [x] **4.3** Build the cart page: list items, edit participant count, remove item, VIP-only
   trainer dropdown per item, subtotal/total shown only to VIP (per Phase 3 rule).
-- [ ] **4.4** Create `WishlistItem` (`client`, `offering`) model with unique-together
+- [x] **4.4** Create `WishlistItem` (`client`, `offering`) model with unique-together
   constraint. Add "Save for later" buttons on catalog/detail pages and a Wishlist page in the
   client space with a "move to cart" action per item.
-- [ ] **4.5** Add Cart / Wishlist / Profile / My Purchases / Metrics as tabs/sections in the
+- [x] **4.5** Add Cart / Wishlist / Profile / My Purchases / Metrics as tabs/sections in the
   client space navigation (`enrollment/templates/enrollment/dashboard.html` or a new tabbed
   layout replacing it).
 
 ## Phase 5 — Checkout Flow, Branched by Role
 
-- [ ] **5.1 (VIP)** "Request Proforma" action on the cart: confirm billing basis per line item,
+- [x] **5.1 (VIP)** "Request Proforma" action on the cart: confirm billing basis per line item,
   confirm trainer choice per line (already set in cart), optional "bon de commande" upload
   (accept PDF or image, validate extension/mimetype and a sane max size).
-- [ ] **5.2 (VIP)** Create `ProformaInvoice` model (client, items snapshot with offering, trainer,
+- [x] **5.2 (VIP)** Create `ProformaInvoice` model (client, items snapshot with offering, trainer,
   billing basis, quantity, unit price, line total, attached bon-de-commande file, status,
-  created_at). Generate a PDF facture-proforma from it (use the project's `pdf` skill) with the
-  client's legal info, itemized lines, trainer names, and totals.
-- [ ] **5.3 (Non-VIP)** "Request Quote" action on the cart: creates a `QuoteRequest` (client,
+  created_at). Generate printable invoice/receipt pages using dedicated URLs that render HTML
+  templates with print-specific CSS (`@media print` rules) — no PDF generation libraries (no
+  ReportLab, WeasyPrint, etc.) — with the client's legal info, itemized lines, trainer names, and
+  totals.
+- [x] **5.3 (Non-VIP)** "Request Quote" action on the cart: creates a `QuoteRequest` (client,
   items with offering + participant_count only — no trainer, no price, no attachment field
   shown or accepted).
-- [ ] **5.4** On submit of either flow, lock the selected cart items into the created record and
+- [x] **5.4** On submit of either flow, lock the selected cart items into the created record and
   clear/deactivate the cart (or mark it "converted").
 
 ## Phase 6 — Admin / Accountant Tarification
 
-- [ ] **6.1** Create an "Accountant" Django `Group` with permissions scoped to
+- [x] **6.1** Create an "Accountant" Django `Group` with permissions scoped to
   `ProformaInvoice` and `QuoteRequest` review and to setting custom tariffs — not full admin
   access.
-- [ ] **6.2** Create `CustomTariff` (or per-line fields directly on `QuoteRequestItem`): admin or
+- [x] **6.2** Create `CustomTariff` (or per-line fields directly on `QuoteRequestItem`): admin or
   accountant sets `unit_price` + `billing_basis` per formation line on a given `QuoteRequest`
   (non-VIP path), overriding/defining the price that VIP users would otherwise see as the base
   price.
-- [ ] **6.3** Build a review interface (Django admin customization is fine) for admin/accountant
+- [x] **6.3** Build a review interface (Django admin customization is fine) for admin/accountant
   to open a pending `QuoteRequest`, enter the custom tariff per line, and mark it
   `priced`/`approved`.
-- [ ] **6.4** Once tariffs are set, generate the resulting proforma/invoice document for that
-  quote (same PDF generation path as 5.2) and surface it in the client's "My Purchases" page.
+- [x] **6.4** Once tariffs are set, generate the resulting proforma/invoice document for that
+  quote (same printable-HTML-page path as 5.2, no PDF library) and surface it in the client's
+  "My Purchases" page.
 
 ## Phase 7 — Notification Emails
 

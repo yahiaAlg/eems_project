@@ -104,7 +104,7 @@
             <span><iconify-icon icon="mdi:calendar-month-outline"></iconify-icon> {{ offering.session.name }}</span>
             <span><iconify-icon icon="mdi:clock-time-four-outline"></iconify-icon> {{ offering.duration_months }} شهرا</span>
           </div>
-          {% if offering.monthly_fee %}<div class="offer-fee">{{ offering.monthly_fee|da }} / شهر</div>{% endif %}
+          {% if can_view_price and offering.monthly_fee %}<div class="offer-fee">{{ offering.monthly_fee|da }} / شهر</div>{% endif %}
           {% if offering.seats_remaining > 0 %}
             <a class="btn-detail" href="{% url 'enrollment:detail' offering.session.slug offering.code %}"><iconify-icon icon="mdi:arrow-left-circle-outline"></iconify-icon> التفاصيل والتسجيل</a>
           {% else %}

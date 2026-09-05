@@ -1,0 +1,207 @@
+{% extends "pages/base.html" %}
+{% load static %}
+
+{% block title %}مساحتي — ملفي الشخصي{% endblock %}
+
+{% block extra_head %}
+<link href="{% static 'enrollment/css/subscribe.css' %}" rel="stylesheet">
+<link href="{% static 'enrollment/css/dashboard.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{% include "pages/partials/_navbar.html" %}
+
+<section id="sub-hero">
+  <div class="container position-relative" style="z-index:1;">
+    <div class="crumb"><a href="{% url 'pages:home' %}">الرئيسية</a> / <a href="{% url 'enrollment:dashboard' %}">مساحتي</a> / ملفي الشخصي</div>
+    <h1 id="anim-title"><iconify-icon icon="mdi:account-circle-outline"></iconify-icon> ملفي الشخصي</h1>
+    <p>
+      {% if client.is_enterprise %}
+        عدّل معلومات الاتصال والبيانات القانونية/المحاسبية الخاصة بمؤسستك.
+      {% else %}
+        عدّل معلوماتك الشخصية ومعلومات الاتصال الخاصة بحسابك.
+      {% endif %}
+    </p>
+  </div>
+</section>
+
+<div class="wrap">
+  {% include "enrollment/partials/_client_nav.html" %}
+
+  {% if client.needs_legal_info_for_proforma %}
+  <div class="alert-eems warning" style="display:flex;align-items:flex-start;gap:10px;margin-top:24px;">
+    <iconify-icon icon="mdi:alert-outline" style="font-size:1.2rem;flex-shrink:0;margin-top:2px;"></iconify-icon>
+    <div>
+      <strong>معلومات ناقصة.</strong>
+      لطلب فاتورة أولية (بروفورما) بصفتك زبون VIP، أكمل الحقول التالية أدناه:
+      <span dir="ltr">{{ client.missing_legal_fields|join:"، " }}</span>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="row g-4">
+    <div class="col-lg-8" id="anim-form">
+      <div class="panel">
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          {% if form.non_field_errors %}
+          <ul class="errorlist">
+            {% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}
+          </ul>
+          {% endif %}
+
+          <div class="form-section-title"><iconify-icon icon="mdi:phone-outline"></iconify-icon> معلومات الاتصال</div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">رقم الهاتف (اسم المستخدم)</label>
+              <input type="text" class="form-control" value="{{ client.phone }}" dir="ltr" disabled>
+              <div class="form-text" style="font-size:.78rem;color:var(--muted);margin-top:4px;">
+                لتغيير رقم الهاتف، تواصل مع الإدارة.
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">{{ form.email.label }}</label>
+              {{ form.email }}
+              {% if form.email.errors %}<ul class="errorlist">{% for e in form.email.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">{{ form.wilaya.label }}</label>
+              {{ form.wilaya }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">{{ form.address.label }}</label>
+              {{ form.address }}
+            </div>
+          </div>
+
+          {% if not client.is_enterprise %}
+          <div class="form-section-title"><iconify-icon icon="mdi:account-outline"></iconify-icon> البيانات الشخصية</div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">{{ form.full_name.label }} *</label>
+              {{ form.full_name }}
+              {% if form.full_name.errors %}<ul class="errorlist">{% for e in form.full_name.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">{{ form.birth_date.label }}</label>
+              {{ form.birth_date }}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">{{ form.gender.label }}</label>
+              {{ form.gender }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">{{ form.education_level.label }}</label>
+              {{ form.education_level }}
+            </div>
+          </div>
+
+          {% else %}
+          <div class="form-section-title"><iconify-icon icon="mdi:domain"></iconify-icon> بيانات المؤسسة</div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">{{ form.company_name.label }} *</label>
+              {{ form.company_name }}
+              {% if form.company_name.errors %}<ul class="errorlist">{% for e in form.company_name.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">{{ form.trade_register_number.label }}</label>
+              {{ form.trade_register_number }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">{{ form.sector.label }}</label>
+              {{ form.sector }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">{{ form.responsible_name.label }}</label>
+              {{ form.responsible_name }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">{{ form.responsible_position.label }}</label>
+              {{ form.responsible_position }}
+            </div>
+          </div>
+
+          <div class="form-section-title"><iconify-icon icon="mdi:file-document-outline"></iconify-icon> المعلومات القانونية والمحاسبية</div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">{{ form.forme_juridique.label }}</label>
+              {{ form.forme_juridique }}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">{{ form.nif.label }}</label>
+              {{ form.nif }}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">{{ form.nis.label }}</label>
+              {{ form.nis }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">{{ form.article_imposition.label }}</label>
+              {{ form.article_imposition }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">{{ form.rib.label }}</label>
+              {{ form.rib }}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">{{ form.postal_code.label }}</label>
+              {{ form.postal_code }}
+            </div>
+            <div class="col-md-5">
+              <label class="form-label">{{ form.city.label }}</label>
+              {{ form.city }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">{{ form.website.label }}</label>
+              {{ form.website }}
+            </div>
+            <div class="col-12">
+              <div class="form-check mt-1">
+                {{ form.tva_exempt }}
+                <label class="form-check-label" for="{{ form.tva_exempt.id_for_label }}">{{ form.tva_exempt.label }}</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section-title"><iconify-icon icon="mdi:receipt-text-outline"></iconify-icon> المسؤول عن الفوترة</div>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label">{{ form.main_contact_name.label }}</label>
+              {{ form.main_contact_name }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">{{ form.main_contact_phone.label }}</label>
+              {{ form.main_contact_phone }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">{{ form.main_contact_email.label }}</label>
+              {{ form.main_contact_email }}
+              {% if form.main_contact_email.errors %}<ul class="errorlist">{% for e in form.main_contact_email.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+            </div>
+          </div>
+          {% endif %}
+
+          <button type="submit" class="btn-send"><iconify-icon icon="mdi:content-save-outline"></iconify-icon> حفظ التعديلات</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="summary-card">
+        <h4 style="margin-bottom:8px;">{{ client.display_name }}</h4>
+        <div class="summary-sub">{{ client.get_client_type_display }}</div>
+        <div class="summary-row"><iconify-icon icon="mdi:phone-outline"></iconify-icon> <span dir="ltr">{{ client.phone }}</span></div>
+        {% if client.email %}<div class="summary-row"><iconify-icon icon="mdi:email-outline"></iconify-icon> <span dir="ltr">{{ client.email }}</span></div>{% endif %}
+        {% if client.is_vip %}<div class="summary-row"><iconify-icon icon="mdi:crown-outline"></iconify-icon> زبون VIP</div>{% endif %}
+        <a href="{% url 'enrollment:dashboard' %}" class="cta" style="margin-top:16px;width:100%;justify-content:center;">
+          <iconify-icon icon="mdi:arrow-right-circle-outline"></iconify-icon> العودة إلى مساحتي
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% include "pages/partials/_footer.html" %}
+{% endblock %}

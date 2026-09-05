@@ -31,8 +31,10 @@
         {% if offering.get_entry_level_display %}<div class="summary-row"><iconify-icon icon="mdi:school-outline"></iconify-icon> مستوى الدخول: {{ offering.get_entry_level_display }}</div>{% endif %}
         <div class="summary-row"><iconify-icon icon="mdi:seat-outline"></iconify-icon> {{ offering.seats_remaining }} مقعد متبقي من {{ offering.seats_available }}</div>
 
+        {% if can_view_price %}
         {% if offering.total_fee %}<div class="summary-fee">{{ offering.total_fee|da }} <span style="font-size:.7rem;color:rgba(255,255,255,.4);font-weight:500;">(إجمالي)</span></div>{% endif %}
         {% if offering.monthly_fee %}<div style="color:rgba(255,255,255,.5);font-size:.78rem;">{{ offering.monthly_fee|da }} شهريا</div>{% endif %}
+        {% endif %}
       </div>
     </div>
 

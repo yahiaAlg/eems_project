@@ -4,6 +4,22 @@
 .dashboard-logout-btn { background:none; border:none; padding:0; margin:0; font:inherit; color:rgba(255,255,255,.7); text-decoration:underline; cursor:pointer; }
 .dashboard-logout-btn:hover { color:#fff; }
 
+/* _client_nav.html — shared tab bar across every "مساحتي" section (TODO
+   4.5). `.wrap` already carries the negative top margin that floats its
+   first child over the hero (see subscribe.css), so this only needs its
+   own box + bottom spacing before the page content underneath it. */
+.client-tabs { display:flex; flex-wrap:wrap; gap:6px; background:var(--card-bg); border:1px solid var(--card-border); border-radius:14px; box-shadow:var(--shadow-md); padding:8px; margin-bottom:28px; }
+.client-tab { display:inline-flex; align-items:center; gap:6px; padding:10px 16px; border-radius:9px; font-size:.85rem; font-weight:700; color:var(--muted); text-decoration:none; border:none; background:transparent; cursor:pointer; font-family:inherit; transition:all .15s; }
+.client-tab:hover { background:var(--body-bg); color:var(--navy); }
+.client-tab.active { background:var(--accent-soft); color:var(--accent-dark); }
+.client-tab.logout { color:#dc2626; }
+.client-tab.logout:hover { background:rgba(220,38,38,.08); }
+.client-tab-logout-form { margin:0; margin-inline-start:auto; }
+@media (max-width: 700px) {
+  .client-tab-logout-form { margin-inline-start:0; width:100%; }
+  .client-tab.logout { width:100%; justify-content:center; }
+}
+
 .btn-add-more { display:inline-flex; align-items:center; gap:6px; background:var(--accent-soft); color:var(--accent-dark); border:1px solid rgba(245,158,11,.35); border-radius:9px; padding:8px 16px; font-size:.85rem; font-weight:700; text-decoration:none; transition:all .15s; }
 .btn-add-more:hover { background:var(--accent); color:var(--navy); }
 
@@ -34,3 +50,11 @@
 
 a.cta { display:inline-flex; align-items:center; gap:8px; margin-top:10px; color:var(--navy); background:var(--accent); text-decoration:none; font-weight:800; padding:12px 26px; border-radius:9px; transition:all .18s; }
 a.cta:hover { background:var(--accent-dark); color:var(--navy); transform:translateY(-2px); }
+
+/* metrics.html — لوحة إحصائياتي (TODO 4.5 nav entry; simple counts today,
+   Phase 8.2 will add Chart.js widgets once purchase/proforma data exists) */
+.stat-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:14px; }
+.stat-card { background:var(--card-bg); border:1px solid var(--card-border); border-radius:14px; box-shadow:var(--shadow); padding:20px; text-align:center; }
+.stat-card iconify-icon { font-size:1.6rem; color:var(--accent-dark); }
+.stat-card .stat-value { font-size:1.8rem; font-weight:800; color:var(--navy); margin:8px 0 2px; }
+.stat-card .stat-label { font-size:.82rem; color:var(--muted); }

@@ -197,6 +197,10 @@ ul.tasks li::marker {
   background: var(--accent);
   color: var(--navy);
   font-weight: 800;
+  font-family: inherit;
+  font-size: 15px;
+  border: 0;
+  cursor: pointer;
   padding: 13px 30px;
   border-radius: 9px;
   transition: all 0.18s;

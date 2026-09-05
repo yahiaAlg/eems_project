@@ -1,0 +1,129 @@
+{% extends "pages/base.html" %}
+{% load static enrollment_extras %}
+
+{% block title %}مساحتي — سلتي{% endblock %}
+
+{% block extra_head %}
+<link href="{% static 'enrollment/css/subscribe.css' %}" rel="stylesheet">
+<link href="{% static 'enrollment/css/dashboard.css' %}" rel="stylesheet">
+<link href="{% static 'enrollment/css/cart.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{% include "pages/partials/_navbar.html" %}
+
+<section id="sub-hero">
+  <div class="container position-relative" style="z-index:1;">
+    <div class="crumb"><a href="{% url 'pages:home' %}">الرئيسية</a> / <a href="{% url 'enrollment:dashboard' %}">مساحتي</a> / سلتي</div>
+    <h1><iconify-icon icon="mdi:cart-outline"></iconify-icon> سلتي</h1>
+    <p>راجع التخصصات التي أضفتها، وعدّل عدد المشاركين قبل إرسال طلبك.</p>
+  </div>
+</section>
+
+<div class="wrap" style="max-width:900px;">
+  {% include "enrollment/partials/_client_nav.html" %}
+
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h2 style="font-size:1.1rem;font-weight:800;margin:0;">عناصر السلة ({{ items_with_forms|length }})</h2>
+    <a href="{% url 'enrollment:catalog' %}" class="btn-add-more">
+      <iconify-icon icon="mdi:plus-circle-outline"></iconify-icon> تصفح تخصصات أخرى
+    </a>
+  </div>
+
+  {% for item, form in items_with_forms %}
+  <div class="cart-item">
+    <div class="cart-item-poster">
+      <img src="{{ item.offering.poster_src }}" alt="{{ item.offering.title }}">
+    </div>
+
+    <div class="cart-item-body">
+      <span class="cart-item-code">{{ item.offering.code }}</span>
+      <h4>{{ item.offering.title }}</h4>
+      <div class="cart-item-sub">{{ item.offering.session.name }}</div>
+
+      <form method="post" action="{% url 'enrollment:cart_update_item' item.pk %}" class="cart-item-form">
+        {% csrf_token %}
+
+        <div class="field">
+          <label for="{{ form.participant_count.id_for_label }}">{{ form.participant_count.label }}</label>
+          {{ form.participant_count }}
+          {% if form.participant_count.errors %}<ul class="errorlist inline">{% for e in form.participant_count.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+        </div>
+
+        {% if client.is_vip %}
+        <div class="field">
+          <label for="{{ form.billing_basis.id_for_label }}">{{ form.billing_basis.label }}</label>
+          {{ form.billing_basis }}
+        </div>
+
+        <div class="field">
+          <label for="{{ form.trainer.id_for_label }}">{{ form.trainer.label }}</label>
+          {{ form.trainer }}
+        </div>
+        {% endif %}
+
+        <button type="submit" class="btn-mini btn-mini-outline"><iconify-icon icon="mdi:content-save-outline"></iconify-icon> حفظ</button>
+      </form>
+    </div>
+
+    <div class="cart-item-side">
+      {% if can_view_price %}
+        {% if item.line_total is not None %}
+        <div class="cart-item-price">
+          {{ item.line_total|da }}
+          <span class="unit">{{ item.unit_price|da }} × {% if item.billing_basis == 'per_participant' %}{{ item.participant_count }} مشارك{% else %}يوم{% endif %}</span>
+        </div>
+        {% else %}
+        <div class="cart-item-price not-priced">لم يُحدَّد السعر بعد</div>
+        {% endif %}
+      {% endif %}
+
+      <form method="post" action="{% url 'enrollment:cart_remove_item' item.pk %}" class="remove-form" onsubmit="return confirm('إزالة هذا التخصص من السلة؟');">
+        {% csrf_token %}
+        <button type="submit" class="btn-remove"><iconify-icon icon="mdi:trash-can-outline"></iconify-icon> إزالة</button>
+      </form>
+    </div>
+  </div>
+  {% empty %}
+  <div class="panel" style="text-align:center;padding:50px 20px;">
+    <iconify-icon icon="mdi:cart-off" style="font-size:40px;color:var(--muted);"></iconify-icon>
+    <p style="margin-top:12px;color:var(--muted);">سلتك فارغة حاليا.</p>
+    <a href="{% url 'enrollment:catalog' %}" class="cta"><iconify-icon icon="mdi:cart-plus"></iconify-icon> تصفح التخصصات</a>
+  </div>
+  {% endfor %}
+
+  {% if items_with_forms and can_view_price %}
+  <div class="cart-totals">
+    <div>
+      <div class="label">الإجمالي (المجموع)</div>
+      <div class="note">حسب التخصصات المسعّرة فقط</div>
+    </div>
+    {% if cart.subtotal is not None %}
+      <div class="amount">{{ cart.subtotal|da }}</div>
+    {% else %}
+      <div class="note">لم يُحدَّد السعر لأي عنصر في السلة بعد.</div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if items_with_forms and client.is_vip %}
+  <div class="d-flex justify-content-end mt-3">
+    <a href="{% url 'enrollment:request_proforma' %}" class="cta">
+      <iconify-icon icon="mdi:file-document-check-outline"></iconify-icon> طلب فاتورة أولية (بروفورما)
+    </a>
+  </div>
+  {% elif items_with_forms %}
+  <div class="d-flex justify-content-end mt-3">
+    <form method="post" action="{% url 'enrollment:request_quote' %}" onsubmit="return confirm('إرسال طلب عرض سعر لهذه التخصصات؟');">
+      {% csrf_token %}
+      <button type="submit" class="cta">
+        <iconify-icon icon="mdi:file-document-edit-outline"></iconify-icon> طلب عرض سعر
+      </button>
+    </form>
+  </div>
+  {% endif %}
+
+</div>
+
+{% include "pages/partials/_footer.html" %}
+{% endblock %}

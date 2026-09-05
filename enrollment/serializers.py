@@ -50,6 +50,23 @@ class OfferingSerializer(serializers.ModelSerializer):
             "description", "tasks_list", "image",
         ]
 
+    # Fields dropped from the public catalog API response for
+    # anonymous/non-VIP callers (TODO 3.3 pricing-visibility rule, same
+    # helper enrollment/views.py uses for the HTML pages — lazy-imported
+    # here to avoid a module-load-order dependency on enrollment.views).
+    PRICE_FIELDS = ("monthly_fee", "total_fee")
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get("request")
+        if request is not None:
+            from .views import _can_view_prices
+
+            if not _can_view_prices(request):
+                for field in self.PRICE_FIELDS:
+                    data.pop(field, None)
+        return data
+
 
 # ---------------------------------------------------------------------------
 # Administration (staff-only CRUD)

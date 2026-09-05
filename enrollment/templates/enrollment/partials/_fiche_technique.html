@@ -48,8 +48,12 @@
 <div class="panel reveal-item">
   <div class="info-grid">
     <div class="info-box"><iconify-icon icon="mdi:clock-time-four-outline"></iconify-icon><div class="label">مدة التكوين</div><div class="value">{{ offering.duration_months }} شهرا</div></div>
-    {% if offering.monthly_fee %}<div class="info-box"><iconify-icon icon="mdi:cash-multiple"></iconify-icon><div class="label">القيمة الشهرية</div><div class="value">{{ offering.monthly_fee|da }}</div></div>{% endif %}
-    {% if offering.total_fee %}<div class="info-box"><iconify-icon icon="mdi:wallet-outline"></iconify-icon><div class="label">القيمة الإجمالية</div><div class="value">{{ offering.total_fee|da }}</div></div>{% endif %}
+    {% if can_view_price %}
+      {% if offering.monthly_fee %}<div class="info-box"><iconify-icon icon="mdi:cash-multiple"></iconify-icon><div class="label">القيمة الشهرية</div><div class="value">{{ offering.monthly_fee|da }}</div></div>{% endif %}
+      {% if offering.total_fee %}<div class="info-box"><iconify-icon icon="mdi:wallet-outline"></iconify-icon><div class="label">القيمة الإجمالية</div><div class="value">{{ offering.total_fee|da }}</div></div>{% endif %}
+      {% if offering.price_per_day %}<div class="info-box"><iconify-icon icon="mdi:calendar-clock-outline"></iconify-icon><div class="label">السعر لليوم الواحد</div><div class="value">{{ offering.price_per_day|da }}</div></div>{% endif %}
+      {% if offering.price_per_participant %}<div class="info-box"><iconify-icon icon="mdi:account-cash-outline"></iconify-icon><div class="label">السعر للمشارك الواحد</div><div class="value">{{ offering.price_per_participant|da }}</div></div>{% endif %}
+    {% endif %}
     {% if offering.get_certificate_type_display %}<div class="info-box"><iconify-icon icon="mdi:certificate-outline"></iconify-icon><div class="label">الشهادة</div><div class="value" style="font-size:.85rem;">{{ offering.get_certificate_type_display }}</div></div>{% endif %}
     {% if offering.get_entry_level_display %}<div class="info-box"><iconify-icon icon="mdi:school-outline"></iconify-icon><div class="label">مستوى الدخول</div><div class="value" style="font-size:.85rem;">{{ offering.get_entry_level_display }}</div></div>{% endif %}
     <div class="info-box"><iconify-icon icon="mdi:account-group-outline"></iconify-icon><div class="label">مقاعد متبقية</div><div class="value">{{ offering.seats_remaining }}</div></div>
@@ -109,9 +113,28 @@
   <div class="seats-bar"><span data-fill="{{ offering.fill_rate }}"></span></div>
   <p style="font-size:.88rem;color:var(--muted);margin-top:6px;">{{ offering.seats_taken }} / {{ offering.seats_available }} مقعد مشغول</p>
 
-  {% if offering.seats_remaining > 0 %}
-    <a class="btn-enroll" href="{% url 'enrollment:subscribe' offering.session.slug offering.code %}"><iconify-icon icon="mdi:pencil-plus-outline"></iconify-icon> سجّل الآن</a>
+  <div class="d-flex flex-wrap gap-2 align-items-center">
+  {% if request.user.is_authenticated %}
+    <form method="post" action="{% url 'enrollment:add_to_cart' offering.session.slug offering.code %}">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+      {% if offering.seats_remaining > 0 %}
+        <button type="submit" class="btn-enroll"><iconify-icon icon="mdi:cart-plus"></iconify-icon> أضف إلى السلة</button>
+      {% else %}
+        <button type="submit" class="btn-enroll full"><iconify-icon icon="mdi:cart-plus"></iconify-icon> اكتملت المقاعد — أضف إلى السلة (قائمة الانتظار)</button>
+      {% endif %}
+    </form>
+    <form method="post" action="{% url 'enrollment:toggle_wishlist' offering.session.slug offering.code %}">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+      <button type="submit" class="btn-enroll full"><iconify-icon icon="{% if is_wishlisted %}mdi:heart{% else %}mdi:heart-outline{% endif %}"></iconify-icon> {% if is_wishlisted %}محفوظ في قائمة رغباتي{% else %}احفظ لوقت لاحق{% endif %}</button>
+    </form>
   {% else %}
-    <a class="btn-enroll full" href="{% url 'enrollment:subscribe' offering.session.slug offering.code %}"><iconify-icon icon="mdi:timer-sand"></iconify-icon> اكتملت المقاعد — سجّل في قائمة الانتظار</a>
+    {% if offering.seats_remaining > 0 %}
+      <a class="btn-enroll" href="{% url 'accounts:login' %}?next={{ request.get_full_path|urlencode }}"><iconify-icon icon="mdi:login"></iconify-icon> سجّل الدخول لإضافة هذا التخصص إلى سلتك</a>
+    {% else %}
+      <a class="btn-enroll full" href="{% url 'accounts:login' %}?next={{ request.get_full_path|urlencode }}"><iconify-icon icon="mdi:login"></iconify-icon> اكتملت المقاعد — سجّل الدخول للانضمام لقائمة الانتظار</a>
+    {% endif %}
   {% endif %}
+  </div>
 </div>

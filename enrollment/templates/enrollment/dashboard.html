@@ -15,17 +15,25 @@
   <div class="container position-relative" style="z-index:1;">
     <div class="crumb"><a href="{% url 'pages:home' %}">الرئيسية</a> / مساحتي</div>
     <h1><iconify-icon icon="mdi:view-dashboard-outline"></iconify-icon> مساحتي</h1>
-    <p>
-      متابعة تسجيلاتك (<span dir="ltr">{{ phone }}</span>) —
-      <form method="post" action="{% url 'accounts:logout' %}" class="dashboard-logout-form">
-        {% csrf_token %}
-        <button type="submit" class="dashboard-logout-btn">تسجيل الخروج</button>
-      </form>
-    </p>
+    <p>متابعة تسجيلاتك (<span dir="ltr">{{ phone }}</span>)</p>
   </div>
 </section>
 
 <div class="wrap" style="max-width:900px;">
+  {% include "enrollment/partials/_client_nav.html" %}
+
+  {% if client.needs_legal_info_for_proforma %}
+  <div class="alert-eems warning" style="display:flex;align-items:flex-start;gap:10px;">
+    <iconify-icon icon="mdi:alert-outline" style="font-size:1.2rem;flex-shrink:0;margin-top:2px;"></iconify-icon>
+    <div>
+      <strong>ملفك القانوني غير مكتمل.</strong>
+      بصفتك زبون VIP (مؤسسة)، يجب إكمال المعلومات القانونية التالية في
+      <a href="{% url 'enrollment:profile' %}">ملفك الشخصي</a>
+      قبل التمكن من تقديم طلب فاتورة أولية (بروفورما):
+      <span dir="ltr">{{ client.missing_legal_fields|join:"، " }}</span>
+    </div>
+  </div>
+  {% endif %}
 
   <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <h2 style="font-size:1.1rem;font-weight:800;margin:0;">تسجيلاتي ({{ enrollments.count }})</h2>
@@ -33,6 +41,7 @@
       <iconify-icon icon="mdi:plus-circle-outline"></iconify-icon> تسجيل في تكوين آخر
     </a>
   </div>
+
 
   {% for e in enrollments %}
   <div class="enrollment-card">

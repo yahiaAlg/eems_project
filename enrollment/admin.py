@@ -11,6 +11,8 @@ from django.utils.html import format_html
 from accounts.services import activate_client_and_send_credentials
 
 from .models import (
+    Cart,
+    CartItem,
     Client,
     Enrollment,
     EnrollmentNote,
@@ -22,6 +24,11 @@ from .models import (
     OfferingAttachment,
     OfferingImage,
     Participant,
+    ProformaInvoice,
+    ProformaInvoiceItem,
+    QuoteRequest,
+    QuoteRequestItem,
+    WishlistItem,
 )
 
 
@@ -182,6 +189,17 @@ class OfferingAdmin(admin.ModelAdmin):
                 )
             },
         ),
+        (
+            "التسعير الجماعي (زبائن VIP/المؤسسات)",
+            {
+                "fields": ("price_per_day", "price_per_participant"),
+                "description": (
+                    "مسار مستقل عن القيمة الشهرية/الإجمالية أعلاه — يُستعمل في سلة "
+                    "الزبائن VIP (المرحلة 4) حسب أساس الفوترة المختار لكل عنصر: "
+                    "باليوم أو بعدد المشاركين."
+                ),
+            },
+        ),
         ("المحتوى", {"fields": ("description", "main_tasks")}),
         (
             "📋 الملف التقني — تفاصيل إضافية",
@@ -276,6 +294,35 @@ class ClientAdmin(admin.ModelAdmin):
                     "responsible_position",
                 ),
                 "description": "تُملأ فقط عندما يكون نوع الزبون «مؤسسة».",
+            },
+        ),
+        (
+            "المعلومات القانونية والمحاسبية (المؤسسات)",
+            {
+                "fields": (
+                    "forme_juridique",
+                    "nif",
+                    "nis",
+                    "article_imposition",
+                    "rib",
+                    "tva_exempt",
+                    "postal_code",
+                    "city",
+                    "website",
+                ),
+                "description": (
+                    "تُستعمل في إعداد الفواتير/الفواتير الأولية (بروفورما) "
+                    "والمستخرجات المحاسبية — تُملأ فقط عندما يكون نوع الزبون «مؤسسة»."
+                ),
+                "classes": ("collapse",),
+            },
+        ),
+        (
+            "المسؤول عن الفوترة",
+            {
+                "fields": ("main_contact_name", "main_contact_phone", "main_contact_email"),
+                "description": "قد يختلف عن الشخص المسؤول عن التنسيق أعلاه.",
+                "classes": ("collapse",),
             },
         ),
         ("الحساب", {"fields": ("account_status", "is_vip", "user")}),
@@ -455,6 +502,223 @@ class EnrollmentAdmin(admin.ModelAdmin):
     @admin.action(description="وضع الحالة: تم التواصل")
     def mark_contacted(self, request, queryset):
         queryset.update(status="contacted")
+
+
+class CartItemInline(admin.TabularInline):
+    model = CartItem
+    extra = 0
+    fields = ("offering", "participant_count", "billing_basis", "trainer", "notes")
+    autocomplete_fields = ("offering", "trainer")
+
+
+@admin.register(Cart)
+class CartAdmin(admin.ModelAdmin):
+    list_display = ("client", "status", "items_count", "created_at", "updated_at")
+    list_filter = ("status",)
+    search_fields = ("client__full_name", "client__company_name", "client__phone")
+    autocomplete_fields = ("client",)
+    inlines = [CartItemInline]
+
+    @admin.display(description="عدد العناصر")
+    def items_count(self, obj):
+        return obj.items_count
+
+
+@admin.register(CartItem)
+class CartItemAdmin(admin.ModelAdmin):
+    list_display = ("cart", "offering", "participant_count", "billing_basis", "trainer")
+    list_filter = ("billing_basis",)
+    search_fields = ("offering__code", "offering__title", "cart__client__full_name")
+    autocomplete_fields = ("cart", "offering", "trainer")
+
+
+@admin.register(WishlistItem)
+class WishlistItemAdmin(admin.ModelAdmin):
+    list_display = ("client", "offering", "created_at")
+    search_fields = (
+        "client__full_name",
+        "client__company_name",
+        "offering__code",
+        "offering__title",
+    )
+    autocomplete_fields = ("client", "offering")
+
+
+class ProformaInvoiceItemInline(admin.TabularInline):
+    model = ProformaInvoiceItem
+    extra = 0
+    fields = (
+        "offering",
+        "offering_code",
+        "offering_title",
+        "trainer_name",
+        "billing_basis",
+        "participant_count",
+        "unit_price",
+        "line_total",
+    )
+    readonly_fields = fields
+    can_delete = False
+    autocomplete_fields = ("offering",)
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(ProformaInvoice)
+class ProformaInvoiceAdmin(admin.ModelAdmin):
+    list_display = ("reference", "client", "status", "subtotal", "created_at")
+    list_filter = ("status",)
+    list_editable = ("status",)
+    search_fields = (
+        "reference",
+        "client__full_name",
+        "client__company_name",
+        "client__phone",
+    )
+    autocomplete_fields = ("client",)
+    readonly_fields = ("reference", "created_at", "updated_at")
+    inlines = [ProformaInvoiceItemInline]
+
+    @admin.display(description="المجموع")
+    def subtotal(self, obj):
+        return obj.subtotal
+
+
+class QuoteRequestItemInline(admin.TabularInline):
+    """TODO 6.2 — the frozen `offering`/`participant_count` snapshot stays
+    read-only (same as `ProformaInvoiceItemInline`), but `billing_basis`/
+    `unit_price` are left editable so an admin/accountant can set the
+    per-line custom tariff here directly on the `QuoteRequest` they're
+    reviewing (access to actually save is still gated by the "Accountant"
+    group's `change_quoterequestitem` permission from TODO 6.1)."""
+
+    model = QuoteRequestItem
+    extra = 0
+    fields = (
+        "offering",
+        "offering_code",
+        "offering_title",
+        "participant_count",
+        "billing_basis",
+        "unit_price",
+        "line_total_display",
+    )
+    readonly_fields = (
+        "offering",
+        "offering_code",
+        "offering_title",
+        "participant_count",
+        "line_total_display",
+    )
+    can_delete = False
+    autocomplete_fields = ("offering",)
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    @admin.display(description="المجموع")
+    def line_total_display(self, obj):
+        return obj.line_total
+
+
+@admin.register(QuoteRequest)
+class QuoteRequestAdmin(admin.ModelAdmin):
+    """TODO 6.3 — the admin/accountant's review interface for the non-VIP
+    "Request Quote" flow: open a pending `QuoteRequest`, enter the custom
+    tariff per line inline (`QuoteRequestItemInline`, TODO 6.2), then use
+    the actions below to move it through `pending → priced → approved`.
+    `status` itself is intentionally left off `list_editable` — unlike
+    the free-form status editing on `Enquiry`/`ProformaInvoice`, jumping
+    straight to "priced" from the changelist would skip the "every line
+    actually has a tariff" check the `mark_as_priced` action enforces."""
+
+    list_display = ("reference", "client", "status", "is_priced", "subtotal", "created_at")
+    list_filter = ("status",)
+    search_fields = (
+        "reference",
+        "client__full_name",
+        "client__company_name",
+        "client__phone",
+    )
+    autocomplete_fields = ("client",)
+    readonly_fields = ("reference", "status", "created_at", "updated_at")
+    inlines = [QuoteRequestItemInline]
+    actions = ["mark_as_priced", "mark_as_approved", "mark_as_cancelled"]
+
+    @admin.display(description="مُسعّرة بالكامل", boolean=True)
+    def is_priced(self, obj):
+        return obj.is_priced
+
+    @admin.display(description="المجموع")
+    def subtotal(self, obj):
+        return obj.subtotal
+
+    @admin.action(description="💰 وضع الحالة: تم التسعير (بعد إدخال التعريفة)")
+    def mark_as_priced(self, request, queryset):
+        """Only fires for quotes that are still 'pending' *and* have a
+        tariff (billing_basis + unit_price) entered on every line — the
+        gate the TODO asks for. Anything else is reported back and left
+        untouched rather than silently skipped."""
+        priced_count = 0
+        for quote in queryset:
+            if quote.status != "pending":
+                self.message_user(
+                    request,
+                    f"{quote.reference}: تم تجاوزه — حالته الحالية «{quote.get_status_display()}» وليست «قيد المراجعة».",
+                    level=messages.WARNING,
+                )
+                continue
+            if not quote.is_priced:
+                self.message_user(
+                    request,
+                    f"{quote.reference}: لا يمكن التسعير — هناك بند واحد على الأقل بدون سعر/أساس فوترة.",
+                    level=messages.WARNING,
+                )
+                continue
+            quote.status = "priced"
+            quote.save(update_fields=["status", "updated_at"])
+            priced_count += 1
+        if priced_count:
+            self.message_user(
+                request,
+                f"✔ تم وضع {priced_count} طلب/طلبات عرض سعر في حالة «تم التسعير».",
+                level=messages.SUCCESS,
+            )
+
+    @admin.action(description="✅ وضع الحالة: معتمدة")
+    def mark_as_approved(self, request, queryset):
+        """Only for quotes already priced — approval is the confirmation
+        step after the accountant's tariff, before TODO 6.4 generates the
+        resulting proforma/invoice document."""
+        approved_count = 0
+        for quote in queryset:
+            if quote.status != "priced":
+                self.message_user(
+                    request,
+                    f"{quote.reference}: تم تجاوزه — يجب تسعيره أولا قبل الاعتماد (الحالة الحالية: «{quote.get_status_display()}»).",
+                    level=messages.WARNING,
+                )
+                continue
+            quote.status = "approved"
+            quote.save(update_fields=["status", "updated_at"])
+            approved_count += 1
+        if approved_count:
+            self.message_user(
+                request,
+                f"✔ تم اعتماد {approved_count} طلب/طلبات عرض سعر.",
+                level=messages.SUCCESS,
+            )
+
+    @admin.action(description="✘ وضع الحالة: ملغاة")
+    def mark_as_cancelled(self, request, queryset):
+        cancelled_count = queryset.exclude(status="cancelled").update(status="cancelled")
+        if cancelled_count:
+            self.message_user(
+                request,
+                f"✔ تم إلغاء {cancelled_count} طلب/طلبات عرض سعر.",
+                level=messages.SUCCESS,
+            )
 
 
 # Add this import to the top of enrollment/admin.py:

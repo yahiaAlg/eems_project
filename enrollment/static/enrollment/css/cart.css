@@ -1,0 +1,40 @@
+/* cart.html — client-space cart page (TODO 4.3) */
+
+.cart-item { background:var(--card-bg); border:1px solid var(--card-border); border-radius:14px; padding:20px; margin-bottom:16px; box-shadow:var(--shadow); display:flex; gap:16px; flex-wrap:wrap; }
+
+.cart-item-poster { width:96px; height:96px; border-radius:10px; overflow:hidden; flex-shrink:0; background:var(--body-bg); }
+.cart-item-poster img { width:100%; height:100%; object-fit:cover; }
+
+.cart-item-body { flex:1; min-width:220px; }
+.cart-item-code { font-family:'Courier New',monospace; font-size:.72rem; color:var(--accent-dark); background:var(--accent-soft); border:1px solid rgba(245,158,11,.3); border-radius:6px; padding:2px 9px; direction:ltr; display:inline-block; }
+.cart-item-body h4 { font-size:1rem; font-weight:800; margin:8px 0 2px; }
+.cart-item-sub { color:var(--muted); font-size:.82rem; margin-bottom:12px; }
+
+.cart-item-form { display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; }
+.cart-item-form .field { display:flex; flex-direction:column; gap:4px; min-width:140px; }
+.cart-item-form label { font-size:.72rem; font-weight:700; color:var(--muted); }
+.cart-item-form .form-control,
+.cart-item-form .form-select { padding:7px 10px; font-size:.85rem; border:1px solid var(--card-border); border-radius:8px; }
+.cart-item-form .qty-input { width:80px; }
+
+.cart-item-side { display:flex; flex-direction:column; align-items:flex-end; gap:10px; margin-inline-start:auto; }
+.cart-item-price { font-weight:800; color:var(--navy); font-size:1rem; white-space:nowrap; }
+.cart-item-price .unit { display:block; font-weight:600; color:var(--muted); font-size:.72rem; margin-top:2px; }
+.cart-item-price.not-priced { color:var(--muted); font-size:.8rem; font-weight:600; }
+
+.remove-form { margin:0; }
+.btn-remove { display:inline-flex; align-items:center; gap:6px; background:transparent; color:#dc2626; border:1px solid rgba(220,38,38,.35); border-radius:8px; padding:7px 13px; font-size:.8rem; font-weight:700; cursor:pointer; transition:all .15s; }
+.btn-remove:hover { background:rgba(220,38,38,.08); }
+
+.errorlist.inline { font-size:.72rem; margin:2px 0 0; }
+
+.cart-totals { background:var(--navy); color:#fff; border-radius:14px; padding:22px 26px; margin-top:10px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
+.cart-totals .label { font-size:.9rem; color:rgba(255,255,255,.65); }
+.cart-totals .amount { font-size:1.4rem; font-weight:800; color:var(--accent); }
+.cart-totals .note { font-size:.78rem; color:rgba(255,255,255,.5); }
+
+/* "Request Quote" button (TODO 5.3) reuses the site's `.cta` look, which
+   elsewhere is only defined for `a.cta` — mirrored here for `button.cta`
+   since the quote action is a plain POST form, not a link. */
+button.cta { display:inline-flex; align-items:center; gap:8px; color:var(--navy); background:var(--accent); border:0; font:inherit; font-weight:800; padding:12px 26px; border-radius:9px; cursor:pointer; transition:all .18s; }
+button.cta:hover { background:var(--accent-dark); color:var(--navy); transform:translateY(-2px); }

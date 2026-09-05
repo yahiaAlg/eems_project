@@ -1,0 +1,32 @@
+{% comment %}
+TODO 4.5 — shared tab navigation for the client space ("مساحتي"). Included
+by every client-space template (dashboard/cart/wishlist/profile/my_purchases/
+metrics) so the same 6 sections are always reachable, with the current one
+highlighted via the `active_tab` context var each view sets.
+{% endcomment %}
+<nav class="client-tabs" aria-label="أقسام مساحتي">
+  <a href="{% url 'enrollment:dashboard' %}" class="client-tab{% if active_tab == 'dashboard' %} active{% endif %}">
+    <iconify-icon icon="mdi:clipboard-list-outline"></iconify-icon> تسجيلاتي
+  </a>
+  <a href="{% url 'enrollment:my_purchases' %}" class="client-tab{% if active_tab == 'purchases' %} active{% endif %}">
+    <iconify-icon icon="mdi:receipt-text-check-outline"></iconify-icon> مشترياتي
+  </a>
+  <a href="{% url 'enrollment:cart' %}" class="client-tab{% if active_tab == 'cart' %} active{% endif %}">
+    <iconify-icon icon="mdi:cart-outline"></iconify-icon> سلتي
+  </a>
+  <a href="{% url 'enrollment:wishlist' %}" class="client-tab{% if active_tab == 'wishlist' %} active{% endif %}">
+    <iconify-icon icon="mdi:heart-outline"></iconify-icon> قائمة رغباتي
+  </a>
+  <a href="{% url 'enrollment:profile' %}" class="client-tab{% if active_tab == 'profile' %} active{% endif %}">
+    <iconify-icon icon="mdi:account-circle-outline"></iconify-icon> ملفي الشخصي
+  </a>
+  <a href="{% url 'enrollment:metrics' %}" class="client-tab{% if active_tab == 'metrics' %} active{% endif %}">
+    <iconify-icon icon="mdi:chart-donut"></iconify-icon> إحصائياتي
+  </a>
+  <form method="post" action="{% url 'accounts:logout' %}" class="client-tab-logout-form">
+    {% csrf_token %}
+    <button type="submit" class="client-tab logout">
+      <iconify-icon icon="mdi:logout"></iconify-icon> تسجيل الخروج
+    </button>
+  </form>
+</nav>

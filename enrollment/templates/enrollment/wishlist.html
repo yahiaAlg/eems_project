@@ -1,0 +1,71 @@
+{% extends "pages/base.html" %}
+{% load static enrollment_extras %}
+
+{% block title %}مساحتي — قائمة رغباتي{% endblock %}
+
+{% block extra_head %}
+<link href="{% static 'enrollment/css/subscribe.css' %}" rel="stylesheet">
+<link href="{% static 'enrollment/css/dashboard.css' %}" rel="stylesheet">
+<link href="{% static 'enrollment/css/cart.css' %}" rel="stylesheet">
+<link href="{% static 'enrollment/css/wishlist.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{% include "pages/partials/_navbar.html" %}
+
+<section id="sub-hero">
+  <div class="container position-relative" style="z-index:1;">
+    <div class="crumb"><a href="{% url 'pages:home' %}">الرئيسية</a> / <a href="{% url 'enrollment:dashboard' %}">مساحتي</a> / قائمة رغباتي</div>
+    <h1><iconify-icon icon="mdi:heart-outline"></iconify-icon> قائمة رغباتي</h1>
+    <p>التخصصات التي حفظتها لوقت لاحق — انقلها إلى سلتك عندما تصبح جاهزا للتسجيل.</p>
+  </div>
+</section>
+
+<div class="wrap" style="max-width:900px;">
+  {% include "enrollment/partials/_client_nav.html" %}
+
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h2 style="font-size:1.1rem;font-weight:800;margin:0;">العناصر المحفوظة ({{ items|length }})</h2>
+    <a href="{% url 'enrollment:catalog' %}" class="btn-add-more">
+      <iconify-icon icon="mdi:plus-circle-outline"></iconify-icon> تصفح تخصصات أخرى
+    </a>
+  </div>
+
+  {% for item in items %}
+  <div class="cart-item">
+    <div class="cart-item-poster">
+      <img src="{{ item.offering.poster_src }}" alt="{{ item.offering.title }}">
+    </div>
+
+    <div class="cart-item-body">
+      <span class="cart-item-code">{{ item.offering.code }}</span>
+      <h4>{{ item.offering.title }}</h4>
+      <div class="cart-item-sub">{{ item.offering.session.name }}</div>
+      <a href="{{ item.offering.get_absolute_url }}" class="btn-mini btn-mini-outline">
+        <iconify-icon icon="mdi:information-outline"></iconify-icon> تفاصيل التخصص
+      </a>
+    </div>
+
+    <div class="wishlist-actions">
+      <form method="post" action="{% url 'enrollment:wishlist_move_to_cart' item.pk %}" class="remove-form">
+        {% csrf_token %}
+        <button type="submit" class="btn-move-cart"><iconify-icon icon="mdi:cart-arrow-down"></iconify-icon> نقل إلى السلة</button>
+      </form>
+      <form method="post" action="{% url 'enrollment:wishlist_remove' item.pk %}" class="remove-form" onsubmit="return confirm('إزالة هذا التخصص من قائمة رغباتك؟');">
+        {% csrf_token %}
+        <button type="submit" class="btn-remove"><iconify-icon icon="mdi:trash-can-outline"></iconify-icon> إزالة</button>
+      </form>
+    </div>
+  </div>
+  {% empty %}
+  <div class="panel" style="text-align:center;padding:50px 20px;">
+    <iconify-icon icon="mdi:heart-off-outline" style="font-size:40px;color:var(--muted);"></iconify-icon>
+    <p style="margin-top:12px;color:var(--muted);">لا توجد عناصر محفوظة في قائمة رغباتك بعد.</p>
+    <a href="{% url 'enrollment:catalog' %}" class="cta"><iconify-icon icon="mdi:heart-plus-outline"></iconify-icon> تصفح التخصصات</a>
+  </div>
+  {% endfor %}
+
+</div>
+
+{% include "pages/partials/_footer.html" %}
+{% endblock %}

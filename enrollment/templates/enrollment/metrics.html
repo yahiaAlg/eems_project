@@ -1,0 +1,60 @@
+{% extends "pages/base.html" %}
+{% load static %}
+
+{% block title %}مساحتي — إحصائياتي{% endblock %}
+
+{% block extra_head %}
+<link href="{% static 'enrollment/css/subscribe.css' %}" rel="stylesheet">
+<link href="{% static 'enrollment/css/dashboard.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{% include "pages/partials/_navbar.html" %}
+
+<section id="sub-hero">
+  <div class="container position-relative" style="z-index:1;">
+    <div class="crumb"><a href="{% url 'pages:home' %}">الرئيسية</a> / <a href="{% url 'enrollment:dashboard' %}">مساحتي</a> / إحصائياتي</div>
+    <h1><iconify-icon icon="mdi:chart-donut"></iconify-icon> إحصائياتي</h1>
+    <p>نظرة سريعة على نشاطك — رسوم بيانية أكثر تفصيلا قريبا.</p>
+  </div>
+</section>
+
+<div class="wrap" style="max-width:900px;">
+  {% include "enrollment/partials/_client_nav.html" %}
+
+  <div class="stat-grid">
+    <div class="stat-card">
+      <iconify-icon icon="mdi:clipboard-list-outline"></iconify-icon>
+      <div class="stat-value">{{ total_enrollments }}</div>
+      <div class="stat-label">مجموع التسجيلات</div>
+    </div>
+    <div class="stat-card">
+      <iconify-icon icon="mdi:check-decagram-outline"></iconify-icon>
+      <div class="stat-value">{{ confirmed_count }}</div>
+      <div class="stat-label">تسجيلات مؤكدة</div>
+    </div>
+    <div class="stat-card">
+      <iconify-icon icon="mdi:clock-outline"></iconify-icon>
+      <div class="stat-value">{{ pending_count }}</div>
+      <div class="stat-label">قيد الانتظار</div>
+    </div>
+    <div class="stat-card">
+      <iconify-icon icon="mdi:close-circle-outline"></iconify-icon>
+      <div class="stat-value">{{ cancelled_count }}</div>
+      <div class="stat-label">ملغاة</div>
+    </div>
+    <div class="stat-card">
+      <iconify-icon icon="mdi:cart-outline"></iconify-icon>
+      <div class="stat-value">{{ cart_items_count }}</div>
+      <div class="stat-label">عناصر في السلة</div>
+    </div>
+    <div class="stat-card">
+      <iconify-icon icon="mdi:heart-outline"></iconify-icon>
+      <div class="stat-value">{{ wishlist_count }}</div>
+      <div class="stat-label">عناصر في قائمة الرغبات</div>
+    </div>
+  </div>
+</div>
+
+{% include "pages/partials/_footer.html" %}
+{% endblock %}

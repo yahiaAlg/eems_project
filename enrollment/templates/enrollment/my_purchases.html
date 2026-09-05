@@ -1,0 +1,143 @@
+{% extends "pages/base.html" %}
+{% load static enrollment_extras %}
+
+{% block title %}مساحتي — مشترياتي{% endblock %}
+
+{% block extra_head %}
+<link href="{% static 'enrollment/css/subscribe.css' %}" rel="stylesheet">
+<link href="{% static 'enrollment/css/dashboard.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{% include "pages/partials/_navbar.html" %}
+
+<section id="sub-hero">
+  <div class="container position-relative" style="z-index:1;">
+    <div class="crumb"><a href="{% url 'pages:home' %}">الرئيسية</a> / <a href="{% url 'enrollment:dashboard' %}">مساحتي</a> / مشترياتي</div>
+    <h1><iconify-icon icon="mdi:receipt-text-check-outline"></iconify-icon> مشترياتي</h1>
+    <p>التسجيلات المؤكدة وطلبات الفاتورة الأولية (بروفورما) الخاصة بك.</p>
+  </div>
+</section>
+
+<div class="wrap" style="max-width:900px;">
+  {% include "enrollment/partials/_client_nav.html" %}
+
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h2 style="font-size:1.1rem;font-weight:800;margin:0;">الفواتير الأولية (بروفورما) ({{ proformas.count }})</h2>
+  </div>
+
+  {% for invoice in proformas %}
+  <div class="enrollment-card">
+    <div class="enrollment-card-head">
+      <div>
+        <span class="enrollment-code">{{ invoice.reference }}</span>
+        <h4>فاتورة أولية — {{ invoice.items.count }} تخصص{{ invoice.items.count|pluralize }}</h4>
+        <div class="enrollment-sub">
+          {% for item in invoice.items.all %}{{ item.offering_title }}{% if not forloop.last %}، {% endif %}{% endfor %}
+        </div>
+      </div>
+      <span class="status-badge" style="--badge-color: {{ invoice.status|status_color }};">{{ invoice.get_status_display }}</span>
+    </div>
+
+    <div class="enrollment-meta">
+      <span><iconify-icon icon="mdi:calendar-outline"></iconify-icon> تاريخ الإنشاء: {{ invoice.created_at|date:"d/m/Y" }}</span>
+      {% if can_view_price and invoice.subtotal is not None %}
+      <span><iconify-icon icon="mdi:cash-multiple"></iconify-icon> المجموع: {{ invoice.subtotal|da }}</span>
+      {% endif %}
+      {% if invoice.bon_de_commande %}
+      <span><iconify-icon icon="mdi:paperclip"></iconify-icon> مرفق بون دي كوماند</span>
+      {% endif %}
+    </div>
+
+    <div class="enrollment-actions">
+      <a href="{% url 'enrollment:proforma_print' invoice.pk %}" class="btn-mini btn-mini-outline" target="_blank" rel="noopener">
+        <iconify-icon icon="mdi:printer-outline"></iconify-icon> معاينة وطباعة
+      </a>
+    </div>
+  </div>
+  {% empty %}
+  <div class="panel" style="text-align:center;padding:40px 20px;">
+    <iconify-icon icon="mdi:file-document-outline" style="font-size:36px;color:var(--muted);"></iconify-icon>
+    <p style="margin-top:12px;color:var(--muted);">لا توجد طلبات فاتورة أولية بعد.</p>
+  </div>
+  {% endfor %}
+
+  <div class="d-flex justify-content-between align-items-center mb-3 mt-4 flex-wrap gap-2">
+    <h2 style="font-size:1.1rem;font-weight:800;margin:0;">طلبات عروض الأسعار ({{ quotes.count }})</h2>
+  </div>
+
+  {% for quote in quotes %}
+  <div class="enrollment-card">
+    <div class="enrollment-card-head">
+      <div>
+        <span class="enrollment-code">{{ quote.reference }}</span>
+        <h4>طلب عرض سعر — {{ quote.items.count }} تخصص{{ quote.items.count|pluralize }}</h4>
+        <div class="enrollment-sub">
+          {% for item in quote.items.all %}{{ item.offering_title }}{% if not forloop.last %}، {% endif %}{% endfor %}
+        </div>
+      </div>
+      <span class="status-badge" style="--badge-color: {{ quote.status|status_color }};">{{ quote.get_status_display }}</span>
+    </div>
+
+    <div class="enrollment-meta">
+      <span><iconify-icon icon="mdi:calendar-outline"></iconify-icon> تاريخ الإنشاء: {{ quote.created_at|date:"d/m/Y" }}</span>
+      {% if quote.status != "pending" and quote.subtotal is not None %}
+      <span><iconify-icon icon="mdi:cash-multiple"></iconify-icon> المجموع: {{ quote.subtotal|da }}</span>
+      {% endif %}
+    </div>
+
+    {% if quote.status != "pending" %}
+    <div class="enrollment-actions">
+      <a href="{% url 'enrollment:quote_print' quote.pk %}" class="btn-mini btn-mini-outline" target="_blank" rel="noopener">
+        <iconify-icon icon="mdi:printer-outline"></iconify-icon> معاينة وطباعة الفاتورة الأولية
+      </a>
+    </div>
+    {% endif %}
+  </div>
+  {% empty %}
+  <div class="panel" style="text-align:center;padding:40px 20px;">
+    <iconify-icon icon="mdi:file-document-edit-outline" style="font-size:36px;color:var(--muted);"></iconify-icon>
+    <p style="margin-top:12px;color:var(--muted);">لا توجد طلبات عروض أسعار بعد.</p>
+  </div>
+  {% endfor %}
+
+  <div class="d-flex justify-content-between align-items-center mb-3 mt-4 flex-wrap gap-2">
+    <h2 style="font-size:1.1rem;font-weight:800;margin:0;">التسجيلات المؤكدة ({{ purchases.count }})</h2>
+  </div>
+
+  {% for e in purchases %}
+  <div class="enrollment-card">
+    <div class="enrollment-card-head">
+      <div>
+        <span class="enrollment-code">{{ e.offering.code }}</span>
+        <h4>{{ e.offering.title }}</h4>
+        <div class="enrollment-sub">{{ e.offering.session.name }} — المشارك: {{ e.participant.full_name }}</div>
+      </div>
+      <span class="status-badge" style="--badge-color: {{ e.status|status_color }};">{{ e.get_status_display }}</span>
+    </div>
+
+    <div class="enrollment-meta">
+      <span><iconify-icon icon="mdi:calendar-outline"></iconify-icon> تاريخ التسجيل: {{ e.created_at|date:"d/m/Y" }}</span>
+      <span><iconify-icon icon="mdi:check-decagram-outline"></iconify-icon> تم التأكيد: {{ e.confirmed_at|date:"d/m/Y" }}</span>
+    </div>
+
+    <div class="enrollment-actions">
+      <a href="{% url 'enrollment:detail' e.offering.session.slug e.offering.code %}" class="btn-mini btn-mini-outline">
+        <iconify-icon icon="mdi:information-outline"></iconify-icon> تفاصيل التخصص
+      </a>
+      <span class="locked-note">
+        <iconify-icon icon="mdi:lock-check-outline"></iconify-icon> تسجيل مؤكد ونهائي
+      </span>
+    </div>
+  </div>
+  {% empty %}
+  <div class="panel" style="text-align:center;padding:50px 20px;">
+    <iconify-icon icon="mdi:receipt-text-outline" style="font-size:40px;color:var(--muted);"></iconify-icon>
+    <p style="margin-top:12px;color:var(--muted);">لا توجد مشتريات مؤكدة بعد.</p>
+    <a href="{% url 'enrollment:dashboard' %}" class="cta"><iconify-icon icon="mdi:clipboard-list-outline"></iconify-icon> عرض تسجيلاتي</a>
+  </div>
+  {% endfor %}
+</div>
+
+{% include "pages/partials/_footer.html" %}
+{% endblock %}

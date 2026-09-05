@@ -1,4 +1,4 @@
-from django.core.validators import FileExtensionValidator
+from django.core.validators import FileExtensionValidator, MinValueValidator
 from django.db import models
 from django.conf import settings
 from django.urls import reverse
@@ -316,6 +316,17 @@ FICHE_TECHNIQUE_MODES = [
     ("custom", "رفع ملف مخصص (PDF / Word / صورة)"),
 ]
 
+# Group/enterprise pricing basis (TODO 3.1) — how a VIP client's cart line
+# for a given Offering is priced: by the number of training days, or by the
+# number of participants sent. Reused as-is by `CartItem.billing_basis`
+# (Phase 4) and downstream by `ProformaInvoice`/`QuoteRequest` line items
+# (Phase 5/6), so it is defined once here rather than per-model.
+BILLING_BASIS_CHOICES = [
+    ("per_day", "حسب عدد أيام التكوين"),
+    ("per_participant", "حسب عدد المشاركين"),
+]
+
+
 
 class Offering(models.Model):
     """A specialty as taught within a given session — carries pricing/seat data."""
@@ -370,6 +381,7 @@ class Offering(models.Model):
         decimal_places=2,
         null=True,
         blank=True,
+        help_text="مسار التسجيل الفردي (تكوين تأهيلي طويل المدى بالأشهر).",
     )
     total_fee = models.DecimalField(
         "القيمة الإجمالية (دج)",
@@ -377,7 +389,38 @@ class Offering(models.Model):
         decimal_places=2,
         null=True,
         blank=True,
+        help_text="مسار التسجيل الفردي (تكوين تأهيلي طويل المدى بالأشهر).",
     )
+
+    # --- group/enterprise pricing (TODO 3.1) ---
+    # A distinct pricing dimension from monthly_fee/total_fee above: those
+    # price an *individual* candidate's long qualification program (billed
+    # by the month, see `duration_months`). Enterprise/VIP clients instead
+    # book short group trainings for a variable number of employees, priced
+    # either by the day (flat group rate, e.g. an on-site session billed per
+    # day regardless of headcount) or by the participant (per-seat rate,
+    # e.g. a per-person course fee) — the billing basis a VIP client will
+    # choose per cart line in Phase 4 (`CartItem.billing_basis`, same
+    # `BILLING_BASIS_CHOICES`). Both are optional and independent of each
+    # other and of monthly_fee/total_fee; an offering can carry any
+    # combination that applies to it.
+    price_per_day = models.DecimalField(
+        "السعر لليوم الواحد (دج)",
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="مسار الزبائن VIP/المؤسسات — فوترة جماعية بالسعر لكل يوم تكوين.",
+    )
+    price_per_participant = models.DecimalField(
+        "السعر للمشارك الواحد (دج)",
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="مسار الزبائن VIP/المؤسسات — فوترة بالسعر لكل مشارك.",
+    )
+
     seats_available = models.PositiveSmallIntegerField("قدرة الاستيعاب", default=0)
     description = models.TextField("تعريف التخصص", blank=True)
     main_tasks = models.TextField(
@@ -469,6 +512,14 @@ class Offering(models.Model):
         if not self.seats_available:
             return 0
         return min(round(100 * self.seats_taken / self.seats_available), 100)
+
+    @property
+    def has_group_pricing(self):
+        """True if this offering can be booked via the VIP/enterprise group
+        pricing path (TODO 3.1) — i.e. it carries at least one of the two
+        group billing bases, independent of the individual monthly_fee/
+        total_fee pricing."""
+        return bool(self.price_per_day or self.price_per_participant)
 
     @property
     def tasks_list(self):
@@ -675,6 +726,26 @@ ACCOUNT_STATUS_CHOICES = [
     ("rejected", "مرفوض"),
 ]
 
+# Enterprise legal/accounting fields (TODO 2.1) that must be filled in
+# before an enterprise VIP client can submit a Phase 5 "Request Proforma"
+# — the validation gate implemented in TODO 2.3 (`Client.missing_legal_fields`).
+# Non-VIP enterprises are unaffected: their Phase 5 flow is "Request Quote",
+# priced afterwards by an accountant, so no legal info is needed up front.
+ENTERPRISE_LEGAL_REQUIRED_FIELDS = [
+    ("trade_register_number", "رقم السجل التجاري (RC)"),
+    ("forme_juridique", "الشكل القانوني"),
+    ("nif", "رقم التعريف الجبائي (NIF)"),
+    ("nis", "رقم التعريف الإحصائي (NIS)"),
+    ("article_imposition", "رقم المادة الجبائية"),
+    ("rib", "رقم الحساب البنكي (RIB)"),
+    ("address", "العنوان"),
+    ("postal_code", "الرمز البريدي"),
+    ("city", "البلدية / المدينة"),
+    ("main_contact_name", "المسؤول عن الفوترة (الاسم)"),
+    ("main_contact_phone", "المسؤول عن الفوترة (الهاتف)"),
+    ("main_contact_email", "المسؤول عن الفوترة (البريد الإلكتروني)"),
+]
+
 
 class Client(models.Model):
     """The subscriber: either a private individual, or an enterprise sending participants."""
@@ -701,7 +772,10 @@ class Client(models.Model):
     # --- enterprise-only fields ---
     company_name = models.CharField("اسم المؤسسة", max_length=200, blank=True)
     trade_register_number = models.CharField(
-        "رقم السجل التجاري", max_length=60, blank=True
+        "رقم السجل التجاري (RC)",
+        max_length=60,
+        blank=True,
+        help_text="رقم السجل التجاري — يُستعمل أيضا كمرجع RC في المستخرجات المحاسبية.",
     )
     sector = models.CharField("قطاع النشاط", max_length=120, blank=True)
     responsible_name = models.CharField(
@@ -710,6 +784,53 @@ class Client(models.Model):
         blank=True,
     )
     responsible_position = models.CharField("منصب المسؤول", max_length=100, blank=True)
+
+    # --- enterprise legal/accounting fields (TODO 2.1) ---
+    # Cross-checked against the accounting-export column set
+    # (`revenus_par_client`): legal form, tax identifiers, bank details and
+    # a distinct billing contact, on top of the coordination contact above
+    # (`responsible_name`/`responsible_position`, which is about who
+    # coordinates the training logistics day-to-day, not who is billed).
+    forme_juridique = models.CharField(
+        "الشكل القانوني",
+        max_length=100,
+        blank=True,
+        help_text="مثال: SARL، SPA، EURL، مؤسسة فردية...",
+    )
+    nif = models.CharField(
+        "رقم التعريف الجبائي (NIF)", max_length=30, blank=True
+    )
+    nis = models.CharField(
+        "رقم التعريف الإحصائي (NIS)", max_length=30, blank=True
+    )
+    article_imposition = models.CharField(
+        "رقم المادة الجبائية (Article d'imposition)", max_length=30, blank=True
+    )
+    rib = models.CharField(
+        "رقم الحساب البنكي (RIB)",
+        max_length=30,
+        blank=True,
+        help_text="20 رقما — يُستعمل في إعداد الفواتير/الحوالات.",
+    )
+    tva_exempt = models.BooleanField(
+        "معفى من الرسم على القيمة المضافة (TVA)", default=False
+    )
+    postal_code = models.CharField("الرمز البريدي", max_length=10, blank=True)
+    city = models.CharField("البلدية / المدينة", max_length=100, blank=True)
+    website = models.URLField("الموقع الإلكتروني", blank=True)
+
+    # Distinct billing/legal contact — separate from `responsible_name`/
+    # `responsible_position` above, which is the day-to-day training
+    # coordination contact and may be a different person entirely.
+    main_contact_name = models.CharField(
+        "الشخص المسؤول عن الفوترة (الاسم)", max_length=150, blank=True
+    )
+    main_contact_phone = models.CharField(
+        "الشخص المسؤول عن الفوترة (الهاتف)", max_length=20, blank=True
+    )
+    main_contact_email = models.EmailField(
+        "الشخص المسؤول عن الفوترة (البريد الإلكتروني)", blank=True
+    )
 
     source = models.CharField(
         "مصدر التسجيل",
@@ -763,6 +884,32 @@ class Client(models.Model):
     @property
     def is_enterprise(self):
         return self.client_type == "enterprise"
+
+    @property
+    def missing_legal_fields(self):
+        """Labels of required enterprise legal/accounting fields (TODO 2.1)
+        that are still blank on this client. Always empty for individuals —
+        the Phase 5 proforma gate (TODO 2.3) only concerns enterprises."""
+        if not self.is_enterprise:
+            return []
+        return [
+            label
+            for field_name, label in ENTERPRISE_LEGAL_REQUIRED_FIELDS
+            if not str(getattr(self, field_name) or "").strip()
+        ]
+
+    @property
+    def has_complete_legal_info(self):
+        return not self.missing_legal_fields
+
+    @property
+    def needs_legal_info_for_proforma(self):
+        """TODO 2.3 gate: True when this client is a VIP enterprise (the
+        only client type/tier that can submit a Phase 5 "Request Proforma")
+        and its legal profile is still incomplete. Phase 5's proforma view
+        must check this and block submission — showing a prompt linking to
+        the profile page — until it is False."""
+        return self.is_vip and self.is_enterprise and not self.has_complete_legal_info
 
     def clean(self):
         from django.core.exceptions import ValidationError
@@ -890,6 +1037,555 @@ class EnrollmentNote(models.Model):
 
     def __str__(self):
         return f"note on enrollment #{self.enrollment_id}"
+
+
+# --- Cart & Cart items (TODO 4.1) ---------------------------------------
+# One active `Cart` per `Client`, holding queued `CartItem` lines before
+# checkout (Phase 5 branches VIP clients into a "Request Proforma" flow and
+# non-VIP clients into a "Request Quote" flow — see TODO.md Phase 5). A
+# client keeps a single row per client+status="active" (enforced below by
+# a partial unique constraint); once checked out (TODO 5.4) the cart is
+# expected to be flipped to "converted" rather than deleted, so its items
+# remain available as a historical snapshot, and a fresh "active" cart can
+# be created for the client afterwards.
+CART_STATUS_CHOICES = [
+    ("active", "نشطة"),
+    ("converted", "تم تحويلها إلى طلب"),
+]
+
+
+class Cart(models.Model):
+    """A client's shopping cart of queued formations, pending checkout."""
+
+    client = models.ForeignKey(
+        Client,
+        on_delete=models.CASCADE,
+        related_name="carts",
+        verbose_name="الزبون",
+    )
+    status = models.CharField(
+        "الحالة",
+        max_length=10,
+        choices=CART_STATUS_CHOICES,
+        default="active",
+    )
+    created_at = models.DateTimeField("تاريخ الإنشاء", auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "سلة"
+        verbose_name_plural = "السلال"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["client"],
+                condition=models.Q(status="active"),
+                name="unique_active_cart_per_client",
+            ),
+        ]
+
+    def __str__(self):
+        return f"سلة {self.client.display_name} — {self.get_status_display()}"
+
+    @property
+    def is_active(self):
+        return self.status == "active"
+
+    @property
+    def items_count(self):
+        return self.items.count()
+
+    @classmethod
+    def get_active_for_client(cls, client):
+        """Return `client`'s active cart, creating an empty one on first use.
+        The only place a `Cart` row should ever be fetched/created from, so
+        the "one active cart per client" rule (enforced by the constraint
+        above) is respected consistently everywhere (TODO 4.2/4.3)."""
+        cart, _ = cls.objects.get_or_create(client=client, status="active")
+        return cart
+
+    @property
+    def subtotal(self):
+        """TODO 4.3 — sum of every line's `CartItem.line_total`, skipping
+        lines that aren't priced yet (missing billing_basis, or an
+        offering missing the corresponding group price). Returns None
+        when nothing in the cart is priced, so the template can show a
+        "not priced yet" note instead of a misleading 0. Same visibility
+        note as `CartItem.line_total`: this is a raw figure, callers must
+        still gate its display behind the Phase 3 VIP-only rule."""
+        total = None
+        for item in self.items.all():
+            line = item.line_total
+            if line is None:
+                continue
+            total = (total or 0) + line
+        return total
+
+
+class CartItem(models.Model):
+    """A single queued formation line within a `Cart`.
+
+    `billing_basis` and `trainer` are the VIP/enterprise group-pricing
+    fields introduced in TODO 3.1/`BILLING_BASIS_CHOICES` — a non-VIP
+    client's cart lines are expected to leave both blank/null (their
+    Phase 5 path is "Request Quote": offering + participant_count only,
+    no trainer, no price — see TODO 5.3). Choosing a trainer is only ever
+    meant to be reachable for VIP carts; `clean()` below is a last-resort
+    safety net, the actual enforcement belongs in the form/view layer
+    (TODO 4.1/4.2/4.3), which must never render or accept a trainer choice
+    for a non-VIP client's cart in the first place.
+    """
+
+    cart = models.ForeignKey(
+        Cart,
+        on_delete=models.CASCADE,
+        related_name="items",
+        verbose_name="السلة",
+    )
+    offering = models.ForeignKey(
+        Offering,
+        on_delete=models.CASCADE,
+        related_name="cart_items",
+        verbose_name="التخصص",
+    )
+    participant_count = models.PositiveSmallIntegerField(
+        "عدد المشاركين",
+        default=1,
+        validators=[MinValueValidator(1)],
+    )
+    billing_basis = models.CharField(
+        "أساس الفوترة",
+        max_length=20,
+        choices=BILLING_BASIS_CHOICES,
+        blank=True,
+        help_text="يُضبط فقط لسلال الزبائن VIP — يبقى فارغا لغير ذلك (مسار طلب عرض السعر).",
+    )
+    trainer = models.ForeignKey(
+        Formateur,
+        on_delete=models.SET_NULL,
+        related_name="cart_items",
+        null=True,
+        blank=True,
+        verbose_name="المكوّن (اختياري — VIP فقط)",
+        help_text="لا يُعرض ولا يُسمح باختياره إلا في سلال الزبائن VIP.",
+    )
+    notes = models.TextField("ملاحظات", blank=True)
+    created_at = models.DateTimeField("تاريخ الإضافة", auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        verbose_name = "عنصر في السلة"
+        verbose_name_plural = "عناصر السلة"
+
+    def __str__(self):
+        return f"{self.offering.code} × {self.participant_count} — {self.cart}"
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        if self.trainer_id and not self.cart.client.is_vip:
+            raise ValidationError(
+                "اختيار المكوّن متاح فقط ضمن سلال الزبائن VIP."
+            )
+
+    # --- pricing (TODO 4.3) --------------------------------------------
+    # There is no stored "number of training days" anywhere on `Offering`
+    # (`duration_months` only applies to the unrelated individual monthly
+    # qualification path) or on `CartItem`, so a `per_day` line is priced
+    # as the flat group rate `Offering.price_per_day` itself — consistent
+    # with that field's help text ("فوترة جماعية... بالسعر لكل يوم تكوين")
+    # describing an on-site session billed per day regardless of
+    # headcount. Only `per_participant` scales with `participant_count`.
+    # Both properties return None (never 0) when no price applies yet, so
+    # templates can distinguish "not priced" from "free" and the caller
+    # decides how to render that — this is purely a figure, not a
+    # visibility rule: callers must still gate display behind the Phase 3
+    # `can_view_price` (VIP-only) check themselves.
+    @property
+    def unit_price(self):
+        if self.billing_basis == "per_participant":
+            return self.offering.price_per_participant
+        if self.billing_basis == "per_day":
+            return self.offering.price_per_day
+        return None
+
+    @property
+    def line_total(self):
+        price = self.unit_price
+        if price is None:
+            return None
+        if self.billing_basis == "per_participant":
+            return price * self.participant_count
+        return price
+
+
+# --- Wishlist (TODO 4.4) -------------------------------------------------
+# A much lighter bookmark than `CartItem`: just "I might book this later",
+# no participant_count/billing_basis/trainer to configure yet. The
+# "move to cart" action on the Wishlist page converts one into a real
+# `CartItem` in the client's active cart (`Cart.get_active_for_client`,
+# TODO 4.1) and drops the bookmark.
+class WishlistItem(models.Model):
+    """One offering a client has saved for later."""
+
+    client = models.ForeignKey(
+        Client,
+        on_delete=models.CASCADE,
+        related_name="wishlist_items",
+        verbose_name="الزبون",
+    )
+    offering = models.ForeignKey(
+        Offering,
+        on_delete=models.CASCADE,
+        related_name="wishlisted_by",
+        verbose_name="التخصص",
+    )
+    created_at = models.DateTimeField("تاريخ الإضافة", auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        unique_together = ("client", "offering")
+        verbose_name = "عنصر في قائمة الرغبات"
+        verbose_name_plural = "قائمة الرغبات"
+
+    def __str__(self):
+        return f"{self.offering.code} — {self.client.display_name}"
+
+
+# --- Proforma Invoice (TODO 5.2, VIP) ------------------------------------
+# The persisted result of the "Request Proforma" checkout action (TODO 5.1)
+# on a VIP client's cart: a frozen snapshot of the cart at submission time
+# (so later edits to `Offering` pricing or `Formateur` records never change
+# a document that has already been sent) plus the optional bon-de-commande
+# upload. No PDF-generation library is used anywhere in this app (no
+# ReportLab, WeasyPrint...): `get_absolute_url`/`enrollment:proforma_print`
+# below points at a dedicated view that renders plain HTML with
+# print-specific CSS (@media print rules) — the client's own browser
+# handles "print" or "save as PDF", exactly like `Offering.fiche_technique_url`
+# and `Formateur.cv_url` already do (see `fiche_technique_print`/
+# `formateur_cv_print` above and `enrollment/documents/*.html`).
+PROFORMA_STATUS_CHOICES = [
+    ("pending", "قيد المراجعة"),
+    ("confirmed", "مؤكدة"),
+    ("cancelled", "ملغاة"),
+]
+
+
+def proforma_bon_de_commande_path(instance, filename):
+    return f"proforma_invoices/{instance.client_id}/{filename}"
+
+
+class ProformaInvoice(models.Model):
+    """A VIP client's proforma request (TODO 5.1/5.2), with its cart lines
+    frozen onto `ProformaInvoiceItem` rows at creation time. `reference` is
+    a short human-readable number shown on the printable page and in
+    'My Purchases'; it can't be filled in before the first save (it needs
+    the auto `pk`), so `save()` below fills it in on first save only."""
+
+    reference = models.CharField(
+        "المرجع", max_length=30, unique=True, blank=True, editable=False
+    )
+    client = models.ForeignKey(
+        Client,
+        on_delete=models.CASCADE,
+        related_name="proforma_invoices",
+        verbose_name="الزبون",
+    )
+    status = models.CharField(
+        "الحالة",
+        max_length=10,
+        choices=PROFORMA_STATUS_CHOICES,
+        default="pending",
+    )
+    bon_de_commande = models.FileField(
+        "بون دي كوماند",
+        upload_to=proforma_bon_de_commande_path,
+        blank=True,
+        null=True,
+        validators=[FileExtensionValidator(["pdf", "jpg", "jpeg", "png", "webp"])],
+    )
+    bon_de_commande_original_name = models.CharField(
+        "الاسم الأصلي للملف", max_length=255, blank=True
+    )
+    created_at = models.DateTimeField("تاريخ الإنشاء", auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "فاتورة أولية (بروفورما)"
+        verbose_name_plural = "🧾 الفواتير الأولية (بروفورما)"
+
+    def __str__(self):
+        return self.reference or f"بروفورما #{self.pk}"
+
+    def save(self, *args, **kwargs):
+        is_new = self._state.adding
+        super().save(*args, **kwargs)
+        if is_new and not self.reference:
+            self.reference = f"PRO-{self.created_at:%Y}-{self.pk:05d}"
+            super().save(update_fields=["reference"])
+
+    def get_absolute_url(self):
+        return reverse("enrollment:proforma_print", args=[self.pk])
+
+    @property
+    def subtotal(self):
+        """Same "None means not priced, not free" convention as
+        `Cart.subtotal`/`CartItem.line_total` — still a raw figure, callers
+        must gate its display behind the Phase 3 VIP-only rule themselves."""
+        total = None
+        for item in self.items.all():
+            if item.line_total is None:
+                continue
+            total = (total or 0) + item.line_total
+        return total
+
+
+class ProformaInvoiceItem(models.Model):
+    """One frozen cart line on a `ProformaInvoice`. `offering`/`trainer`
+    stay as real foreign keys (so the printable page can still link back
+    to them), but every display value that must never change after the
+    fact — title, code, session, trainer name, billing basis, quantity,
+    unit price, line total — is copied onto this row at creation time.
+    `offering` uses PROTECT (unlike `CartItem.offering`'s CASCADE) since an
+    Offering must never be deletable out from under an already-issued
+    invoice line."""
+
+    invoice = models.ForeignKey(
+        ProformaInvoice,
+        on_delete=models.CASCADE,
+        related_name="items",
+        verbose_name="الفاتورة الأولية",
+    )
+    offering = models.ForeignKey(
+        Offering,
+        on_delete=models.PROTECT,
+        related_name="proforma_items",
+        verbose_name="التخصص",
+    )
+    offering_code = models.CharField("رمز التخصص", max_length=20)
+    offering_title = models.CharField("عنوان التخصص", max_length=150)
+    session_name = models.CharField("الدورة", max_length=120, blank=True)
+    trainer = models.ForeignKey(
+        Formateur,
+        on_delete=models.SET_NULL,
+        related_name="proforma_items",
+        null=True,
+        blank=True,
+        verbose_name="المكوّن",
+    )
+    trainer_name = models.CharField("اسم المكوّن", max_length=150, blank=True)
+    billing_basis = models.CharField(
+        "أساس الفوترة", max_length=20, choices=BILLING_BASIS_CHOICES
+    )
+    participant_count = models.PositiveSmallIntegerField(
+        "عدد المشاركين", default=1, validators=[MinValueValidator(1)]
+    )
+    unit_price = models.DecimalField(
+        "سعر الوحدة (دج)", max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    line_total = models.DecimalField(
+        "المجموع (دج)", max_digits=10, decimal_places=2, null=True, blank=True
+    )
+
+    class Meta:
+        ordering = ["id"]
+        verbose_name = "بند في الفاتورة الأولية"
+        verbose_name_plural = "بنود الفاتورة الأولية"
+
+    def __str__(self):
+        return f"{self.offering_code} × {self.participant_count} — {self.invoice}"
+
+    @classmethod
+    def snapshot_from_cart_item(cls, invoice, cart_item):
+        """Build (unsaved) a frozen line from a live `CartItem` — the sole
+        place this copy happens, so `ProformaInvoice` creation (TODO 5.2)
+        stays consistent wherever it's triggered from."""
+        return cls(
+            invoice=invoice,
+            offering=cart_item.offering,
+            offering_code=cart_item.offering.code,
+            offering_title=cart_item.offering.title,
+            session_name=cart_item.offering.session.name,
+            trainer=cart_item.trainer,
+            trainer_name=cart_item.trainer.full_name if cart_item.trainer else "",
+            billing_basis=cart_item.billing_basis,
+            participant_count=cart_item.participant_count,
+            unit_price=cart_item.unit_price,
+            line_total=cart_item.line_total,
+        )
+
+
+# --- Quote Request (TODO 5.3, non-VIP) -----------------------------------
+# The non-VIP counterpart to `ProformaInvoice` (TODO 5.1/5.2): a snapshot
+# of the client's cart at submission time, but deliberately thinner — no
+# `trainer`, no price, no bon-de-commande attachment, since none of those
+# are ever shown or accepted on the non-VIP "Request Quote" action (only
+# VIP carts carry a billing basis/trainer to begin with, see
+# `CartItem`/Phase 4). Pricing is added later by an accountant per line
+# (`CustomTariff`, Phase 6), hence `status` starting at "pending" and
+# moving through "priced"/"approved" (TODO 6.3) rather than being fixed
+# at creation like a VIP proforma.
+QUOTE_STATUS_CHOICES = [
+    ("pending", "قيد المراجعة"),
+    ("priced", "تم التسعير"),
+    ("approved", "معتمدة"),
+    ("cancelled", "ملغاة"),
+]
+
+
+class QuoteRequest(models.Model):
+    """A non-VIP client's 'Request Quote' checkout (TODO 5.3), with its
+    cart lines frozen onto `QuoteRequestItem` rows at creation time. Same
+    `reference` auto-numbering convention as `ProformaInvoice.reference`
+    (see that model's docstring) but with its own "QUO-" prefix."""
+
+    reference = models.CharField(
+        "المرجع", max_length=30, unique=True, blank=True, editable=False
+    )
+    client = models.ForeignKey(
+        Client,
+        on_delete=models.CASCADE,
+        related_name="quote_requests",
+        verbose_name="الزبون",
+    )
+    status = models.CharField(
+        "الحالة",
+        max_length=10,
+        choices=QUOTE_STATUS_CHOICES,
+        default="pending",
+    )
+    created_at = models.DateTimeField("تاريخ الإنشاء", auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "طلب عرض سعر"
+        verbose_name_plural = "📋 طلبات عروض الأسعار"
+
+    def __str__(self):
+        return self.reference or f"عرض سعر #{self.pk}"
+
+    def save(self, *args, **kwargs):
+        is_new = self._state.adding
+        super().save(*args, **kwargs)
+        if is_new and not self.reference:
+            self.reference = f"QUO-{self.created_at:%Y}-{self.pk:05d}"
+            super().save(update_fields=["reference"])
+
+    @property
+    def is_priced(self):
+        """TODO 6.2 — True once every line carries a tariff (unit_price +
+        billing_basis), i.e. the accountant has finished pricing this
+        quote and it's ready to move to `status="priced"` (TODO 6.3)."""
+        items = list(self.items.all())
+        return bool(items) and all(item.is_priced for item in items)
+
+    @property
+    def subtotal(self):
+        """Same "None means not priced, not free" convention as
+        `Cart.subtotal`/`ProformaInvoice.subtotal` — a raw figure only;
+        this quote's items have no VIP-only visibility rule of their own
+        (the client only sees a price here once the accountant sets one),
+        but callers rendering it elsewhere should still consider context."""
+        total = None
+        for item in self.items.all():
+            if item.line_total is None:
+                continue
+            total = (total or 0) + item.line_total
+        return total
+
+
+class QuoteRequestItem(models.Model):
+    """One frozen cart line on a `QuoteRequest` — offering + participant
+    count only at creation time (TODO 5.3: "no trainer, no price").
+
+    `unit_price`/`billing_basis` (TODO 6.2) are deliberately **not** set
+    at creation — they start blank/null and are filled in later, per
+    line, by an admin or accountant (see `enrollment.admin`'s
+    `QuoteRequestItemInline`, restricted to the "Accountant" group's
+    `change_quoterequestitem` permission from TODO 6.1). This is the
+    "CustomTariff" the TODO describes, kept as plain fields on this model
+    rather than a separate table since a tariff is always exactly
+    one-per-line and never reused across quotes/lines."""
+
+    quote = models.ForeignKey(
+        QuoteRequest,
+        on_delete=models.CASCADE,
+        related_name="items",
+        verbose_name="طلب عرض السعر",
+    )
+    offering = models.ForeignKey(
+        Offering,
+        on_delete=models.PROTECT,
+        related_name="quote_items",
+        verbose_name="التخصص",
+    )
+    offering_code = models.CharField("رمز التخصص", max_length=20)
+    offering_title = models.CharField("عنوان التخصص", max_length=150)
+    session_name = models.CharField("الدورة", max_length=120, blank=True)
+    participant_count = models.PositiveSmallIntegerField(
+        "عدد المشاركين", default=1, validators=[MinValueValidator(1)]
+    )
+    billing_basis = models.CharField(
+        "أساس الفوترة",
+        max_length=20,
+        choices=BILLING_BASIS_CHOICES,
+        blank=True,
+        help_text="يضبطه المحاسب/الإدارة عند التسعير — فارغ إلى حين ذلك.",
+    )
+    unit_price = models.DecimalField(
+        "سعر الوحدة (دج)",
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="التعريفة المخصّصة لهذا البند (يضبطها المحاسب/الإدارة).",
+    )
+
+    class Meta:
+        ordering = ["id"]
+        verbose_name = "بند في طلب عرض السعر"
+        verbose_name_plural = "بنود طلب عرض السعر"
+
+    def __str__(self):
+        return f"{self.offering_code} × {self.participant_count} — {self.quote}"
+
+    @classmethod
+    def snapshot_from_cart_item(cls, quote, cart_item):
+        """Build (unsaved) a frozen line from a live `CartItem` — mirrors
+        `ProformaInvoiceItem.snapshot_from_cart_item` but drops the
+        trainer/pricing fields, since those aren't known yet on the
+        non-VIP path (TODO 5.3) — `unit_price`/`billing_basis` are filled
+        in afterwards by the accountant (TODO 6.2)."""
+        return cls(
+            quote=quote,
+            offering=cart_item.offering,
+            offering_code=cart_item.offering.code,
+            offering_title=cart_item.offering.title,
+            session_name=cart_item.offering.session.name,
+            participant_count=cart_item.participant_count,
+        )
+
+    # --- tariff (TODO 6.2) ----------------------------------------------
+    # Same "per_day is a flat group rate, per_participant scales with
+    # headcount" convention as `CartItem.line_total`, except here both
+    # `billing_basis` and `unit_price` are the accountant's own tariff
+    # entry for this line rather than derived from `Offering` — this is
+    # exactly what lets it "override/define the price that VIP users
+    # would otherwise see as the base price" per the TODO.
+    @property
+    def is_priced(self):
+        return bool(self.billing_basis) and self.unit_price is not None
+
+    @property
+    def line_total(self):
+        if not self.is_priced:
+            return None
+        if self.billing_basis == "per_participant":
+            return self.unit_price * self.participant_count
+        return self.unit_price
 
 
 RATING_CHOICES = [(i, "★" * i) for i in range(1, 6)]

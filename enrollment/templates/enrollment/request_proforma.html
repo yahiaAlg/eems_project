@@ -1,0 +1,101 @@
+{% extends "pages/base.html" %}
+{% load static enrollment_extras %}
+
+{% block title %}مساحتي — طلب فاتورة أولية{% endblock %}
+
+{% block extra_head %}
+<link href="{% static 'enrollment/css/subscribe.css' %}" rel="stylesheet">
+<link href="{% static 'enrollment/css/dashboard.css' %}" rel="stylesheet">
+<link href="{% static 'enrollment/css/cart.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{% include "pages/partials/_navbar.html" %}
+
+<section id="sub-hero">
+  <div class="container position-relative" style="z-index:1;">
+    <div class="crumb">
+      <a href="{% url 'pages:home' %}">الرئيسية</a> /
+      <a href="{% url 'enrollment:dashboard' %}">مساحتي</a> /
+      <a href="{% url 'enrollment:cart' %}">سلتي</a> /
+      طلب فاتورة أولية
+    </div>
+    <h1><iconify-icon icon="mdi:file-document-check-outline"></iconify-icon> طلب فاتورة أولية (بروفورما)</h1>
+    <p>أكّد أساس الفوترة لكل تخصص، راجع المكوّن المختار، وأرفق بون دي كوماند إن وُجد.</p>
+  </div>
+</section>
+
+<div class="wrap" style="max-width:900px;">
+  {% include "enrollment/partials/_client_nav.html" %}
+
+  <form method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+
+    {% for item, form in items_with_forms %}
+    <div class="cart-item">
+      <div class="cart-item-poster">
+        <img src="{{ item.offering.poster_src }}" alt="{{ item.offering.title }}">
+      </div>
+
+      <div class="cart-item-body">
+        <span class="cart-item-code">{{ item.offering.code }}</span>
+        <h4>{{ item.offering.title }}</h4>
+        <div class="cart-item-sub">
+          {{ item.offering.session.name }} — {{ item.participant_count }} مشارك
+        </div>
+
+        <div class="cart-item-form">
+          <div class="field">
+            <label for="{{ form.billing_basis.id_for_label }}">{{ form.billing_basis.label }} *</label>
+            {{ form.billing_basis }}
+            {% if form.billing_basis.errors %}<ul class="errorlist inline">{% for e in form.billing_basis.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+          </div>
+
+          <div class="field">
+            <label>المكوّن المختار</label>
+            <div style="padding:7px 0;font-size:.85rem;">
+              {% if item.trainer %}
+                <iconify-icon icon="mdi:account-tie-outline"></iconify-icon> {{ item.trainer.full_name }}
+              {% else %}
+                <span style="color:var(--muted);">— بدون تفضيل —</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {% if can_view_price and item.line_total is not None %}
+      <div class="cart-item-side">
+        <div class="cart-item-price">
+          {{ item.line_total|da }}
+          <span class="unit">{{ item.unit_price|da }} × {% if item.billing_basis == 'per_participant' %}{{ item.participant_count }} مشارك{% else %}يوم{% endif %}</span>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+    <div class="panel" style="margin-top:8px;">
+      <div class="form-section-title"><iconify-icon icon="mdi:paperclip"></iconify-icon> بون دي كوماند (اختياري)</div>
+      <div class="field" style="max-width:420px;">
+        {{ attachment_form.bon_de_commande }}
+        <div class="form-text" style="font-size:.78rem;color:var(--muted);margin-top:6px;">
+          صيغ مقبولة: PDF أو صورة (JPG, PNG, WEBP) — بحد أقصى 10 ميغابايت.
+        </div>
+        {% if attachment_form.bon_de_commande.errors %}
+        <ul class="errorlist">{% for e in attachment_form.bon_de_commande.errors %}<li>{{ e }}</li>{% endfor %}</ul>
+        {% endif %}
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-2" style="margin-top:22px;">
+        <a href="{% url 'enrollment:cart' %}" class="btn-mini btn-mini-outline">
+          <iconify-icon icon="mdi:arrow-right-circle-outline"></iconify-icon> العودة إلى السلة
+        </a>
+        <button type="submit" class="btn-send"><iconify-icon icon="mdi:send-outline"></iconify-icon> تأكيد وإرسال الطلب</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+{% include "pages/partials/_footer.html" %}
+{% endblock %}

@@ -1,0 +1,9 @@
+/* wishlist.html — client-space wishlist page (TODO 4.4).
+   Reuses cart.css's .cart-item* item-card classes (same "offering
+   summary card" shape as the cart page) — this file only adds what's
+   specific to the wishlist's own actions. */
+
+.wishlist-actions { display:flex; flex-direction:column; gap:8px; align-items:flex-end; }
+
+.btn-move-cart { display:inline-flex; align-items:center; gap:6px; background:var(--accent); color:var(--navy); border:none; border-radius:8px; padding:8px 15px; font-size:.82rem; font-weight:800; text-decoration:none; cursor:pointer; transition:all .15s; }
+.btn-move-cart:hover { background:var(--accent-dark); transform:translateY(-1px); }

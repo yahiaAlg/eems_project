@@ -147,16 +147,58 @@
                   <span><iconify-icon icon="mdi:calendar-month-outline"></iconify-icon> {{ offering.session.name }}</span>
                   <span><iconify-icon icon="mdi:clock-time-four-outline"></iconify-icon> {{ offering.duration_months }} شهرا</span>
                 </div>
-                {% if offering.monthly_fee %}<div class="offer-fee">{{ offering.monthly_fee|da }} / شهر</div>{% endif %}
+                {% if can_view_price and offering.monthly_fee %}<div class="offer-fee">{{ offering.monthly_fee|da }} / شهر</div>{% endif %}
                 <div>
                   <div class="seats-bar"><span data-fill="{{ offering.fill_rate }}"></span></div>
                   <div class="seats-label">{{ offering.seats_taken }} / {{ offering.seats_available }} مقعد مشغول &bull; {{ offering.comments_count }} تعليق</div>
                 </div>
               </div>
               {% if offering.seats_remaining > 0 %}
-                <a class="btn-detail" href="{% url 'enrollment:detail' offering.session.slug offering.code %}"><iconify-icon icon="mdi:arrow-left-circle-outline"></iconify-icon> التفاصيل والتسجيل</a>
+                <div class="card-actions">
+                  <a class="btn-detail" href="{% url 'enrollment:detail' offering.session.slug offering.code %}"><iconify-icon icon="mdi:information-outline"></iconify-icon> التفاصيل</a>
+                  {% if request.user.is_authenticated %}
+                  <form method="post" action="{% url 'enrollment:add_to_cart' offering.session.slug offering.code %}" class="cart-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button type="submit" class="btn-cart"><iconify-icon icon="mdi:cart-plus"></iconify-icon> أضف إلى السلة</button>
+                  </form>
+                  <form method="post" action="{% url 'enrollment:toggle_wishlist' offering.session.slug offering.code %}" class="wishlist-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button type="submit" class="btn-wishlist {% if offering.pk in wishlisted_offering_ids %}is-saved{% endif %}" title="{% if offering.pk in wishlisted_offering_ids %}إزالة من قائمة الرغبات{% else %}حفظ لوقت لاحق{% endif %}">
+                      <iconify-icon icon="{% if offering.pk in wishlisted_offering_ids %}mdi:heart{% else %}mdi:heart-outline{% endif %}"></iconify-icon>
+                    </button>
+                  </form>
+                  {% else %}
+                  <a class="btn-cart" href="{% url 'accounts:login' %}?next={{ request.get_full_path|urlencode }}"><iconify-icon icon="mdi:cart-plus"></iconify-icon> أضف إلى السلة</a>
+                  <a class="btn-wishlist" href="{% url 'accounts:login' %}?next={{ request.get_full_path|urlencode }}" title="سجّل الدخول لحفظ هذا التخصص">
+                    <iconify-icon icon="mdi:heart-outline"></iconify-icon>
+                  </a>
+                  {% endif %}
+                </div>
               {% else %}
-                <a class="btn-detail full" href="{% url 'enrollment:detail' offering.session.slug offering.code %}"><iconify-icon icon="mdi:clock-alert-outline"></iconify-icon> اكتملت المقاعد — قائمة الانتظار</a>
+                <div class="card-actions">
+                  <a class="btn-detail full" href="{% url 'enrollment:detail' offering.session.slug offering.code %}"><iconify-icon icon="mdi:clock-alert-outline"></iconify-icon> اكتملت المقاعد — قائمة الانتظار</a>
+                  {% if request.user.is_authenticated %}
+                  <form method="post" action="{% url 'enrollment:add_to_cart' offering.session.slug offering.code %}" class="cart-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button type="submit" class="btn-cart"><iconify-icon icon="mdi:cart-plus"></iconify-icon> أضف إلى السلة</button>
+                  </form>
+                  <form method="post" action="{% url 'enrollment:toggle_wishlist' offering.session.slug offering.code %}" class="wishlist-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button type="submit" class="btn-wishlist {% if offering.pk in wishlisted_offering_ids %}is-saved{% endif %}" title="{% if offering.pk in wishlisted_offering_ids %}إزالة من قائمة الرغبات{% else %}حفظ لوقت لاحق{% endif %}">
+                      <iconify-icon icon="{% if offering.pk in wishlisted_offering_ids %}mdi:heart{% else %}mdi:heart-outline{% endif %}"></iconify-icon>
+                    </button>
+                  </form>
+                  {% else %}
+                  <a class="btn-cart" href="{% url 'accounts:login' %}?next={{ request.get_full_path|urlencode }}"><iconify-icon icon="mdi:cart-plus"></iconify-icon> أضف إلى السلة</a>
+                  <a class="btn-wishlist" href="{% url 'accounts:login' %}?next={{ request.get_full_path|urlencode }}" title="سجّل الدخول لحفظ هذا التخصص">
+                    <iconify-icon icon="mdi:heart-outline"></iconify-icon>
+                  </a>
+                  {% endif %}
+                </div>
               {% endif %}
             </div>
           </div>
