@@ -48,6 +48,11 @@
           <a href="{% url 'pages:nomenclature' %}" class="hero-cta-secondary">
             <i class="bi bi-list-ul"></i> {{ settings.hero_cta_secondary_text }}
           </a>
+          {% if not user.is_authenticated %}
+          <a href="{% url 'accounts:register' %}" class="hero-cta-secondary">
+            <i class="bi bi-person-plus-fill"></i> إنشاء حساب
+          </a>
+          {% endif %}
         </div>
 
         <div class="hero-stats">

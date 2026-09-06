@@ -34,6 +34,17 @@
       </div>
 
       <div class="col-sm-6 col-lg-2">
+        <div class="footer-heading">الحساب</div>
+        {% if user.is_authenticated %}
+        <a href="{% url 'enrollment:dashboard' %}" class="footer-link"><i class="bi bi-person-circle"></i> مساحتي</a>
+        <a href="{% url 'accounts:logout' %}" class="footer-link"><i class="bi bi-box-arrow-right"></i> تسجيل الخروج</a>
+        {% else %}
+        <a href="{% url 'accounts:login' %}" class="footer-link"><i class="bi bi-box-arrow-in-left"></i> تسجيل الدخول</a>
+        <a href="{% url 'accounts:register' %}" class="footer-link"><i class="bi bi-person-plus-fill"></i> إنشاء حساب</a>
+        {% endif %}
+      </div>
+
+      <div class="col-sm-6 col-lg-2">
         <div class="footer-heading">التكوينات</div>
         <a href="{% url 'pages:nomenclature' %}" class="footer-link"><i class="bi bi-list-ul"></i> التصنيف الرسمي</a>
         <a href="{% url 'pages:home' %}#formations" class="footer-link"><i class="bi bi-grid-fill"></i>{% if branches %} {{ branches|length }} فرعا{% else %} الفروع المهنية{% endif %}</a>
