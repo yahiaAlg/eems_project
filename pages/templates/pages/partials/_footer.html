@@ -37,7 +37,10 @@
         <div class="footer-heading">الحساب</div>
         {% if user.is_authenticated %}
         <a href="{% url 'enrollment:dashboard' %}" class="footer-link"><i class="bi bi-person-circle"></i> مساحتي</a>
-        <a href="{% url 'accounts:logout' %}" class="footer-link"><i class="bi bi-box-arrow-right"></i> تسجيل الخروج</a>
+        <form method="post" action="{% url 'accounts:logout' %}" style="margin:0;">
+          {% csrf_token %}
+          <button type="submit" class="footer-link" style="background:none;border:none;padding:5px 0;width:100%;font:inherit;text-align:inherit;cursor:pointer;"><i class="bi bi-box-arrow-right"></i> تسجيل الخروج</button>
+        </form>
         {% else %}
         <a href="{% url 'accounts:login' %}" class="footer-link"><i class="bi bi-box-arrow-in-left"></i> تسجيل الدخول</a>
         <a href="{% url 'accounts:register' %}" class="footer-link"><i class="bi bi-person-plus-fill"></i> إنشاء حساب</a>
