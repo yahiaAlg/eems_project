@@ -3,17 +3,20 @@ from datetime import timedelta
 from django.contrib import admin, messages
 from django.db.models import Count
 from django.shortcuts import render
-from django.urls import path
+from django.urls import path, reverse
 from django.utils import timezone
 
 from django.utils.html import format_html
 
 from accounts.services import activate_client_and_send_credentials
+from pages.emails import send_branded_mail
 
 from .models import (
     Cart,
     CartItem,
     Client,
+    Comment,
+    Enquiry,
     Enrollment,
     EnrollmentNote,
     Formateur,
@@ -679,6 +682,36 @@ class QuoteRequestAdmin(admin.ModelAdmin):
             quote.status = "priced"
             quote.save(update_fields=["status", "updated_at"])
             priced_count += 1
+
+            # TODO 7.2 — "quote-priced/ready notification → client"
+            # (TODO 7.1's `quote_priced_notification.html`). Every line is
+            # guaranteed priced at this point (the `is_priced` gate above),
+            # so `quote.subtotal` is never None here.
+            if quote.client.email:
+                send_branded_mail(
+                    template="emails/quote_priced_notification.html",
+                    subject=f"عرض السعر جاهز — {quote.reference}",
+                    to=[quote.client.email],
+                    context={
+                        "reference": quote.reference,
+                        "client_name": quote.client.display_name,
+                        "items": [
+                            {
+                                "title": item.offering_title,
+                                "code": item.offering_code,
+                                "billing_basis_display": item.get_billing_basis_display(),
+                                "participant_count": item.participant_count,
+                                "unit_price": item.unit_price,
+                                "line_total": item.line_total,
+                            }
+                            for item in quote.items.all()
+                        ],
+                        "subtotal": quote.subtotal,
+                        "print_url": request.build_absolute_uri(
+                            reverse("enrollment:quote_print", args=[quote.pk])
+                        ),
+                    },
+                )
         if priced_count:
             self.message_user(
                 request,
@@ -719,16 +752,6 @@ class QuoteRequestAdmin(admin.ModelAdmin):
                 f"✔ تم إلغاء {cancelled_count} طلب/طلبات عرض سعر.",
                 level=messages.SUCCESS,
             )
-
-
-# Add this import to the top of enrollment/admin.py:
-#   from .models import Comment, Enquiry
-#
-# Then append the two ModelAdmins below to enrollment/admin.py.
-
-from django.contrib import admin
-
-from .models import Comment, Enquiry
 
 
 @admin.register(Comment)

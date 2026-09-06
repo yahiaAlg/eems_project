@@ -10,6 +10,8 @@ STATUS_COLORS = {
     "waitlisted": "#8b949e",
     "rejected": "#f85149",
     "cancelled": "#94a3b8",
+    "priced": "#3b82f6",
+    "approved": "#2ea043",
 }
 
 

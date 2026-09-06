@@ -1,0 +1,49 @@
+{% extends "emails/base_email.html" %}
+{% comment %}
+TODO 7.1 — "non-VIP quote request → admin" notification.
+
+Sent when a non-VIP client submits `request_quote` (TODO 5.3). Trigger
+wiring is TODO 7.2; this file only defines the layout/contract, flat
+context per the same convention as the proforma notifications.
+
+Expected context:
+  reference    — quote.reference, e.g. "QUO-2026-00017"
+  client_name  — quote.client.display_name
+  client_type  — quote.client.get_client_type_display
+  items        — list of dicts, one per QuoteRequestItem:
+                  {title, code, session_name, participant_count}
+                  (no trainer/price — a fresh quote never has either,
+                  per TODO 5.3; pricing is added later, TODO 6.2)
+  admin_url    — absolute link to the quote's admin change page
+{% endcomment %}
+{% block title %}طلب عرض سعر جديد — {{ site_name }}{% endblock %}
+{% block body %}
+<div style="font-size:12px;font-weight:700;color:#f59e0b;letter-spacing:.5px;margin-bottom:10px;">إشعار إداري</div>
+<h1 style="font-size:22px;font-weight:800;color:#0f172a;margin:0 0 6px;">طلب عرض سعر جديد</h1>
+<p style="font-size:13px;color:#64748b;margin:0 0 20px;">المرجع: <strong style="color:#0f172a;" dir="ltr">{{ reference }}</strong></p>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:18px;">
+  <tr><td style="padding:10px 20px;"><span style="color:#64748b;font-size:12.5px;">الزبون</span><br><strong style="color:#0f172a;font-size:14.5px;">{{ client_name }} <span style="color:#94a3b8;font-weight:400;">({{ client_type }})</span></strong></td></tr>
+</table>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:22px;">
+  <tr>
+    <td style="padding:8px 10px;background:#f1f5f9;font-size:11.5px;font-weight:700;color:#64748b;border-bottom:1px solid #e2e8f0;">التخصص</td>
+    <td style="padding:8px 10px;background:#f1f5f9;font-size:11.5px;font-weight:700;color:#64748b;border-bottom:1px solid #e2e8f0;">الدورة</td>
+    <td style="padding:8px 10px;background:#f1f5f9;font-size:11.5px;font-weight:700;color:#64748b;border-bottom:1px solid #e2e8f0;">عدد المشاركين</td>
+  </tr>
+  {% for item in items %}
+  <tr>
+    <td style="padding:8px 10px;font-size:13px;color:#0f172a;border-bottom:1px solid #e2e8f0;">{{ item.title }}<br><span style="font-size:11px;color:#94a3b8;">{{ item.code }}</span></td>
+    <td style="padding:8px 10px;font-size:13px;color:#334155;border-bottom:1px solid #e2e8f0;">{{ item.session_name|default:"—" }}</td>
+    <td style="padding:8px 10px;font-size:13px;color:#334155;border-bottom:1px solid #e2e8f0;">{{ item.participant_count }}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+<p style="font-size:12.5px;color:#94a3b8;margin:0 0 22px;">لم يُسعَّر هذا الطلب بعد — التسعير يتم لاحقا لكل بند من طرف المحاسبة.</p>
+
+<div style="text-align:center;">
+  <a href="{{ admin_url }}" style="display:inline-block;background:#f59e0b;color:#0f172a;font-weight:700;font-size:14px;text-decoration:none;padding:12px 26px;border-radius:8px;">فتح طلب عرض السعر في لوحة التحكم</a>
+</div>
+{% endblock %}

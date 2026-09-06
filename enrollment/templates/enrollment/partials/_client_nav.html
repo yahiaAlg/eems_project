@@ -6,7 +6,7 @@ highlighted via the `active_tab` context var each view sets.
 {% endcomment %}
 <nav class="client-tabs" aria-label="أقسام مساحتي">
   <a href="{% url 'enrollment:dashboard' %}" class="client-tab{% if active_tab == 'dashboard' %} active{% endif %}">
-    <iconify-icon icon="mdi:clipboard-list-outline"></iconify-icon> تسجيلاتي
+    <iconify-icon icon="mdi:view-dashboard-outline"></iconify-icon> نظرة عامة
   </a>
   <a href="{% url 'enrollment:my_purchases' %}" class="client-tab{% if active_tab == 'purchases' %} active{% endif %}">
     <iconify-icon icon="mdi:receipt-text-check-outline"></iconify-icon> مشترياتي

@@ -54,7 +54,101 @@
       <div class="stat-label">عناصر في قائمة الرغبات</div>
     </div>
   </div>
+
+  <div class="chart-grid">
+    <div class="chart-box">
+      <h3><iconify-icon icon="mdi:school-outline"></iconify-icon> التكوينات — حسب الحالة</h3>
+      {% if formations_status_chart_data %}
+      <canvas id="formationsStatusChart"></canvas>
+      {% else %}
+      <div class="dash-empty-mini">لا توجد تسجيلات بعد.</div>
+      {% endif %}
+    </div>
+
+    <div class="chart-box">
+      <h3><iconify-icon icon="mdi:clock-alert-outline"></iconify-icon> الطلبات قيد الانتظار</h3>
+      {% if pending_requests_chart_data %}
+      <canvas id="pendingRequestsChart"></canvas>
+      {% else %}
+      <div class="dash-empty-mini">لا توجد طلبات قيد الانتظار.</div>
+      {% endif %}
+    </div>
+
+    {% if client.is_vip %}
+    <div class="chart-box">
+      <h3><iconify-icon icon="mdi:cash-multiple"></iconify-icon> الإنفاق الشهري (آخر 6 أشهر)</h3>
+      {% if monthly_spend_chart_data %}
+      <canvas id="monthlySpendChart"></canvas>
+      {% else %}
+      <div class="dash-empty-mini">لا يوجد إنفاق مؤكد بعد.</div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="chart-box">
+      <h3><iconify-icon icon="mdi:cart-heart"></iconify-icon> السلة مقابل قائمة الرغبات</h3>
+      <canvas id="wishlistCartChart"></canvas>
+    </div>
+  </div>
 </div>
 
 {% include "pages/partials/_footer.html" %}
+
+<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+<script>
+  const formationsStatusData = {{ formations_status_chart_data|safe }};
+  const pendingRequestsData = {{ pending_requests_chart_data|safe }};
+  const monthlySpendData = {{ monthly_spend_chart_data|safe }};
+  const wishlistCartData = {{ wishlist_cart_chart_data|safe }};
+
+  const chartTextColor = getComputedStyle(document.body).getPropertyValue('--navy') || '#1e293b';
+  Chart.defaults.color = chartTextColor.trim() || '#1e293b';
+  Chart.defaults.font.family = "'Tajawal', sans-serif";
+
+  if (formationsStatusData.length) {
+    new Chart(document.getElementById('formationsStatusChart'), {
+      type: 'doughnut',
+      data: {
+        labels: formationsStatusData.map(d => d.label),
+        datasets: [{
+          data: formationsStatusData.map(d => d.count),
+          backgroundColor: ['#f59e0b', '#2ea043', '#3b82f6', '#8b949e', '#dc2626', '#a855f7'],
+        }],
+      },
+    });
+  }
+
+  if (pendingRequestsData.length) {
+    new Chart(document.getElementById('pendingRequestsChart'), {
+      type: 'bar',
+      data: {
+        labels: pendingRequestsData.map(d => d.label),
+        datasets: [{ label: 'العدد', data: pendingRequestsData.map(d => d.count), backgroundColor: '#f59e0b' }],
+      },
+      options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { ticks: { precision: 0 } } } },
+    });
+  }
+
+  if (monthlySpendData.length) {
+    new Chart(document.getElementById('monthlySpendChart'), {
+      type: 'line',
+      data: {
+        labels: monthlySpendData.map(d => d.month),
+        datasets: [{
+          label: 'الإنفاق (دج)', data: monthlySpendData.map(d => d.total),
+          borderColor: '#2ea043', backgroundColor: 'rgba(46,160,67,0.15)', fill: true, tension: 0.3,
+        }],
+      },
+    });
+  }
+
+  new Chart(document.getElementById('wishlistCartChart'), {
+    type: 'bar',
+    data: {
+      labels: wishlistCartData.map(d => d.label),
+      datasets: [{ label: 'العدد', data: wishlistCartData.map(d => d.count), backgroundColor: ['#3b82f6', '#dc2626'] }],
+    },
+    options: { plugins: { legend: { display: false } }, scales: { y: { ticks: { precision: 0 } } } },
+  });
+</script>
 {% endblock %}

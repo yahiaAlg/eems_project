@@ -185,6 +185,20 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # initial password. Change it on the mail account and set EMAIL_HOST_PASSWORD
 # in the .env file — never rely on the hardcoded fallback in production.
 ADMINS = [("الإدارة", "support@excellance-ms.dz")]
+
+# TODO 7.2 — recipient list for the "Accountant"-facing proforma/quote
+# notifications (pages/emails/proforma_accountant_notification.html,
+# quote_accountant_notification.html). Kept as a plain settings list
+# (comma-separated env override) rather than querying the "Accountant"
+# Django Group's user emails at send-time, mirroring how `ADMINS` above
+# is already read as a flat address list in accounts/views.py/register().
+ACCOUNTANT_EMAILS = [
+    addr.strip()
+    for addr in os.environ.get(
+        "ACCOUNTANT_EMAILS", "accounting@excellance-ms.dz"
+    ).split(",")
+    if addr.strip()
+]
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "mail.excellance-ms.dz"
 EMAIL_PORT = 465

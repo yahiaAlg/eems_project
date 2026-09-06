@@ -12,6 +12,12 @@ Usage:
         to=["client@example.com"],
         context={"name": "..."},
     )
+
+    # TODO 7.3 — with a file attached (e.g. the proforma bon-de-commande):
+    send_branded_mail(
+        ...,
+        attachments=[("bon.pdf", file_bytes, "application/pdf")],
+    )
 """
 
 from django.conf import settings
@@ -20,8 +26,14 @@ from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 
 
-def send_branded_mail(template, subject, to, context=None, reply_to=None):
+def send_branded_mail(template, subject, to, context=None, reply_to=None, attachments=None):
     """Render `template` with `context` and send it as an HTML email.
+
+    `attachments`, if given, is an iterable of `(filename, content, mimetype)`
+    tuples — the same shape `EmailMessage.attach()` takes — attached
+    directly to the outgoing message (TODO 7.3: e.g. a VIP proforma
+    request's uploaded bon-de-commande, so the admin/accountant get the
+    actual file with no separate link to secure).
 
     Never raises: any SMTP/template error is swallowed so a broken mail
     server never breaks a contact/newsletter/enrollment submission.
@@ -44,6 +56,8 @@ def send_branded_mail(template, subject, to, context=None, reply_to=None):
             ),
         )
         msg.attach_alternative(html_body, "text/html")
+        for filename, content, mimetype in attachments or []:
+            msg.attach(filename, content, mimetype)
         msg.send(fail_silently=True)
         return True
     except Exception:

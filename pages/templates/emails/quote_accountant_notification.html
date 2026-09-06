@@ -1,0 +1,41 @@
+{% extends "emails/base_email.html" %}
+{% comment %}
+TODO 7.1 — "non-VIP quote request → accountant" notification.
+
+Same event/context contract as `quote_admin_notification.html` (see that
+file's docstring) — a distinct template so the accountant-facing copy can
+push straight toward the pricing step (TODO 6.2/6.3) rather than the
+admin's generic "open in dashboard" framing. TODO 7.2 wires the trigger
+and recipient list.
+{% endcomment %}
+{% block title %}طلب عرض سعر بانتظار التسعير — {{ site_name }}{% endblock %}
+{% block body %}
+<div style="font-size:12px;font-weight:700;color:#0ea5e9;letter-spacing:.5px;margin-bottom:10px;">للمحاسبة</div>
+<h1 style="font-size:22px;font-weight:800;color:#0f172a;margin:0 0 6px;">طلب عرض سعر بانتظار التسعير</h1>
+<p style="font-size:13px;color:#64748b;margin:0 0 20px;">المرجع: <strong style="color:#0f172a;" dir="ltr">{{ reference }}</strong></p>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:18px;">
+  <tr><td style="padding:10px 20px;"><span style="color:#64748b;font-size:12.5px;">الزبون</span><br><strong style="color:#0f172a;font-size:14.5px;">{{ client_name }} <span style="color:#94a3b8;font-weight:400;">({{ client_type }})</span></strong></td></tr>
+</table>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:22px;">
+  <tr>
+    <td style="padding:8px 10px;background:#f1f5f9;font-size:11.5px;font-weight:700;color:#64748b;border-bottom:1px solid #e2e8f0;">التخصص</td>
+    <td style="padding:8px 10px;background:#f1f5f9;font-size:11.5px;font-weight:700;color:#64748b;border-bottom:1px solid #e2e8f0;">الدورة</td>
+    <td style="padding:8px 10px;background:#f1f5f9;font-size:11.5px;font-weight:700;color:#64748b;border-bottom:1px solid #e2e8f0;">عدد المشاركين</td>
+  </tr>
+  {% for item in items %}
+  <tr>
+    <td style="padding:8px 10px;font-size:13px;color:#0f172a;border-bottom:1px solid #e2e8f0;">{{ item.title }}<br><span style="font-size:11px;color:#94a3b8;">{{ item.code }}</span></td>
+    <td style="padding:8px 10px;font-size:13px;color:#334155;border-bottom:1px solid #e2e8f0;">{{ item.session_name|default:"—" }}</td>
+    <td style="padding:8px 10px;font-size:13px;color:#334155;border-bottom:1px solid #e2e8f0;">{{ item.participant_count }}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+<p style="font-size:13px;color:#475569;margin:0 0 22px;">يُرجى تحديد أساس الفوترة وسعر الوحدة لكل بند، ثم تعليم الطلب كـ«تم التسعير».</p>
+
+<div style="text-align:center;">
+  <a href="{{ admin_url }}" style="display:inline-block;background:#0ea5e9;color:#ffffff;font-weight:700;font-size:14px;text-decoration:none;padding:12px 26px;border-radius:8px;">تسعير الطلب الآن</a>
+</div>
+{% endblock %}

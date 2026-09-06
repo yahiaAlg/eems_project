@@ -25,6 +25,9 @@
 #   6. seed_fiche_technique — offering objectives / program / prerequisites
 #   7. seed_gallery         — secondary gallery images for sample offerings
 #   8. seed_about_faq       — About + FAQ page content
+#   9. seed_account_groups  — "VIP" / "Normal" Django Groups (TODO 1.7)
+#  10. seed_accountant_group — "Accountant" Django Group + scoped perms (TODO 6.1)
+#  11. seed_demo_users      — demo VIP/Normal client logins + accountant login (TODO 9.2)
 set -euo pipefail
 
 echo "== 1/8: base site content + official nomenclature =="
@@ -49,8 +52,17 @@ python manage.py seed_fiche_technique
 echo "== 7/8: offering gallery images =="
 python manage.py seed_gallery
 
-echo "== 8/8: About + FAQ pages =="
+echo "== 8/11: About + FAQ pages =="
 python manage.py seed_about_faq
+
+echo "== 9/11: VIP / Normal Django Groups =="
+python manage.py seed_account_groups
+
+echo "== 10/11: Accountant Django Group + scoped permissions =="
+python manage.py seed_accountant_group
+
+echo "== 11/11: demo VIP/Normal client logins + accountant login =="
+python manage.py seed_demo_users
 
 echo "✓ Full re-seed completed."
 

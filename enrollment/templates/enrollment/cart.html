@@ -107,11 +107,24 @@
   {% endif %}
 
   {% if items_with_forms and client.is_vip %}
-  <div class="d-flex justify-content-end mt-3">
-    <a href="{% url 'enrollment:request_proforma' %}" class="cta">
-      <iconify-icon icon="mdi:file-document-check-outline"></iconify-icon> طلب فاتورة أولية (بروفورما)
-    </a>
-  </div>
+    {% if client.needs_legal_info_for_proforma %}
+    <div class="proforma-legal-gate mt-3" role="alert">
+      <p>
+        <iconify-icon icon="mdi:alert-circle-outline"></iconify-icon>
+        لطلب فاتورة أولية، أكمل أولا المعلومات القانونية للمؤسسة في ملفك الشخصي:
+        <span dir="ltr">{{ client.missing_legal_fields|join:"، " }}</span>
+      </p>
+      <a href="{% url 'enrollment:profile' %}" class="cta">
+        <iconify-icon icon="mdi:file-account-outline"></iconify-icon> استكمال الملف القانوني
+      </a>
+    </div>
+    {% else %}
+    <div class="d-flex justify-content-end mt-3">
+      <a href="{% url 'enrollment:request_proforma' %}" class="cta">
+        <iconify-icon icon="mdi:file-document-check-outline"></iconify-icon> طلب فاتورة أولية (بروفورما)
+      </a>
+    </div>
+    {% endif %}
   {% elif items_with_forms %}
   <div class="d-flex justify-content-end mt-3">
     <form method="post" action="{% url 'enrollment:request_quote' %}" onsubmit="return confirm('إرسال طلب عرض سعر لهذه التخصصات؟');">

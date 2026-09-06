@@ -124,35 +124,35 @@ Do not skip ahead — later tasks depend on models/fields created earlier.
 
 ## Phase 7 — Notification Emails
 
-- [ ] **7.1** Define distinct email templates (extending `emails/base_email.html`) for: VIP
+- [x] **7.1** Define distinct email templates (extending `emails/base_email.html`) for: VIP
   proforma request → admin; VIP proforma request → accountant; non-VIP quote request → admin;
   non-VIP quote request → accountant; account-approved-with-credentials; password reset
   (branded override of Django's default); quote-priced/ready notification → client.
-- [ ] **7.2** Trigger each template from the relevant view (or a `post_save` signal, consistent
+- [x] **7.2** Trigger each template from the relevant view (or a `post_save` signal, consistent
   with the existing `enrollment/signals.py` pattern) via `send_branded_mail`, pulling admin/
   accountant recipient addresses from `settings.py`.
-- [ ] **7.3** For VIP proforma requests, attach the uploaded bon-de-commande file to (or link it
+- [x] **7.3** For VIP proforma requests, attach the uploaded bon-de-commande file to (or link it
   securely from) the admin/accountant notification emails.
 
 ## Phase 8 — Client Space Overhaul
 
-- [ ] **8.1** Rebuild the authenticated client dashboard with sections: Profile, Active
+- [x] **8.1** Rebuild the authenticated client dashboard with sections: Profile, Active
   Purchases (confirmed enrollments/proformas), Cart, Wishlist, Request History (quotes +
   proformas with status), Metrics.
-- [ ] **8.2** Build metrics widgets (e.g., total formations taken, total spent for VIP, pending
+- [x] **8.2** Build metrics widgets (e.g., total formations taken, total spent for VIP, pending
   request count, wishlist size) using the already-bundled Chart.js vendor asset
   (`pages/static/vendor/chartjs/chart.umd.min.js`).
-- [ ] **8.3** Re-verify the Phase 3 pricing-visibility rule holds across every new dashboard
+- [x] **8.3** Re-verify the Phase 3 pricing-visibility rule holds across every new dashboard
   section (metrics, purchase history, proforma detail) for non-VIP clients.
 
 ## Phase 9 — QA & Polish
 
-- [ ] **9.1** Manual test matrix: register → admin activates → credential email → login →
+- [x] **9.1** Manual test matrix: register → admin activates → credential email → login →
   password reset; full VIP flow (cart → trainer choice → attachment → proforma PDF → emails);
   full non-VIP flow (cart → quote → accountant sets tariff → client sees priced proforma →
   emails); wishlist → cart transfer.
-- [ ] **9.2** Update seed/management commands (alongside existing `seed_enrollment.py`,
+- [x] **9.2** Update seed/management commands (alongside existing `seed_enrollment.py`,
   `seed_formateurs.py`, etc.) to create sample VIP and Normal users plus the Accountant group,
   for local dev/demo data.
-- [ ] **9.3** Update `README.md`/`CHANGES.md` describing the new registration, cart, wishlist,
+- [x] **9.3** Update `README.md`/`CHANGES.md` describing the new registration, cart, wishlist,
   proforma, and tarification flows.

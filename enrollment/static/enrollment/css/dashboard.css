@@ -51,6 +51,22 @@
 a.cta { display:inline-flex; align-items:center; gap:8px; margin-top:10px; color:var(--navy); background:var(--accent); text-decoration:none; font-weight:800; padding:12px 26px; border-radius:9px; transition:all .18s; }
 a.cta:hover { background:var(--accent-dark); color:var(--navy); transform:translateY(-2px); }
 
+/* dashboard.html overview grid (TODO 8.1 — client-space rebuild): one
+   summary card per section (Profile / Active Purchases / Cart / Wishlist /
+   Request History / Metrics), each linking out to its own full page. */
+.dash-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(270px, 1fr)); gap:18px; }
+.dash-card { background:var(--card-bg); border:1px solid var(--card-border); border-radius:16px; padding:22px; box-shadow:var(--shadow); display:flex; flex-direction:column; }
+.dash-card-head { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid var(--card-border); }
+.dash-card-title { display:flex; align-items:center; gap:8px; font-weight:800; font-size:.98rem; color:var(--navy); }
+.dash-card-title iconify-icon { color:var(--accent-dark); font-size:1.15rem; }
+.dash-card-more { font-size:.76rem; font-weight:700; color:var(--accent-dark); text-decoration:none; display:inline-flex; align-items:center; gap:4px; white-space:nowrap; }
+.dash-card-more:hover { text-decoration:underline; }
+.dash-card-body { flex:1; }
+.dash-mini-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-top:1px solid var(--card-border); font-size:.84rem; color:var(--navy); }
+.dash-mini-row:first-child { border-top:none; }
+.dash-mini-row .text-muted { color:var(--muted) !important; font-size:.78rem; }
+.dash-empty-mini { color:var(--muted); font-size:.82rem; text-align:center; padding:16px 0; }
+
 /* metrics.html — لوحة إحصائياتي (TODO 4.5 nav entry; simple counts today,
    Phase 8.2 will add Chart.js widgets once purchase/proforma data exists) */
 .stat-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:14px; }
@@ -58,3 +74,10 @@ a.cta:hover { background:var(--accent-dark); color:var(--navy); transform:transl
 .stat-card iconify-icon { font-size:1.6rem; color:var(--accent-dark); }
 .stat-card .stat-value { font-size:1.8rem; font-weight:800; color:var(--navy); margin:8px 0 2px; }
 .stat-card .stat-label { font-size:.82rem; color:var(--muted); }
+
+/* metrics.html — TODO 8.2 Chart.js widgets, styled to match .stat-card. */
+.chart-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:16px; margin-top:20px; }
+.chart-box { background:var(--card-bg); border:1px solid var(--card-border); border-radius:14px; box-shadow:var(--shadow); padding:20px; }
+.chart-box h3 { display:flex; align-items:center; gap:8px; font-size:.9rem; font-weight:800; color:var(--navy); margin:0 0 14px; }
+.chart-box h3 iconify-icon { color:var(--accent-dark); font-size:1.2rem; }
+.chart-box canvas { max-height:240px; }

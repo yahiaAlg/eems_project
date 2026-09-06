@@ -1,0 +1,53 @@
+{% extends "emails/base_email.html" %}
+{% comment %}
+TODO 7.1 — "VIP proforma request → accountant" notification.
+
+Same event and context contract as `proforma_admin_notification.html`
+(see that file's docstring) — kept as a *distinct* template rather than
+reusing the admin one, per the TODO, since wording/CTA can diverge for
+the "Accountant" group's own review queue (Phase 6) without touching the
+admin-facing copy. TODO 7.2 decides which recipients (settings-driven
+accountant addresses / Accountant-group user emails) get this one.
+{% endcomment %}
+{% block title %}طلب فاتورة أولية بانتظار المراجعة — {{ site_name }}{% endblock %}
+{% block body %}
+<div style="font-size:12px;font-weight:700;color:#0ea5e9;letter-spacing:.5px;margin-bottom:10px;">للمحاسبة — VIP</div>
+<h1 style="font-size:22px;font-weight:800;color:#0f172a;margin:0 0 6px;">طلب فاتورة أولية بانتظار المراجعة</h1>
+<p style="font-size:13px;color:#64748b;margin:0 0 20px;">المرجع: <strong style="color:#0f172a;" dir="ltr">{{ reference }}</strong></p>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:18px;">
+  <tr><td style="padding:10px 20px;border-bottom:1px solid #e2e8f0;"><span style="color:#64748b;font-size:12.5px;">الزبون</span><br><strong style="color:#0f172a;font-size:14.5px;">{{ client_name }} <span style="color:#94a3b8;font-weight:400;">({{ client_type }})</span></strong></td></tr>
+  {% if has_attachment %}
+  <tr><td style="padding:10px 20px;"><span style="color:#64748b;font-size:12.5px;">بون دي كوماند مرفق</span><br><strong style="color:#0f172a;font-size:14.5px;">{{ attachment_name|default:"ملف مرفق" }}</strong></td></tr>
+  {% else %}
+  <tr><td style="padding:10px 20px;"><span style="color:#64748b;font-size:12.5px;">بون دي كوماند</span><br><span style="color:#94a3b8;font-size:13px;">لم يُرفق أي ملف</span></td></tr>
+  {% endif %}
+</table>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:18px;">
+  <tr>
+    <td style="padding:8px 10px;background:#f1f5f9;font-size:11.5px;font-weight:700;color:#64748b;border-bottom:1px solid #e2e8f0;">التخصص</td>
+    <td style="padding:8px 10px;background:#f1f5f9;font-size:11.5px;font-weight:700;color:#64748b;border-bottom:1px solid #e2e8f0;">أساس الفوترة</td>
+    <td style="padding:8px 10px;background:#f1f5f9;font-size:11.5px;font-weight:700;color:#64748b;border-bottom:1px solid #e2e8f0;">الكمية</td>
+    <td style="padding:8px 10px;background:#f1f5f9;font-size:11.5px;font-weight:700;color:#64748b;border-bottom:1px solid #e2e8f0;">المجموع</td>
+  </tr>
+  {% for item in items %}
+  <tr>
+    <td style="padding:8px 10px;font-size:13px;color:#0f172a;border-bottom:1px solid #e2e8f0;">{{ item.title }}<br><span style="font-size:11px;color:#94a3b8;">{{ item.code }}{% if item.session_name %} — {{ item.session_name }}{% endif %}</span></td>
+    <td style="padding:8px 10px;font-size:13px;color:#334155;border-bottom:1px solid #e2e8f0;">{{ item.billing_basis_display|default:"—" }}</td>
+    <td style="padding:8px 10px;font-size:13px;color:#334155;border-bottom:1px solid #e2e8f0;">{{ item.participant_count }}</td>
+    <td style="padding:8px 10px;font-size:13px;color:#0f172a;font-weight:700;border-bottom:1px solid #e2e8f0;">{% if item.line_total is not None %}{{ item.line_total }} دج{% else %}—{% endif %}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+{% if subtotal is not None %}
+<p style="font-size:14.5px;color:#0f172a;font-weight:800;margin:0 0 22px;">المجموع الكلي: {{ subtotal }} دج</p>
+{% else %}
+<p style="font-size:12.5px;color:#94a3b8;margin:0 0 22px;">بعض/كل البنود بدون سعر جماعي بعد — يُرجى المراجعة.</p>
+{% endif %}
+
+<div style="text-align:center;">
+  <a href="{{ admin_url }}" style="display:inline-block;background:#0ea5e9;color:#ffffff;font-weight:700;font-size:14px;text-decoration:none;padding:12px 26px;border-radius:8px;">مراجعة الفاتورة الأولية</a>
+</div>
+{% endblock %}

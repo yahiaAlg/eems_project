@@ -1,7 +1,7 @@
 {% extends "pages/base.html" %}
 {% load static enrollment_extras %}
 
-{% block title %}مساحتي — تسجيلاتي{% endblock %}
+{% block title %}مساحتي — نظرة عامة{% endblock %}
 
 {% block extra_head %}
 <link href="{% static 'enrollment/css/subscribe.css' %}" rel="stylesheet">
@@ -14,12 +14,12 @@
 <section id="sub-hero">
   <div class="container position-relative" style="z-index:1;">
     <div class="crumb"><a href="{% url 'pages:home' %}">الرئيسية</a> / مساحتي</div>
-    <h1><iconify-icon icon="mdi:view-dashboard-outline"></iconify-icon> مساحتي</h1>
-    <p>متابعة تسجيلاتك (<span dir="ltr">{{ phone }}</span>)</p>
+    <h1><iconify-icon icon="mdi:view-dashboard-outline"></iconify-icon> لوحة التحكم</h1>
+    <p>نظرة شاملة على نشاطك — مشترياتك، طلباتك، سلتك وقائمة رغباتك في مكان واحد.</p>
   </div>
 </section>
 
-<div class="wrap" style="max-width:900px;">
+<div class="wrap">
   {% include "enrollment/partials/_client_nav.html" %}
 
   {% if client.needs_legal_info_for_proforma %}
@@ -35,15 +35,17 @@
   </div>
   {% endif %}
 
+  {% if pending_enrollments %}
   <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-    <h2 style="font-size:1.1rem;font-weight:800;margin:0;">تسجيلاتي ({{ enrollments.count }})</h2>
+    <h2 style="font-size:1.1rem;font-weight:800;margin:0;">
+      <iconify-icon icon="mdi:clock-alert-outline"></iconify-icon> تسجيلات بانتظار إجراء ({{ pending_enrollments|length }})
+    </h2>
     <a href="{% url 'enrollment:subscribe_general' %}" class="btn-add-more">
       <iconify-icon icon="mdi:plus-circle-outline"></iconify-icon> تسجيل في تكوين آخر
     </a>
   </div>
 
-
-  {% for e in enrollments %}
+  {% for e in pending_enrollments %}
   <div class="enrollment-card">
     <div class="enrollment-card-head">
       <div>
@@ -56,8 +58,6 @@
 
     <div class="enrollment-meta">
       <span><iconify-icon icon="mdi:calendar-outline"></iconify-icon> تاريخ التسجيل: {{ e.created_at|date:"d/m/Y" }}</span>
-      {% if e.confirmed_at %}<span><iconify-icon icon="mdi:check-decagram-outline"></iconify-icon> تم التأكيد: {{ e.confirmed_at|date:"d/m/Y" }}</span>{% endif %}
-      {% if e.cancelled_at %}<span><iconify-icon icon="mdi:close-circle-outline"></iconify-icon> تم الإلغاء: {{ e.cancelled_at|date:"d/m/Y" }}</span>{% endif %}
     </div>
 
     <div class="enrollment-actions">
@@ -78,26 +78,121 @@
         <button type="submit" class="btn-mini btn-mini-cancel"><iconify-icon icon="mdi:close-circle-outline"></iconify-icon> إلغاء التسجيل</button>
       </form>
       {% endif %}
-
-      {% if not e.can_confirm and not e.can_cancel %}
-      <span class="locked-note">
-        {% if e.status == 'confirmed' %}
-          <iconify-icon icon="mdi:lock-check-outline"></iconify-icon> تسجيل مؤكد ونهائي
-        {% else %}
-          <iconify-icon icon="mdi:lock-outline"></iconify-icon> تسجيل ملغى
-        {% endif %}
-      </span>
-      {% endif %}
     </div>
   </div>
-  {% empty %}
-  <div class="panel" style="text-align:center;padding:50px 20px;">
-    <iconify-icon icon="mdi:folder-search-outline" style="font-size:40px;color:var(--muted);"></iconify-icon>
-    <p style="margin-top:12px;color:var(--muted);">لا توجد تسجيلات مرتبطة بهذا الرقم بعد.</p>
-    <a href="{% url 'enrollment:subscribe_general' %}" class="cta"><iconify-icon icon="mdi:pencil-plus-outline"></iconify-icon> سجّل في تكوين الآن</a>
-  </div>
   {% endfor %}
+  {% endif %}
 
+  <div class="dash-grid">
+
+    <div class="dash-card">
+      <div class="dash-card-head">
+        <div class="dash-card-title"><iconify-icon icon="mdi:account-circle-outline"></iconify-icon> ملفي الشخصي</div>
+        <a href="{% url 'enrollment:profile' %}" class="dash-card-more">تعديل <iconify-icon icon="mdi:arrow-left"></iconify-icon></a>
+      </div>
+      <div class="dash-card-body">
+        <div class="dash-mini-row"><span>{{ client.display_name }}</span><span class="text-muted">{{ client.get_client_type_display }}</span></div>
+        {% if client.is_vip %}
+        <div class="dash-mini-row"><span><iconify-icon icon="mdi:crown-outline"></iconify-icon> زبون VIP</span></div>
+        {% endif %}
+        {% if client.email %}
+        <div class="dash-mini-row"><span><iconify-icon icon="mdi:email-outline"></iconify-icon> <span dir="ltr">{{ client.email }}</span></span></div>
+        {% endif %}
+        <div class="dash-mini-row"><span><iconify-icon icon="mdi:phone-outline"></iconify-icon> <span dir="ltr">{{ client.phone }}</span></span></div>
+      </div>
+    </div>
+
+    <div class="dash-card">
+      <div class="dash-card-head">
+        <div class="dash-card-title"><iconify-icon icon="mdi:receipt-text-check-outline"></iconify-icon> المشتريات النشطة</div>
+        <a href="{% url 'enrollment:my_purchases' %}#active-purchases" class="dash-card-more">عرض الكل ({{ active_purchases_count }}) <iconify-icon icon="mdi:arrow-left"></iconify-icon></a>
+      </div>
+      <div class="dash-card-body">
+        {% for row in active_purchases_preview %}
+        <div class="dash-mini-row">
+          <span>
+            {% if row.kind == 'enrollment' %}
+            <iconify-icon icon="mdi:school-outline"></iconify-icon> {{ row.obj.offering.title }}
+            {% else %}
+            <iconify-icon icon="mdi:file-document-outline"></iconify-icon> {{ row.obj.reference }}
+            {% endif %}
+          </span>
+          <span class="status-badge" style="--badge-color: {{ row.obj.status|status_color }};">{{ row.obj.get_status_display }}</span>
+        </div>
+        {% empty %}
+        <div class="dash-empty-mini">لا توجد مشتريات نشطة بعد.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="dash-card">
+      <div class="dash-card-head">
+        <div class="dash-card-title"><iconify-icon icon="mdi:cart-outline"></iconify-icon> سلتي</div>
+        <a href="{% url 'enrollment:cart' %}" class="dash-card-more">الذهاب إلى السلة <iconify-icon icon="mdi:arrow-left"></iconify-icon></a>
+      </div>
+      <div class="dash-card-body">
+        {% for item in cart_preview_items %}
+        <div class="dash-mini-row"><span>{{ item.offering.title }}</span><span class="text-muted">× {{ item.participant_count }}</span></div>
+        {% empty %}
+        <div class="dash-empty-mini">سلتك فارغة حاليا.</div>
+        {% endfor %}
+        {% if can_view_price and cart.subtotal is not None %}
+        <div class="dash-mini-row"><strong>الإجمالي</strong><strong>{{ cart.subtotal|da }}</strong></div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="dash-card">
+      <div class="dash-card-head">
+        <div class="dash-card-title"><iconify-icon icon="mdi:heart-outline"></iconify-icon> قائمة رغباتي</div>
+        <a href="{% url 'enrollment:wishlist' %}" class="dash-card-more">عرض القائمة ({{ wishlist_count }}) <iconify-icon icon="mdi:arrow-left"></iconify-icon></a>
+      </div>
+      <div class="dash-card-body">
+        {% for item in wishlist_preview_items %}
+        <div class="dash-mini-row"><span>{{ item.offering.title }}</span></div>
+        {% empty %}
+        <div class="dash-empty-mini">لا توجد عناصر محفوظة بعد.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="dash-card">
+      <div class="dash-card-head">
+        <div class="dash-card-title"><iconify-icon icon="mdi:file-document-multiple-outline"></iconify-icon> سجل الطلبات</div>
+        <a href="{% url 'enrollment:my_purchases' %}#request-history" class="dash-card-more">عرض السجل ({{ request_history_count }}) <iconify-icon icon="mdi:arrow-left"></iconify-icon></a>
+      </div>
+      <div class="dash-card-body">
+        {% for row in request_history_preview %}
+        <div class="dash-mini-row">
+          <span>
+            {% if row.kind == 'proforma' %}
+            <iconify-icon icon="mdi:file-document-outline"></iconify-icon> {{ row.obj.reference }}
+            {% else %}
+            <iconify-icon icon="mdi:file-document-edit-outline"></iconify-icon> {{ row.obj.reference }}
+            {% endif %}
+          </span>
+          <span class="status-badge" style="--badge-color: {{ row.obj.status|status_color }};">{{ row.obj.get_status_display }}</span>
+        </div>
+        {% empty %}
+        <div class="dash-empty-mini">لا توجد طلبات بعد.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="dash-card">
+      <div class="dash-card-head">
+        <div class="dash-card-title"><iconify-icon icon="mdi:chart-donut"></iconify-icon> إحصائياتي</div>
+        <a href="{% url 'enrollment:metrics' %}" class="dash-card-more">التفاصيل الكاملة <iconify-icon icon="mdi:arrow-left"></iconify-icon></a>
+      </div>
+      <div class="dash-card-body">
+        <div class="dash-mini-row"><span>مجموع التسجيلات</span><span>{{ total_enrollments }}</span></div>
+        <div class="dash-mini-row"><span>تسجيلات مؤكدة</span><span>{{ confirmed_count }}</span></div>
+        <div class="dash-mini-row"><span>قيد الانتظار</span><span>{{ pending_count }}</span></div>
+        <div class="dash-mini-row"><span>عناصر في السلة</span><span>{{ cart_items_count }}</span></div>
+      </div>
+    </div>
+
+  </div>
 </div>
 
 {% include "pages/partials/_footer.html" %}

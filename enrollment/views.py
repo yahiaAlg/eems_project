@@ -1,6 +1,11 @@
+import mimetypes
+from datetime import timedelta
+
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
+from django.db.models import Count, Q, Sum
+from django.db.models.functions import TruncMonth
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -43,6 +48,7 @@ from .models import (
     ProformaInvoiceItem,
     QuoteRequest,
     QuoteRequestItem,
+    STATUS_CHOICES,
     WishlistItem,
 )
 
@@ -69,6 +75,79 @@ def _can_view_prices(request):
         return False
     client = getattr(request.user, "client", None)
     return bool(client and client.is_vip)
+
+
+# --- TODO 7.2 — proforma/quote submission notifications --------------------
+# Recipient lists come straight from settings.py, same convention as the
+# `ADMINS` read in `accounts.views.register`/`enrollment.signals` — the
+# "Accountant" Django Group itself (TODO 6.1) stays a pure permissions
+# group, not a mailing list.
+def _admin_emails():
+    return [addr for _name, addr in getattr(settings, "ADMINS", [])]
+
+
+def _accountant_emails():
+    return list(getattr(settings, "ACCOUNTANT_EMAILS", []))
+
+
+def _proforma_bon_de_commande_attachment(invoice):
+    """TODO 7.3 — "attach the uploaded bon-de-commande file to ... the
+    admin/accountant notification emails". Reads the file straight from
+    storage (already extension/mimetype/size-validated on upload by
+    `validate_bon_de_commande`, TODO 5.1, so this never sees anything
+    unexpected) and returns a single-item list for `send_branded_mail`'s
+    `attachments=`, or `[]` if no file was uploaded — an actual
+    attachment rather than a link, so there is no separate URL to secure
+    at all. Never raises: a storage read failure just means the
+    notification goes out without the attachment instead of not going
+    out at all.
+    """
+    if not invoice.bon_de_commande:
+        return []
+    try:
+        with invoice.bon_de_commande.open("rb") as f:
+            content = f.read()
+    except OSError:
+        return []
+    filename = invoice.bon_de_commande_original_name or invoice.bon_de_commande.name
+    mimetype = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    return [(filename, content, mimetype)]
+
+
+def _proforma_notification_items(invoice):
+    """Flat per-line context for `proforma_admin_notification.html` /
+    `proforma_accountant_notification.html` (TODO 7.1), built from the
+    invoice's own frozen `ProformaInvoiceItem` rows — never the live cart —
+    so the email always matches exactly what was submitted."""
+    return [
+        {
+            "title": item.offering_title,
+            "code": item.offering_code,
+            "session_name": item.session_name,
+            "trainer_name": item.trainer_name,
+            "billing_basis_display": item.get_billing_basis_display(),
+            "participant_count": item.participant_count,
+            "unit_price": item.unit_price,
+            "line_total": item.line_total,
+        }
+        for item in invoice.items.all()
+    ]
+
+
+def _quote_notification_items(quote):
+    """Same idea as `_proforma_notification_items` for
+    `quote_admin_notification.html` / `quote_accountant_notification.html`
+    — no trainer/price fields, since a fresh `QuoteRequestItem` never has
+    either (TODO 5.3)."""
+    return [
+        {
+            "title": item.offering_title,
+            "code": item.offering_code,
+            "session_name": item.session_name,
+            "participant_count": item.participant_count,
+        }
+        for item in quote.items.all()
+    ]
 
 
 def catalog(request):
@@ -551,6 +630,18 @@ def request_proforma(request):
         )
         return redirect("enrollment:cart")
 
+    # TODO 2.3 gate — a VIP enterprise client can't submit a proforma
+    # request until their legal/accounting profile is complete. Enforced
+    # here server-side (not just hidden in the cart template) so a direct
+    # GET/POST to this URL can't bypass it.
+    if client.needs_legal_info_for_proforma:
+        messages.warning(
+            request,
+            "أكمل أولا المعلومات القانونية للمؤسسة في ملفك الشخصي قبل طلب "
+            "فاتورة أولية: " + "، ".join(client.missing_legal_fields),
+        )
+        return redirect("enrollment:profile")
+
     active_cart = Cart.get_active_for_client(client)
     items = list(
         active_cart.items.select_related(
@@ -608,6 +699,48 @@ def request_proforma(request):
                 messages.success(
                     request,
                     f"تم إنشاء طلب الفاتورة الأولية رقم {invoice.reference}.",
+                )
+
+            # TODO 7.2 — "VIP proforma request → admin/accountant". Sent
+            # after the attachment (if any) is already saved on `invoice`
+            # so `has_attachment`/`attachment_name` reflect the final
+            # submission, not the pre-upload state.
+            notif_context = {
+                "reference": invoice.reference,
+                "client_name": client.display_name,
+                "client_type": client.get_client_type_display(),
+                "items": _proforma_notification_items(invoice),
+                "subtotal": invoice.subtotal,
+                "has_attachment": bool(invoice.bon_de_commande),
+                "attachment_name": invoice.bon_de_commande_original_name,
+                "admin_url": request.build_absolute_uri(
+                    reverse(
+                        "admin:enrollment_proformainvoice_change", args=[invoice.pk]
+                    )
+                ),
+            }
+            admin_emails = _admin_emails()
+            accountant_emails = _accountant_emails()
+            attachments = (
+                _proforma_bon_de_commande_attachment(invoice)
+                if (admin_emails or accountant_emails)
+                else []
+            )
+            if admin_emails:
+                send_branded_mail(
+                    template="emails/proforma_admin_notification.html",
+                    subject=f"طلب فاتورة أولية جديد — {invoice.reference}",
+                    to=admin_emails,
+                    context=notif_context,
+                    attachments=attachments,
+                )
+            if accountant_emails:
+                send_branded_mail(
+                    template="emails/proforma_accountant_notification.html",
+                    subject=f"طلب فاتورة أولية بانتظار المراجعة — {invoice.reference}",
+                    to=accountant_emails,
+                    context=notif_context,
+                    attachments=attachments,
                 )
 
             # TODO 5.4 — lock the submitted items in and free up the cart.
@@ -707,6 +840,33 @@ def request_quote(request):
     QuoteRequestItem.objects.bulk_create(
         [QuoteRequestItem.snapshot_from_cart_item(quote, item) for item in items]
     )
+
+    # TODO 7.2 — "non-VIP quote request → admin/accountant".
+    notif_context = {
+        "reference": quote.reference,
+        "client_name": client.display_name,
+        "client_type": client.get_client_type_display(),
+        "items": _quote_notification_items(quote),
+        "admin_url": request.build_absolute_uri(
+            reverse("admin:enrollment_quoterequest_change", args=[quote.pk])
+        ),
+    }
+    admin_emails = _admin_emails()
+    if admin_emails:
+        send_branded_mail(
+            template="emails/quote_admin_notification.html",
+            subject=f"طلب عرض سعر جديد — {quote.reference}",
+            to=admin_emails,
+            context=notif_context,
+        )
+    accountant_emails = _accountant_emails()
+    if accountant_emails:
+        send_branded_mail(
+            template="emails/quote_accountant_notification.html",
+            subject=f"طلب عرض سعر بانتظار التسعير — {quote.reference}",
+            to=accountant_emails,
+            context=notif_context,
+        )
 
     # TODO 5.4 — lock the submitted items in and free up the cart.
     active_cart.status = "converted"
@@ -877,11 +1037,89 @@ def ajax_offerings_for_specialty(request):
     return JsonResponse({"results": data})
 
 
+def _metrics_summary(client, active_cart=None):
+    """Plain-count metrics (TODO 4.5) shared by the dashboard overview's
+    Metrics card (TODO 8.1) and the full `metrics` page, so both always
+    agree without duplicating the queries."""
+    enrollments = Enrollment.objects.filter(client=client)
+    if active_cart is None:
+        active_cart = Cart.get_active_for_client(client)
+    return {
+        "total_enrollments": enrollments.count(),
+        "confirmed_count": enrollments.filter(status="confirmed").count(),
+        "pending_count": enrollments.filter(status="pending").count(),
+        "cancelled_count": enrollments.filter(status="cancelled").count(),
+        "cart_items_count": active_cart.items_count,
+        "wishlist_count": WishlistItem.objects.filter(client=client).count(),
+    }
+
+
+def _metrics_chart_data(client):
+    """TODO 8.2 — Chart.js-ready aggregates for the `metrics` page widgets
+    (total formations taken, total spent for VIP, pending request count,
+    wishlist size), kept separate from `_metrics_summary`'s plain counts
+    (still used as-is by the stat cards and the dashboard overview's
+    Metrics card). Passed through `|safe` into `<script>` blocks the same
+    way `enrollment/admin.py::dashboard_view` already feeds its own
+    `by_status`/`by_source`/... lists to `admin/enrollment/dashboard.html`,
+    so the values here are plain lists of dicts with JSON-safe types only
+    (no Decimal/date objects) rather than `json.dumps`-encoded strings."""
+    enrollments = Enrollment.objects.filter(client=client)
+    formations_status_data = [
+        {"status": row["status"], "label": dict(STATUS_CHOICES).get(row["status"], row["status"]), "count": row["count"]}
+        for row in enrollments.values("status").annotate(count=Count("id")).order_by()
+        if row["count"]
+    ]
+
+    proformas = ProformaInvoice.objects.filter(client=client)
+    quotes = QuoteRequest.objects.filter(client=client)
+    pending_requests_data = [
+        {"label": "بروفورما قيد المراجعة", "count": proformas.filter(status="pending").count()},
+        {"label": "عرض سعر قيد المراجعة", "count": quotes.filter(status="pending").count()},
+        {"label": "عرض سعر بانتظار موافقتك", "count": quotes.filter(status="priced").count()},
+    ]
+
+    monthly_spend_data = []
+    if client.is_vip:
+        six_months_start = (timezone.now() - timedelta(days=180)).date().replace(day=1)
+        rows = (
+            ProformaInvoiceItem.objects.filter(
+                invoice__client=client,
+                invoice__status="confirmed",
+                invoice__created_at__date__gte=six_months_start,
+            )
+            .annotate(month=TruncMonth("invoice__created_at"))
+            .values("month")
+            .annotate(total=Sum("line_total"))
+            .order_by("month")
+        )
+        monthly_spend_data = [
+            {"month": row["month"].strftime("%Y-%m"), "total": float(row["total"] or 0)}
+            for row in rows
+        ]
+
+    wishlist_cart_data = [
+        {"label": "السلة", "count": Cart.get_active_for_client(client).items_count},
+        {"label": "قائمة الرغبات", "count": WishlistItem.objects.filter(client=client).count()},
+    ]
+
+    return {
+        "formations_status_chart_data": formations_status_data,
+        "pending_requests_chart_data": pending_requests_data,
+        "monthly_spend_chart_data": monthly_spend_data,
+        "wishlist_cart_chart_data": wishlist_cart_data,
+    }
+
+
 @login_required
 def dashboard(request):
-    """'مساحتي' — the subscriber's own dashboard: every enrollment tied to
-    the Client account linked to the logged-in user (TODO 1.8 — replaces
-    the retired phone/session login), with self-service confirm/cancel."""
+    """'مساحتي' — TODO 8.1 rebuild: the client-space home is now a real
+    overview with one summary section per area (Profile, Active Purchases,
+    Cart, Wishlist, Request History, Metrics), each linking out to its own
+    full page (profile/my_purchases/cart/wishlist/metrics below). Pending
+    enrollments still needing the TODO 1.x self-service confirm/cancel
+    actions get their own banner above the summary grid so that workflow
+    stays reachable rather than being dropped."""
     client = getattr(request.user, "client", None)
     if client is None:
         messages.info(
@@ -890,19 +1128,64 @@ def dashboard(request):
         )
         return redirect("pages:home")
 
-    enrollments = (
-        Enrollment.objects.filter(client=client)
-        .select_related(
-            "offering__session", "offering__specialty__branch", "participant", "client"
+    enrollments = list(
+        Enrollment.objects.filter(client=client).select_related(
+            "offering__session", "offering__specialty__branch", "participant"
         )
-        .order_by("-created_at")
     )
+    pending_enrollments = sorted(
+        (e for e in enrollments if e.status == "pending"),
+        key=lambda e: e.created_at,
+        reverse=True,
+    )
+    confirmed_enrollments = [e for e in enrollments if e.status == "confirmed"]
+
+    proformas = list(
+        ProformaInvoice.objects.filter(client=client).prefetch_related("items")
+    )
+    confirmed_proformas = [p for p in proformas if p.status == "confirmed"]
+    quotes = list(QuoteRequest.objects.filter(client=client).prefetch_related("items"))
+
+    # "Active Purchases" (TODO 8.1): confirmed enrollments + confirmed
+    # proformas, merged into one chronological preview.
+    active_purchases = sorted(
+        [
+            {"kind": "enrollment", "obj": e, "date": e.confirmed_at or e.created_at}
+            for e in confirmed_enrollments
+        ]
+        + [{"kind": "proforma", "obj": p, "date": p.updated_at} for p in confirmed_proformas],
+        key=lambda row: row["date"],
+        reverse=True,
+    )
+    # "Request History" (TODO 8.1): every quote/proforma request regardless
+    # of status, merged the same way — a proforma can legitimately show up
+    # in both previews (it's both an active purchase once confirmed *and*
+    # part of the full request log).
+    request_history = sorted(
+        [{"kind": "proforma", "obj": p, "date": p.created_at} for p in proformas]
+        + [{"kind": "quote", "obj": q, "date": q.created_at} for q in quotes],
+        key=lambda row: row["date"],
+        reverse=True,
+    )
+
+    active_cart = Cart.get_active_for_client(client)
+    cart_preview_items = list(active_cart.items.select_related("offering")[:3])
+    wishlist_items = WishlistItem.objects.filter(client=client).select_related("offering")
+
     context = {
         "settings": SiteSettings.load(),
         "client": client,
-        "phone": client.phone,
-        "enrollments": enrollments,
+        "pending_enrollments": pending_enrollments,
+        "active_purchases_preview": active_purchases[:4],
+        "active_purchases_count": len(active_purchases),
+        "request_history_preview": request_history[:4],
+        "request_history_count": len(request_history),
+        "cart": active_cart,
+        "cart_preview_items": cart_preview_items,
+        "wishlist_preview_items": list(wishlist_items[:3]),
+        "can_view_price": _can_view_prices(request),
         "active_tab": "dashboard",
+        **_metrics_summary(client, active_cart),
         **_shared_chrome_context(),
     }
     return render(request, "enrollment/dashboard.html", context)
@@ -988,10 +1271,13 @@ def dashboard_cancel(request, pk):
 
 @login_required
 def my_purchases(request):
-    """'مشترياتي' — client-space nav tab (TODO 4.5). Confirmed enrollments,
-    the client's `ProformaInvoice` requests (TODO 5.2), and now (TODO 5.3)
-    `QuoteRequest`s for non-VIP clients — Phase 8.1's "Request History"
-    tab will give these their own dedicated section later."""
+    """'مشترياتي' — client-space nav tab (TODO 4.5), restructured per
+    TODO 8.1 into two clearly separated, anchor-linkable sections on this
+    same page: "Active Purchases" (confirmed enrollments + confirmed
+    proformas — `#active-purchases`, deep-linked from the dashboard
+    overview's Active Purchases card) and "Request History" (every
+    proforma/quote request regardless of status — `#request-history`,
+    deep-linked from the dashboard overview's Request History card)."""
     client = getattr(request.user, "client", None)
     if client is None:
         messages.info(
@@ -1008,11 +1294,13 @@ def my_purchases(request):
         .order_by("-confirmed_at")
     )
     proformas = ProformaInvoice.objects.filter(client=client).prefetch_related("items")
+    confirmed_proformas = proformas.filter(status="confirmed")
     quotes = QuoteRequest.objects.filter(client=client).prefetch_related("items")
     context = {
         "settings": SiteSettings.load(),
         "client": client,
         "purchases": purchases,
+        "confirmed_proformas": confirmed_proformas,
         "proformas": proformas,
         "quotes": quotes,
         "can_view_price": _can_view_prices(request),
@@ -1025,9 +1313,12 @@ def my_purchases(request):
 @login_required
 def metrics(request):
     """'إحصائياتي' — client-space nav tab (TODO 4.5). Plain counts drawn
-    from what already exists (enrollments, cart, wishlist); Phase 8.2 will
-    turn this into Chart.js widgets (vendor asset already bundled) once
-    spend/proforma history exists to chart."""
+    from what already exists (enrollments, cart, wishlist), via the same
+    `_metrics_summary` helper the dashboard overview's Metrics card uses
+    (TODO 8.1) so the two never drift apart, plus TODO 8.2's Chart.js
+    widgets (vendor asset already bundled) built from `_metrics_chart_data`:
+    formations-taken breakdown, VIP-only monthly spend, pending-request
+    counts, and cart-vs-wishlist size."""
     client = getattr(request.user, "client", None)
     if client is None:
         messages.info(
@@ -1036,19 +1327,12 @@ def metrics(request):
         )
         return redirect("pages:home")
 
-    enrollments = Enrollment.objects.filter(client=client)
-    active_cart = Cart.get_active_for_client(client)
-
     context = {
         "settings": SiteSettings.load(),
         "client": client,
-        "total_enrollments": enrollments.count(),
-        "confirmed_count": enrollments.filter(status="confirmed").count(),
-        "pending_count": enrollments.filter(status="pending").count(),
-        "cancelled_count": enrollments.filter(status="cancelled").count(),
-        "cart_items_count": active_cart.items_count,
-        "wishlist_count": WishlistItem.objects.filter(client=client).count(),
         "active_tab": "metrics",
+        **_metrics_summary(client),
+        **_metrics_chart_data(client),
         **_shared_chrome_context(),
     }
     return render(request, "enrollment/metrics.html", context)
