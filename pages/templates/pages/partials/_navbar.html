@@ -10,7 +10,7 @@
 {% endif %}
 
 <!-- ══════════════════ NAVBAR ══════════════════ -->
-<nav id="navbar" class="navbar navbar-expand-lg py-0">
+<nav id="navbar" class="navbar navbar-expand-xxl py-0">
   <div class="container" style="height:64px;">
 
     <a class="nav-brand me-4" href="{% url 'pages:home' %}">
@@ -55,8 +55,8 @@
         </li>
       </ul>
 
-      <!-- App launchers -->
-      <div class="d-flex align-items-center gap-2 ms-2 py-2 py-lg-0">
+      <!-- App launchers / quick-access links -->
+      <div class="navbar-quicklinks d-flex align-items-center gap-2 ms-2 py-2 py-xxl-0">
         {% for app in internal_apps %}{% if app.show_in_navbar %}
         <a href="{{ app.url }}" class="btn-app {% if app.color == 'amber' %}btn-app-amber{% else %}btn-app-outline{% endif %}" {% if app.open_in_new_tab %}target="_blank"{% endif %}>
           <i class="{{ app.icon_class }}"></i> {{ app.title }}

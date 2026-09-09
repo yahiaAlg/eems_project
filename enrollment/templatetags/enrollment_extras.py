@@ -1,4 +1,5 @@
 from django import template
+from django.utils.html import format_html
 
 register = template.Library()
 
@@ -22,7 +23,15 @@ def status_color(status):
 
 @register.filter
 def da(value):
-    """Format a number as Algerian dinar, e.g. 120000 -> '120 000 دج'."""
+    """Format a number as Algerian dinar, e.g. 120000 -> '120 000 دج'.
+
+    Wrapped in a <bdi dir="ltr"> isolate so the digit groups and the
+    currency suffix always render left-to-right in their correct order,
+    regardless of the surrounding RTL context (without this, the Unicode
+    bidi algorithm can reorder the space-separated thousand groups when
+    the value sits inside RTL text/tables).
+    """
     if value in (None, ""):
         return ""
-    return f"{int(value):,} دج".replace(",", " ")
+    formatted = f"{int(value):,} دج".replace(",", " ")
+    return format_html('<bdi dir="ltr">{}</bdi>', formatted)
