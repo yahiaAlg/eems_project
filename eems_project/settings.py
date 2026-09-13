@@ -139,7 +139,13 @@ AUTH_PASSWORD_VALIDATORS = [
 # legacy phone/session dashboard login in `enrollment`, which still works
 # independently until it's retired in TODO 1.8.
 LOGIN_URL = "accounts:login"
-LOGIN_REDIRECT_URL = "pages:home"
+# TODO 10.6.1: was "pages:home" — `EEMSLoginView` (accounts/views.py) sets
+# `redirect_authenticated_user = True` and never overrides
+# `get_success_url`/`success_url`, so it always falls through to this
+# setting once no `?next=` is present (Django's LoginView honours `next`
+# over this regardless, so deep links are unaffected). Post-login now
+# lands on the client's own space instead of the homepage.
+LOGIN_REDIRECT_URL = "enrollment:dashboard"
 LOGOUT_REDIRECT_URL = "pages:home"
 
 # AllowAllUsersModelBackend (rather than the default ModelBackend) lets

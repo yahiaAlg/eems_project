@@ -1,0 +1,46 @@
+{% extends "emails/base_email.html" %}
+{% comment %}
+TODO 10.7.1 — "email on session scheduling".
+
+Sent once from `enrollment/services.py::schedule_session`, called from
+the admin's dedicated schedule-session view (TODO 10.7.1) whenever staff
+sets a firm date on the `FormationSession` behind one Enrollment's
+Offering. Only the enrolling client is notified — other companies
+sharing the same offering/session are unaffected by this send (each
+enrollment schedules/notifies independently, even though the date itself
+is shared).
+
+Expected context:
+  client_name     — enrollment.client.display_name
+  offering_title  — enrollment.offering.title
+  session_date    — the newly-set start_date (never None here)
+  site_url        — absolute site origin, set by send_branded_mail
+{% endcomment %}
+{% block title %}تم تحديد تاريخ الدورة — {{ site_name }}{% endblock %}
+{% block body %}
+<div style="font-size:12px;font-weight:700;color:#2563eb;letter-spacing:.5px;margin-bottom:10px;">تم تحديد التاريخ</div>
+<h1 style="font-size:22px;font-weight:800;color:#0f172a;margin:0 0 16px;">مرحبا {{ client_name }}،</h1>
+<p style="font-size:14.5px;line-height:1.9;color:#334155;margin:0 0 20px;">
+  تم تحديد تاريخ انطلاق الدورة الخاصة بتسجيلك في <strong>{{ offering_title }}</strong>. تم إغلاق قائمة المشاركين المرسلة تلقائيا في مساحتك الخاصة.
+</p>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:22px;">
+  <tr>
+    <td style="padding:10px 20px;border-bottom:1px solid #e2e8f0;"><span style="color:#64748b;font-size:12.5px;">التخصص</span><br><strong style="color:#0f172a;font-size:14.5px;">{{ offering_title }}</strong></td>
+  </tr>
+  <tr>
+    <td style="padding:10px 20px;">
+      <span style="color:#64748b;font-size:12.5px;">تاريخ انطلاق الدورة</span><br>
+      <strong style="color:#0f172a;font-size:14.5px;">{{ session_date|date:"d/m/Y" }}</strong>
+    </td>
+  </tr>
+</table>
+
+<div style="text-align:center;margin-bottom:22px;">
+  <a href="{{ site_url }}/mon-espace/" style="display:inline-block;background:#f59e0b;color:#0f172a;font-weight:700;font-size:14px;text-decoration:none;padding:12px 26px;border-radius:8px;">مساحتي</a>
+</div>
+
+<p style="font-size:13.5px;line-height:1.9;color:#64748b;margin:0;">
+  لأي استفسار، راسلنا على <span style="color:#0f172a;font-weight:700;">support@excellance-ms.dz</span>.
+</p>
+{% endblock %}

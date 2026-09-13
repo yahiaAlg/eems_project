@@ -1,0 +1,54 @@
+{% extends "emails/base_email.html" %}
+{% comment %}
+TODO 10.1.3 — "email on enrollment acceptance".
+
+Sent once from `enrollment/services.py::notify_enrollment_accepted`, itself
+triggered by the pre_save/post_save signal pair in `enrollment/signals.py`
+on every transition of an Enrollment's status *into* "accepted".
+
+Expected context:
+  client_name     — enrollment.client.display_name
+  offering_title  — enrollment.offering.title
+  session_date    — enrollment.offering.session.start_date, may be None
+  is_enterprise   — enrollment.client.is_enterprise
+  roster_path     — relative path to the roster page (TODO 10.2), or None
+                     for individual clients
+  dashboard_path  — relative path to "/mon-espace/"
+  site_url        — absolute site origin, set by send_branded_mail
+{% endcomment %}
+{% block title %}تم قبول تسجيلك — {{ site_name }}{% endblock %}
+{% block body %}
+<div style="font-size:12px;font-weight:700;color:#16a34a;letter-spacing:.5px;margin-bottom:10px;">تم القبول</div>
+<h1 style="font-size:22px;font-weight:800;color:#0f172a;margin:0 0 16px;">مرحبا {{ client_name }}،</h1>
+<p style="font-size:14.5px;line-height:1.9;color:#334155;margin:0 0 20px;">
+  يسعدنا إعلامك بأنه تم قبول تسجيلك في <strong>{{ offering_title }}</strong>.
+</p>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:22px;">
+  <tr>
+    <td style="padding:10px 20px;border-bottom:1px solid #e2e8f0;"><span style="color:#64748b;font-size:12.5px;">التخصص</span><br><strong style="color:#0f172a;font-size:14.5px;">{{ offering_title }}</strong></td>
+  </tr>
+  <tr>
+    <td style="padding:10px 20px;">
+      <span style="color:#64748b;font-size:12.5px;">تاريخ الدورة</span><br>
+      {% if session_date %}
+        <strong style="color:#0f172a;font-size:14.5px;">{{ session_date|date:"d/m/Y" }}</strong>
+      {% else %}
+        <strong style="color:#0f172a;font-size:14.5px;">سيتم تحديد تاريخ الدورة قريبا وسنُعلمكم.</strong>
+      {% endif %}
+    </td>
+  </tr>
+</table>
+
+<div style="text-align:center;margin-bottom:22px;">
+  {% if is_enterprise and roster_path %}
+    <a href="{{ site_url }}{{ roster_path }}" style="display:inline-block;background:#f59e0b;color:#0f172a;font-weight:700;font-size:14px;text-decoration:none;padding:12px 26px;border-radius:8px;">أضف قائمة المشاركين</a>
+  {% else %}
+    <a href="{{ site_url }}{{ dashboard_path }}" style="display:inline-block;background:#f59e0b;color:#0f172a;font-weight:700;font-size:14px;text-decoration:none;padding:12px 26px;border-radius:8px;">مساحتي</a>
+  {% endif %}
+</div>
+
+<p style="font-size:13.5px;line-height:1.9;color:#64748b;margin:0;">
+  لأي استفسار، راسلنا على <span style="color:#0f172a;font-weight:700;">support@excellance-ms.dz</span>.
+</p>
+{% endblock %}

@@ -4,9 +4,9 @@ from datetime import timedelta
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, Prefetch, Q, Sum
 from django.db.models.functions import TruncMonth
-from django.http import Http404, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -31,6 +31,7 @@ from .forms import (
     ClientProfileForm,
     CommentForm,
     EnquiryForm,
+    EnrollmentParticipantFormSet,
     GeneralEnquiryForm,
     IndividualSubscribeForm,
     ProformaLineConfirmForm,
@@ -40,6 +41,8 @@ from .models import (
     CartItem,
     Client,
     Enrollment,
+    EnrollmentNote,
+    EnrollmentParticipant,
     Formateur,
     FormationSession,
     Offering,
@@ -307,6 +310,14 @@ def specialty_detail(request, session_slug, code):
         "enquiry_form": enquiry_form,
         "can_view_price": _can_view_prices(request),
         "is_wishlisted": is_wishlisted,
+        # TODO 10.3 — quick-register CTA: only offered to a logged-in
+        # client whose account is already activated (a "pending" account
+        # can't self-service anything yet, see accounts app), same rule
+        # the CTA link below gates on.
+        "detail_client": detail_client,
+        "can_quick_register": bool(
+            detail_client and detail_client.account_status == "active"
+        ),
         "related_offerings": Offering.objects.filter(
             is_active=True,
             session=offering.session,
@@ -414,7 +425,30 @@ def subscribe(request, session_slug, code):
             )
             return redirect("enrollment:subscribe_success")
     else:
-        form = IndividualSubscribeForm()
+        # TODO 10.3.2 — quick-register prefill: only on GET, only for an
+        # authenticated client with an already-active account, and only
+        # the fields that genuinely overlap between `Client` and
+        # `IndividualSubscribeForm` (confirmed against the real form in
+        # enrollment/forms.py — this form has no enterprise branch, so
+        # company/responsible fields don't apply here). Per-registration
+        # fields (motivation, employment_status, preferred_contact_time,
+        # "كيف سمعت عنا") are deliberately left blank every time — those
+        # aren't account-level facts to carry over.
+        initial = {}
+        if request.GET.get("prefill"):
+            prefill_client = getattr(request.user, "client", None)
+            if prefill_client and prefill_client.account_status == "active":
+                initial = {
+                    "full_name": prefill_client.full_name,
+                    "birth_date": prefill_client.birth_date,
+                    "gender": prefill_client.gender,
+                    "phone": prefill_client.phone,
+                    "email": prefill_client.email,
+                    "wilaya": prefill_client.wilaya,
+                    "address": prefill_client.address,
+                    "education_level": prefill_client.education_level,
+                }
+        form = IndividualSubscribeForm(initial=initial)
 
     context = {
         "settings": SiteSettings.load(),
@@ -969,6 +1003,206 @@ def wishlist_move_to_cart(request, item_id):
     return redirect("enrollment:cart")
 
 
+# --- Company roster (TODO 10.2) -----------------------------------------
+# `EnrollmentParticipant` CRUD for an enterprise client's own Enrollment,
+# plus a read-only entry point for staff (TODO 10.2.5) and a CSV export
+# that round-trips into the pedagogical app's importer (TODO 10.2.6).
+
+def _get_enrollment_for_roster(request, enrollment_id):
+    """Shared lookup for both roster views below.
+
+    Staff may look up any enrollment (read-only — see `enrollment_roster`);
+    everyone else only their own, via the same `client__user=request.user`
+    scoping used elsewhere in this file (cart/wishlist/dashboard), so an
+    enrollment that isn't theirs 404s instead of leaking its existence.
+    """
+    is_staff_view = request.user.is_staff
+    qs = Enrollment.objects.select_related("client", "offering__session")
+    if is_staff_view:
+        enrollment = get_object_or_404(qs, pk=enrollment_id)
+    else:
+        enrollment = get_object_or_404(qs, pk=enrollment_id, client__user=request.user)
+
+    if enrollment.client.client_type != "enterprise" or enrollment.status not in (
+        "accepted",
+        "confirmed",
+    ):
+        raise Http404
+    return enrollment, is_staff_view
+
+
+@login_required
+def enrollment_roster(request, enrollment_id):
+    """'قائمة المشاركين' — dynamic formset the enterprise client fills in
+    themselves (no per-row reload, one POST for the whole table, see
+    `enrollment/static/enrollment/js/roster.js`). Staff reach the same
+    view read-only from a link on the admin change page (TODO 10.2.5);
+    once `roster_locked_at` is set (TODO 10.7), the roster is read-only
+    for the client too, but stays visible so they can see what was
+    submitted."""
+    enrollment, is_staff_view = _get_enrollment_for_roster(request, enrollment_id)
+    locked = is_staff_view or enrollment.roster_locked_at is not None
+    queryset = EnrollmentParticipant.objects.filter(enrollment=enrollment)
+    max_rows = enrollment.offering.seats_available
+
+    if request.method == "POST" and not locked:
+        formset = EnrollmentParticipantFormSet(
+            request.POST, queryset=queryset, prefix="roster", max_rows=max_rows
+        )
+        if formset.is_valid():
+            instances = formset.save(commit=False)
+            for obj in instances:
+                obj.enrollment = enrollment
+                if not obj.employer:
+                    obj.employer = enrollment.client.company_name
+                obj.save()
+            for obj in formset.deleted_objects:
+                obj.delete()
+            messages.success(request, "تم حفظ قائمة المشاركين.")
+            return redirect("enrollment:enrollment_roster", enrollment_id=enrollment.pk)
+    else:
+        formset = EnrollmentParticipantFormSet(
+            queryset=queryset, prefix="roster", max_rows=max_rows
+        )
+
+    context = {
+        "settings": SiteSettings.load(),
+        "client": enrollment.client,
+        "enrollment": enrollment,
+        "formset": formset,
+        "locked": locked,
+        "is_staff_view": is_staff_view,
+        "max_rows": max_rows,
+        "roster_count": queryset.count(),
+        "active_tab": "dashboard",
+        **_shared_chrome_context(),
+    }
+    return render(request, "enrollment/enrollment_roster.html", context)
+
+
+@login_required
+def enrollment_roster_export(request, enrollment_id):
+    """CSV export (TODO 10.2.6) — header row/order copied exactly from
+    `formations/views.py::participant_export` on the pedagogical side,
+    minus the two pedagogical-only columns (Présence/Résultat) we have no
+    data for, so the file re-imports there with zero mapping."""
+    enrollment, _is_staff_view = _get_enrollment_for_roster(request, enrollment_id)
+
+    import csv
+
+    from django.http import HttpResponse
+
+    response = HttpResponse(content_type="text/csv; charset=utf-8-sig")
+    response["Content-Disposition"] = (
+        f'attachment; filename="participants_{enrollment.offering.code}_{enrollment.pk}.csv"'
+    )
+    writer = csv.writer(response)
+    writer.writerow(
+        [
+            "Prénom",
+            "Nom",
+            "Prénom AR",
+            "Nom AR",
+            "Date naissance",
+            "Lieu naissance",
+            "Lieu naissance AR",
+            "Fonction",
+            "Employeur",
+            "Téléphone",
+            "Email",
+        ]
+    )
+    for p in enrollment.roster.all().order_by("last_name", "first_name"):
+        writer.writerow(
+            [
+                p.first_name,
+                p.last_name,
+                p.first_name_ar,
+                p.last_name_ar,
+                p.date_of_birth.strftime("%d/%m/%Y") if p.date_of_birth else "",
+                p.place_of_birth,
+                p.place_of_birth_ar,
+                p.job_title,
+                p.employer,
+                p.phone,
+                p.email,
+            ]
+        )
+    return response
+
+
+@login_required
+def enrollment_session_bundle(request, enrollment_id):
+    """Bundled "session dossier" download (TODO 10.7.3) — the same roster
+    CSV export as `enrollment_roster_export` above, zipped together with a
+    `session_brief_<id>.txt` companion file, behind one download button,
+    for the staff member creating the matching `isi_pedagogical_webapp`
+    Session by hand. Staff-only: the brief surfaces internal client
+    fields (NIF/NIS, phone) the enterprise client itself has no reason to
+    see, unlike the roster CSV which the client can already export
+    themselves above."""
+    enrollment, is_staff_view = _get_enrollment_for_roster(request, enrollment_id)
+    if not is_staff_view:
+        raise Http404
+
+    import csv
+    import io
+    import zipfile
+
+    from .services import build_session_brief
+
+    csv_buffer = io.StringIO()
+    writer = csv.writer(csv_buffer)
+    writer.writerow(
+        [
+            "Prénom",
+            "Nom",
+            "Prénom AR",
+            "Nom AR",
+            "Date naissance",
+            "Lieu naissance",
+            "Lieu naissance AR",
+            "Fonction",
+            "Employeur",
+            "Téléphone",
+            "Email",
+        ]
+    )
+    for p in enrollment.roster.all().order_by("last_name", "first_name"):
+        writer.writerow(
+            [
+                p.first_name,
+                p.last_name,
+                p.first_name_ar,
+                p.last_name_ar,
+                p.date_of_birth.strftime("%d/%m/%Y") if p.date_of_birth else "",
+                p.place_of_birth,
+                p.place_of_birth_ar,
+                p.job_title,
+                p.employer,
+                p.phone,
+                p.email,
+            ]
+        )
+
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr(
+            f"participants_{enrollment.offering.code}_{enrollment.pk}.csv",
+            "\ufeff" + csv_buffer.getvalue(),
+        )
+        zf.writestr(
+            f"session_brief_{enrollment.pk}.txt",
+            build_session_brief(enrollment),
+        )
+
+    response = HttpResponse(zip_buffer.getvalue(), content_type="application/zip")
+    response["Content-Disposition"] = (
+        f'attachment; filename="dossier_session_{enrollment.offering.code}_{enrollment.pk}.zip"'
+    )
+    return response
+
+
 def subscribe_general(request):
     """Branch-first entry point for 'التسجيل الإلكتروني': pick a branch,
     then a specialty (AJAX, scoped to specialties that actually have an
@@ -1119,7 +1353,10 @@ def dashboard(request):
     full page (profile/my_purchases/cart/wishlist/metrics below). Pending
     enrollments still needing the TODO 1.x self-service confirm/cancel
     actions get their own banner above the summary grid so that workflow
-    stays reachable rather than being dropped."""
+    stays reachable rather than being dropped. TODO 10.4 added a full
+    "تسجيلاتي" list below that banner covering every real status (not just
+    pending/confirmed), so an enrollment staff moved to "accepted" (etc.)
+    is never invisible on this page again."""
     client = getattr(request.user, "client", None)
     if client is None:
         messages.info(
@@ -1128,10 +1365,27 @@ def dashboard(request):
         )
         return redirect("pages:home")
 
+    # TODO 10.4 fix: this used to only ever surface "pending" (actionable
+    # banner below) and "confirmed" (Active Purchases card) enrollments —
+    # an enrollment staff had moved to "accepted" (or "contacted" /
+    # "waitlisted" / "rejected") fell into neither bucket and simply never
+    # appeared anywhere in the client space. Ordered by -updated_at so a
+    # fresh status change (e.g. pending -> accepted) always sorts first.
+    # TODO 10.5: also prefetch only the notes staff opted into
+    # (`visible_to_client=True`), in creation order, as `visible_notes` —
+    # internal-only notes must never reach this queryset's result set.
     enrollments = list(
-        Enrollment.objects.filter(client=client).select_related(
-            "offering__session", "offering__specialty__branch", "participant"
+        Enrollment.objects.filter(client=client)
+        .select_related("offering__session", "offering__specialty__branch", "participant")
+        .prefetch_related(
+            "roster",
+            Prefetch(
+                "notes",
+                queryset=EnrollmentNote.objects.filter(visible_to_client=True).order_by("created_at"),
+                to_attr="visible_notes",
+            ),
         )
+        .order_by("-updated_at")
     )
     pending_enrollments = sorted(
         (e for e in enrollments if e.status == "pending"),
@@ -1139,6 +1393,13 @@ def dashboard(request):
         reverse=True,
     )
     confirmed_enrollments = [e for e in enrollments if e.status == "confirmed"]
+    # Real per-status counts (TODO 10.4.2) — one real STATUS_CHOICES key
+    # each, never merged into an invented bucket, so this can never drift
+    # from the admin filter sidebar that already uses the same choices.
+    enrollment_counts = {
+        status_key: sum(1 for e in enrollments if e.status == status_key)
+        for status_key, _label in STATUS_CHOICES
+    }
 
     proformas = list(
         ProformaInvoice.objects.filter(client=client).prefetch_related("items")
@@ -1176,6 +1437,8 @@ def dashboard(request):
         "settings": SiteSettings.load(),
         "client": client,
         "pending_enrollments": pending_enrollments,
+        "enrollments": enrollments,
+        "enrollment_counts": enrollment_counts,
         "active_purchases_preview": active_purchases[:4],
         "active_purchases_count": len(active_purchases),
         "request_history_preview": request_history[:4],

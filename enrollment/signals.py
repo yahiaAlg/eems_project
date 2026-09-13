@@ -1,7 +1,41 @@
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 
 from .models import Enrollment
+
+
+@receiver(pre_save, sender=Enrollment)
+def _capture_previous_status(sender, instance, **kwargs):
+    """Stash the pre-save status on the instance so the post_save receiver
+    below can detect a transition rather than just a current value —
+    needed because saving an already-"accepted" enrollment again (e.g.
+    editing `motivation`) must NOT re-send the acceptance email (TODO
+    10.1.1)."""
+    if instance.pk:
+        try:
+            instance._previous_status = Enrollment.objects.only("status").get(
+                pk=instance.pk
+            ).status
+        except Enrollment.DoesNotExist:
+            instance._previous_status = None
+    else:
+        instance._previous_status = None
+
+
+@receiver(post_save, sender=Enrollment)
+def notify_on_accepted_transition(sender, instance, created, **kwargs):
+    """TODO 10.1.1 — fires exactly once per transition *into* "accepted",
+    regardless of entry point (change form or bulk admin action — the
+    latter must call `.save()` per object rather than `.update()` for this
+    to fire; see `EnrollmentAdmin.mark_accepted`), and never re-fires on
+    subsequent saves while status stays "accepted"."""
+    if created:
+        return
+    previous = getattr(instance, "_previous_status", None)
+    if previous != "accepted" and instance.status == "accepted":
+        from .services import notify_enrollment_accepted
+
+        notify_enrollment_accepted(instance)
 
 
 @receiver(post_save, sender=Enrollment)

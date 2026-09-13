@@ -228,6 +228,54 @@ class VipGroupSyncTestCase(TestCase):
         orphan.save()  # must not raise
 
 
+class LoginRedirectTestCase(TestCase):
+    """TODO 10.6.1 — post-login now lands on the client's own space
+    (`enrollment:dashboard`) instead of the homepage, via
+    `LOGIN_REDIRECT_URL`; `?next=` still wins when present."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="0774444444", password="knownpass123", is_active=True
+        )
+        Client.objects.create(
+            user=self.user, client_type="individual", full_name="Redirect Test",
+            phone="0774444444", account_status="active",
+        )
+
+    def test_login_with_no_next_lands_on_dashboard(self):
+        response = self.client.post("/account/login/", {
+            "username": "0774444444", "password": "knownpass123",
+        })
+        self.assertRedirects(response, "/mon-espace/")
+
+    def test_login_with_next_honours_it_over_dashboard(self):
+        response = self.client.post(
+            "/account/login/?next=/formations/", {
+                "username": "0774444444", "password": "knownpass123",
+            }
+        )
+        self.assertRedirects(response, "/formations/")
+
+
+class DashboardCatalogueLinkTestCase(TestCase):
+    """TODO 10.6.2 — a top-level catalogue quick-access link on the
+    dashboard overview, not buried in a sub-tab."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="0775555555", password="x", is_active=True
+        )
+        Client.objects.create(
+            user=self.user, client_type="individual", full_name="Catalogue Link Test",
+            phone="0775555555", account_status="active",
+        )
+
+    def test_dashboard_links_to_catalogue(self):
+        self.client.force_login(self.user)
+        content = self.client.get("/mon-espace/").content.decode()
+        self.assertIn('href="/formations/"', content)
+
+
 class DashboardAuthRequiredTestCase(TestCase):
     """TODO 1.8 — the old phone/session dashboard login is retired;
     /mon-espace/ now requires request.user via @login_required and

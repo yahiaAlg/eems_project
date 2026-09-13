@@ -993,6 +993,15 @@ class Enrollment(models.Model):
     created_at = models.DateTimeField("تاريخ التسجيل", auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # --- company roster (Phase 10, TODO 10.0.2) ---
+    # Set the moment staff schedule the session with a firm date (TODO
+    # 10.7) — None means the client-facing roster (TODO 10.2) is still
+    # editable by the client; once set, the roster becomes read-only. No
+    # separate boolean: the timestamp doubles as flag and audit trail.
+    roster_locked_at = models.DateTimeField(
+        "تاريخ إغلاق قائمة المشاركين", null=True, blank=True
+    )
+
     class Meta:
         ordering = ["-created_at"]
         unique_together = ("participant", "offering")
@@ -1030,6 +1039,19 @@ class EnrollmentNote(models.Model):
     text = models.TextField("ملاحظة")
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # --- client visibility (Phase 10, TODO 10.0.3) ---
+    # Default False deliberately: this repurposes a field that was
+    # staff-only until now, so nothing becomes client-visible by accident
+    # on deploy. Staff opt a note in per-note (TODO 10.5).
+    visible_to_client = models.BooleanField(
+        "مرئية للزبون",
+        default=False,
+        help_text=(
+            "عند التفعيل، تظهر هذه الملاحظة في مساحة الزبون. مخفية "
+            "افتراضيا للحفاظ على خصوصية الملاحظات الداخلية."
+        ),
+    )
+
     class Meta:
         ordering = ["created_at"]
         verbose_name = "ملاحظة متابعة"
@@ -1037,6 +1059,77 @@ class EnrollmentNote(models.Model):
 
     def __str__(self):
         return f"note on enrollment #{self.enrollment_id}"
+
+
+class EnrollmentParticipant(models.Model):
+    """One roster line for an enterprise Enrollment (Phase 10, TODO 10.0.1).
+
+    Field set is a deliberate 1:1 mirror of formations.Participant on the
+    isi_pedagogical_webapp side, so a CSV export (TODO 10.2.6) round-trips
+    into that app's `import_participants_from_file` with zero mapping.
+    Distinct from `enrollment.Participant` above, which is the single
+    subscriber tied to one Enrollment row — this model is the *list* of
+    employees an enterprise client attaches to its own enrollment.
+    """
+
+    # Matches formations.Participant's own gender choices exactly (not the
+    # app-wide lowercase GENDER_CHOICES used by Client/Participant), since
+    # this value has to survive a CSV round-trip into that other project.
+    GENDER_CHOICES = [("M", "Homme"), ("F", "Femme")]
+
+    enrollment = models.ForeignKey(
+        Enrollment,
+        on_delete=models.CASCADE,
+        related_name="roster",
+        verbose_name="التسجيل",
+    )
+
+    first_name = models.CharField("الاسم (Prénom)", max_length=50)
+    last_name = models.CharField("اللقب (Nom)", max_length=50)
+    first_name_ar = models.CharField("الاسم بالعربية", max_length=50, blank=True)
+    last_name_ar = models.CharField("اللقب بالعربية", max_length=50, blank=True)
+
+    gender = models.CharField(
+        "الجنس", max_length=1, choices=GENDER_CHOICES, blank=True
+    )
+    date_of_birth = models.DateField("تاريخ الميلاد", null=True, blank=True)
+    place_of_birth = models.CharField("مكان الميلاد", max_length=100, blank=True)
+    place_of_birth_ar = models.CharField(
+        "مكان الميلاد (AR)", max_length=100, blank=True
+    )
+
+    job_title = models.CharField("الوظيفة", max_length=100, blank=True)
+    employer = models.CharField(
+        "جهة العمل",
+        max_length=200,
+        blank=True,
+        help_text="تُعبَّأ افتراضيا باسم مؤسسة الزبون عند الإنشاء، قابلة للتعديل لكل سطر.",
+    )
+
+    phone = models.CharField("الهاتف", max_length=20, blank=True)
+    email = models.EmailField("البريد الإلكتروني", blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "مشارك (قائمة المؤسسة)"
+        verbose_name_plural = "المشاركون (قائمة المؤسسة)"
+        unique_together = ["enrollment", "first_name", "last_name"]
+        ordering = ["last_name", "first_name"]
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name}"
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        # The importer on the pedagogical side hard-requires both
+        # first_name and last_name non-empty — enforce that here too, at
+        # save time, not just in the form, so no code path can create an
+        # unexportable row.
+        if not self.first_name.strip() or not self.last_name.strip():
+            raise ValidationError("الاسم واللقب (بالحروف اللاتينية) إلزاميان.")
 
 
 # --- Cart & Cart items (TODO 4.1) ---------------------------------------

@@ -2,12 +2,16 @@ from decimal import Decimal
 
 from django.contrib.auth.models import User
 from django.test import TestCase
+from django.urls import reverse
+from django.utils import timezone
 
 from .models import (
     Cart,
     CartItem,
     Client,
     Enrollment,
+    EnrollmentNote,
+    EnrollmentParticipant,
     FormationSession,
     Offering,
     Participant,
@@ -15,6 +19,7 @@ from .models import (
     ProformaInvoiceItem,
     QuoteRequest,
     QuoteRequestItem,
+    STATUS_CHOICES,
     WishlistItem,
 )
 
@@ -667,3 +672,855 @@ class BonDeCommandeUploadE2ETestCase(TestCase):
         )
         invoice = ProformaInvoice.objects.get(client=self.client_obj)
         self.assertFalse(invoice.bon_de_commande)
+
+
+class EnrollmentAcceptanceEmailTestCase(TestCase):
+    """TODO 10.1 — the pre_save/post_save signal pair fires the acceptance
+    email exactly once per transition *into* "accepted", regardless of
+    entry point, and never on unrelated saves."""
+
+    def setUp(self):
+        session = FormationSession.objects.create(
+            name="Session Phase10", slug="session-phase10", is_active=True
+        )
+        self.offering = Offering.objects.create(
+            session=session, code="P10", title="Formation Phase 10",
+            duration_months=3, is_active=True,
+        )
+        self.client_obj = Client.objects.create(
+            client_type="individual", full_name="Client Phase10",
+            phone="0555000333", email="accepted@example.com",
+        )
+        self.participant = Participant.objects.create(
+            client=self.client_obj, full_name="Client Phase10",
+        )
+        self.enrollment = Enrollment.objects.create(
+            client=self.client_obj, participant=self.participant,
+            offering=self.offering, status="pending",
+        )
+
+    def test_transition_to_accepted_sends_one_email(self):
+        from django.core import mail
+        mail.outbox = []
+        self.enrollment.status = "accepted"
+        self.enrollment.save()
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("accepted@example.com", mail.outbox[0].to)
+
+    def test_transition_from_accepted_to_confirmed_sends_no_extra_email(self):
+        from django.core import mail
+        self.enrollment.status = "accepted"
+        self.enrollment.save()
+        mail.outbox = []
+        self.enrollment.status = "confirmed"
+        self.enrollment.save()
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_resaving_already_accepted_sends_no_duplicate_email(self):
+        from django.core import mail
+        self.enrollment.status = "accepted"
+        self.enrollment.save()
+        mail.outbox = []
+        self.enrollment.motivation = "updated note"
+        self.enrollment.save()
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_no_client_email_returns_false_without_raising(self):
+        from django.core import mail
+        self.client_obj.email = ""
+        self.client_obj.save()
+        mail.outbox = []
+        from .services import notify_enrollment_accepted
+        ok, message = notify_enrollment_accepted(self.enrollment)
+        self.assertFalse(ok)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_bulk_admin_action_still_triggers_email(self):
+        from django.core import mail
+        staff = User.objects.create_user(
+            username="staff10", password="x", is_staff=True, is_superuser=True,
+        )
+        self.client.force_login(staff)
+        mail.outbox = []
+        self.client.post(
+            "/admin/enrollment/enrollment/",
+            {"action": "mark_accepted", "_selected_action": [self.enrollment.pk]},
+            follow=True,
+        )
+        self.enrollment.refresh_from_db()
+        self.assertEqual(self.enrollment.status, "accepted")
+        self.assertEqual(len(mail.outbox), 1)
+
+
+class DashboardEnrollmentVisibilityTestCase(TestCase):
+    """TODO 10.4 — an enrollment moved to "accepted" (or any real status
+    other than "pending"/"confirmed") must still show up on /mon-espace/;
+    it used to fall into neither the actionable banner nor the Active
+    Purchases card and simply vanish."""
+
+    def setUp(self):
+        self.session = FormationSession.objects.create(
+            name="Session 10.4", slug="session-10-4", is_active=True
+        )
+        self.offering = Offering.objects.create(
+            session=self.session,
+            code="D104",
+            title="Formation Dashboard 10.4",
+            duration_months=1,
+            is_active=True,
+        )
+        self.user = User.objects.create_user(
+            username="client104", password="x", is_active=True
+        )
+        self.client_obj = Client.objects.create(
+            user=self.user,
+            client_type="individual",
+            phone="0555000555",
+            account_status="active",
+        )
+        self.participant = Participant.objects.create(
+            client=self.client_obj, full_name="Participant 10.4",
+        )
+        self.enrollment = Enrollment.objects.create(
+            client=self.client_obj,
+            participant=self.participant,
+            offering=self.offering,
+            status="accepted",
+        )
+
+    def test_accepted_enrollment_appears_on_dashboard(self):
+        self.client.force_login(self.user)
+        response = self.client.get("/mon-espace/")
+        content = response.content.decode()
+        self.assertIn("Formation Dashboard 10.4", content)
+        self.assertIn("مقبول", content)
+        self.assertIn(self.enrollment, response.context["enrollments"])
+
+    def test_status_change_reflected_without_relogin(self):
+        self.client.force_login(self.user)
+        self.client.get("/mon-espace/")  # same session as below, no relogin
+        self.enrollment.status = "confirmed"
+        self.enrollment.confirmed_at = timezone.now()
+        self.enrollment.save()
+        response = self.client.get("/mon-espace/")
+        content = response.content.decode()
+        self.assertIn("مؤكد من طرف المشترك", content)
+
+    def test_enrollment_counts_match_manual_queries(self):
+        other_offering = Offering.objects.create(
+            session=self.session,
+            code="D104B",
+            title="Formation Dashboard 10.4 B",
+            duration_months=1,
+            is_active=True,
+        )
+        Enrollment.objects.create(
+            client=self.client_obj,
+            participant=self.participant,
+            offering=other_offering,
+            status="pending",
+        )
+        self.client.force_login(self.user)
+        response = self.client.get("/mon-espace/")
+        counts = response.context["enrollment_counts"]
+        for status_key, _label in STATUS_CHOICES:
+            expected = Enrollment.objects.filter(
+                client=self.client_obj, status=status_key
+            ).count()
+            self.assertEqual(counts[status_key], expected)
+        self.assertEqual(
+            response.context["total_enrollments"],
+            Enrollment.objects.filter(client=self.client_obj).count(),
+        )
+
+
+class StaffNotesVisibilityTestCase(TestCase):
+    """TODO 10.5 — staff notes only reach the client dashboard once opted
+    in via `visible_to_client=True`; author identity stays internal."""
+
+    def setUp(self):
+        self.session = FormationSession.objects.create(
+            name="Session 10.5", slug="session-10-5", is_active=True
+        )
+        self.offering = Offering.objects.create(
+            session=self.session,
+            code="D105",
+            title="Formation Dashboard 10.5",
+            duration_months=1,
+            is_active=True,
+        )
+        self.user = User.objects.create_user(
+            username="client105", password="x", is_active=True
+        )
+        self.client_obj = Client.objects.create(
+            user=self.user,
+            client_type="individual",
+            phone="0555000666",
+            account_status="active",
+        )
+        self.participant = Participant.objects.create(
+            client=self.client_obj, full_name="Participant 10.5",
+        )
+        self.enrollment = Enrollment.objects.create(
+            client=self.client_obj,
+            participant=self.participant,
+            offering=self.offering,
+            status="accepted",
+        )
+        self.staff_user = User.objects.create_user(
+            username="staff105", password="x", is_staff=True
+        )
+
+    def test_internal_note_stays_hidden(self):
+        EnrollmentNote.objects.create(
+            enrollment=self.enrollment,
+            author=self.staff_user,
+            text="ملاحظة داخلية لا يجب أن يراها الزبون.",
+            visible_to_client=False,
+        )
+        self.client.force_login(self.user)
+        content = self.client.get("/mon-espace/").content.decode()
+        self.assertNotIn("ملاحظة داخلية لا يجب أن يراها الزبون.", content)
+
+    def test_client_visible_note_appears_without_author(self):
+        note = EnrollmentNote.objects.create(
+            enrollment=self.enrollment,
+            author=self.staff_user,
+            text="يرجى إحضار نسخة من بطاقة التعريف.",
+            visible_to_client=True,
+        )
+        self.client.force_login(self.user)
+        content = self.client.get("/mon-espace/").content.decode()
+        self.assertIn("يرجى إحضار نسخة من بطاقة التعريف.", content)
+        self.assertNotIn(self.staff_user.username, content)
+
+    def test_notes_render_in_creation_order(self):
+        first = EnrollmentNote.objects.create(
+            enrollment=self.enrollment, author=self.staff_user,
+            text="الملاحظة الأولى", visible_to_client=True,
+        )
+        second = EnrollmentNote.objects.create(
+            enrollment=self.enrollment, author=self.staff_user,
+            text="الملاحظة الثانية", visible_to_client=True,
+        )
+        self.client.force_login(self.user)
+        content = self.client.get("/mon-espace/").content.decode()
+        self.assertLess(content.index(first.text), content.index(second.text))
+
+    def test_mixed_visibility_only_shows_opted_in_note(self):
+        EnrollmentNote.objects.create(
+            enrollment=self.enrollment, author=self.staff_user,
+            text="ملاحظة داخلية مختلطة", visible_to_client=False,
+        )
+        visible = EnrollmentNote.objects.create(
+            enrollment=self.enrollment, author=self.staff_user,
+            text="ملاحظة ظاهرة للزبون", visible_to_client=True,
+        )
+        self.client.force_login(self.user)
+        response = self.client.get("/mon-espace/")
+        content = response.content.decode()
+        self.assertNotIn("ملاحظة داخلية مختلطة", content)
+        self.assertIn("ملاحظة ظاهرة للزبون", content)
+        for e in response.context["enrollments"]:
+            if e.pk == self.enrollment.pk:
+                self.assertEqual([n.pk for n in e.visible_notes], [visible.pk])
+
+
+class CompanyRosterTestCase(TestCase):
+    """TODO 10.2 — EnrollmentParticipant CRUD (dynamic formset), seat-cap
+    enforcement, staff read-only entry point, CSV export."""
+
+    def setUp(self):
+        session = FormationSession.objects.create(
+            name="Session Roster", slug="session-roster", is_active=True
+        )
+        self.offering = Offering.objects.create(
+            session=session,
+            code="ROST01",
+            title="Formation Roster",
+            duration_months=1,
+            is_active=True,
+            seats_available=2,
+        )
+        self.user = User.objects.create_user(
+            username="enterprise10", password="x", is_active=True
+        )
+        self.client_obj = Client.objects.create(
+            user=self.user,
+            client_type="enterprise",
+            phone="0555000444",
+            email="roster@example.com",
+            company_name="Société Roster",
+            account_status="active",
+        )
+        self.participant = Participant.objects.create(
+            client=self.client_obj, full_name="Contact Roster",
+        )
+        self.enrollment = Enrollment.objects.create(
+            client=self.client_obj,
+            participant=self.participant,
+            offering=self.offering,
+            status="accepted",
+        )
+
+    def _roster_url(self, enrollment=None):
+        return reverse(
+            "enrollment:enrollment_roster",
+            args=[(enrollment or self.enrollment).pk],
+        )
+
+    def _export_url(self, enrollment=None):
+        return reverse(
+            "enrollment:enrollment_roster_export",
+            args=[(enrollment or self.enrollment).pk],
+        )
+
+    def _management_data(self, total=1, initial=0, prefix="roster"):
+        return {
+            f"{prefix}-TOTAL_FORMS": str(total),
+            f"{prefix}-INITIAL_FORMS": str(initial),
+            f"{prefix}-MIN_NUM_FORMS": "0",
+            f"{prefix}-MAX_NUM_FORMS": "1000",
+        }
+
+    def _row_data(self, index, first_name="", last_name="", prefix="roster", **extra):
+        data = {
+            f"{prefix}-{index}-id": "",
+            f"{prefix}-{index}-first_name": first_name,
+            f"{prefix}-{index}-last_name": last_name,
+            f"{prefix}-{index}-first_name_ar": "",
+            f"{prefix}-{index}-last_name_ar": "",
+            f"{prefix}-{index}-gender": "",
+            f"{prefix}-{index}-date_of_birth": "",
+            f"{prefix}-{index}-place_of_birth": "",
+            f"{prefix}-{index}-place_of_birth_ar": "",
+            f"{prefix}-{index}-job_title": "",
+            f"{prefix}-{index}-employer": "",
+            f"{prefix}-{index}-phone": "",
+            f"{prefix}-{index}-email": "",
+        }
+        data.update({f"{prefix}-{index}-{k}": v for k, v in extra.items()})
+        return data
+
+    # -- gating (10.2.1/10.2.7) ------------------------------------------
+
+    def test_non_enterprise_client_gets_404(self):
+        self.client_obj.client_type = "individual"
+        self.client_obj.full_name = "Individual Roster"
+        self.client_obj.save()
+        self.client.force_login(self.user)
+        response = self.client.get(self._roster_url())
+        self.assertEqual(response.status_code, 404)
+        response = self.client.get(self._export_url())
+        self.assertEqual(response.status_code, 404)
+
+    def test_status_not_yet_accepted_gets_404(self):
+        self.enrollment.status = "pending"
+        self.enrollment.save()
+        self.client.force_login(self.user)
+        response = self.client.get(self._roster_url())
+        self.assertEqual(response.status_code, 404)
+
+    def test_other_clients_enrollment_gets_404(self):
+        other_user = User.objects.create_user(
+            username="other10", password="x", is_active=True
+        )
+        Client.objects.create(
+            user=other_user, client_type="individual", phone="0555000555",
+            full_name="Other Client", account_status="active",
+        )
+        self.client.force_login(other_user)
+        response = self.client.get(self._roster_url())
+        self.assertEqual(response.status_code, 404)
+
+    def test_anonymous_redirected_to_login(self):
+        response = self.client.get(self._roster_url())
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/login", response.url)
+
+    # -- CRUD (10.2.2/10.2.7) --------------------------------------------
+
+    def test_roster_page_renders_with_zero_rows(self):
+        self.client.force_login(self.user)
+        response = self.client.get(self._roster_url())
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "قائمة المشاركين")
+
+    def test_saving_one_valid_row_creates_participant(self):
+        self.client.force_login(self.user)
+        data = self._management_data(total=1)
+        data.update(self._row_data(0, first_name="Ahmed", last_name="Belaid"))
+        response = self.client.post(self._roster_url(), data, follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(EnrollmentParticipant.objects.filter(enrollment=self.enrollment).count(), 1)
+        row = EnrollmentParticipant.objects.get(enrollment=self.enrollment)
+        # Employer auto-fills from the client's company name when left blank.
+        self.assertEqual(row.employer, "Société Roster")
+
+    def test_empty_last_name_is_invalid_and_does_not_save(self):
+        self.client.force_login(self.user)
+        data = self._management_data(total=1)
+        data.update(self._row_data(0, first_name="Ahmed", last_name=""))
+        response = self.client.post(self._roster_url(), data)
+        self.assertEqual(response.status_code, 200)  # re-rendered with errors, no redirect
+        self.assertEqual(EnrollmentParticipant.objects.filter(enrollment=self.enrollment).count(), 0)
+
+    def test_untouched_extra_row_is_silently_ignored(self):
+        self.client.force_login(self.user)
+        data = self._management_data(total=2)
+        data.update(self._row_data(0, first_name="Ahmed", last_name="Belaid"))
+        data.update(self._row_data(1))  # left fully blank
+        response = self.client.post(self._roster_url(), data, follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(EnrollmentParticipant.objects.filter(enrollment=self.enrollment).count(), 1)
+
+    def test_deleting_existing_row_removes_it(self):
+        row = EnrollmentParticipant.objects.create(
+            enrollment=self.enrollment, first_name="Ahmed", last_name="Belaid",
+        )
+        self.client.force_login(self.user)
+        data = self._management_data(total=1, initial=1)
+        data.update(
+            self._row_data(0, first_name="Ahmed", last_name="Belaid", id=str(row.pk), DELETE="on")
+        )
+        response = self.client.post(self._roster_url(), data, follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(EnrollmentParticipant.objects.filter(pk=row.pk).exists())
+
+    # -- seat cap (10.2.3/10.2.7) -----------------------------------------
+
+    def test_exceeding_seats_available_is_rejected_server_side(self):
+        # seats_available == 2 (see setUp) — a 3rd row must be rejected even
+        # via a raw POST that bypasses the JS "disable Add past cap" guard.
+        self.client.force_login(self.user)
+        data = self._management_data(total=3)
+        data.update(self._row_data(0, first_name="A", last_name="One"))
+        data.update(self._row_data(1, first_name="B", last_name="Two"))
+        data.update(self._row_data(2, first_name="C", last_name="Three"))
+        response = self.client.post(self._roster_url(), data)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(EnrollmentParticipant.objects.filter(enrollment=self.enrollment).count(), 0)
+
+    def test_exactly_at_seat_cap_is_accepted(self):
+        self.client.force_login(self.user)
+        data = self._management_data(total=2)
+        data.update(self._row_data(0, first_name="A", last_name="One"))
+        data.update(self._row_data(1, first_name="B", last_name="Two"))
+        response = self.client.post(self._roster_url(), data, follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(EnrollmentParticipant.objects.filter(enrollment=self.enrollment).count(), 2)
+
+    # -- locked roster (10.2.1/10.2.7) -------------------------------------
+
+    def test_locked_roster_renders_read_only(self):
+        self.enrollment.roster_locked_at = timezone.now()
+        self.enrollment.save(update_fields=["roster_locked_at"])
+        self.client.force_login(self.user)
+        response = self.client.get(self._roster_url())
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "القائمة مقفلة")
+
+    def test_locked_roster_ignores_post(self):
+        self.enrollment.roster_locked_at = timezone.now()
+        self.enrollment.save(update_fields=["roster_locked_at"])
+        self.client.force_login(self.user)
+        data = self._management_data(total=1)
+        data.update(self._row_data(0, first_name="Ahmed", last_name="Belaid"))
+        response = self.client.post(self._roster_url(), data)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(EnrollmentParticipant.objects.filter(enrollment=self.enrollment).count(), 0)
+
+    # -- staff read-only entry point (10.2.5/10.2.7) -----------------------
+
+    def test_staff_can_view_but_not_edit(self):
+        staff = User.objects.create_user(
+            username="staffroster", password="x", is_staff=True, is_superuser=True,
+        )
+        self.client.force_login(staff)
+        response = self.client.get(self._roster_url())
+        self.assertEqual(response.status_code, 200)
+
+        data = self._management_data(total=1)
+        data.update(self._row_data(0, first_name="Ahmed", last_name="Belaid"))
+        response = self.client.post(self._roster_url(), data)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(EnrollmentParticipant.objects.filter(enrollment=self.enrollment).count(), 0)
+
+    def test_staff_roster_link_appears_on_admin_change_page(self):
+        staff = User.objects.create_user(
+            username="staffroster2", password="x", is_staff=True, is_superuser=True,
+        )
+        self.client.force_login(staff)
+        response = self.client.get(f"/admin/enrollment/enrollment/{self.enrollment.pk}/change/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "عرض قائمة المشاركين")
+
+    # -- CSV export (10.2.6/10.2.7) -----------------------------------------
+
+    def test_csv_export_header_and_rows(self):
+        EnrollmentParticipant.objects.create(
+            enrollment=self.enrollment, first_name="Ahmed", last_name="Belaid",
+            employer="Société Roster",
+        )
+        self.client.force_login(self.user)
+        response = self.client.get(self._export_url())
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "text/csv; charset=utf-8-sig")
+        content = response.content.decode("utf-8-sig")
+        lines = content.strip().splitlines()
+        self.assertIn("Prénom,Nom,Prénom AR,Nom AR", lines[0])
+        self.assertIn("Ahmed,Belaid", lines[1])
+
+
+class ScheduleSessionTestCase(TestCase):
+    """TODO 10.7 — staff schedules a session with a specific date: sets
+    `FormationSession.start_date` for every enrollment sharing that
+    offering, locks only the calling enrollment's own roster, emails the
+    enrolling client, and generates the CSV+brief bundle for the
+    pedagogical-app hand-off (10.7.3)."""
+
+    def setUp(self):
+        self.session_obj = FormationSession.objects.create(
+            name="Session Schedule", slug="session-schedule", is_active=True
+        )
+        self.offering = Offering.objects.create(
+            session=self.session_obj,
+            code="SCH01",
+            title="Formation Schedule",
+            duration_months=1,
+            is_active=True,
+            seats_available=5,
+        )
+        self.user = User.objects.create_user(
+            username="enterprise_sched", password="x", is_active=True
+        )
+        self.client_obj = Client.objects.create(
+            user=self.user,
+            client_type="enterprise",
+            phone="0555111222",
+            email="sched@example.com",
+            company_name="Société Schedule",
+            account_status="active",
+        )
+        self.participant = Participant.objects.create(
+            client=self.client_obj, full_name="Contact Schedule",
+        )
+        self.enrollment = Enrollment.objects.create(
+            client=self.client_obj,
+            participant=self.participant,
+            offering=self.offering,
+            status="accepted",
+        )
+
+        # A second company sharing the same offering — used to check the
+        # shared-date / independent-lock behaviour (10.7.4).
+        self.user2 = User.objects.create_user(
+            username="enterprise_sched2", password="x", is_active=True
+        )
+        self.client_obj2 = Client.objects.create(
+            user=self.user2,
+            client_type="enterprise",
+            phone="0555111333",
+            email="sched2@example.com",
+            company_name="Société Schedule Deux",
+            account_status="active",
+        )
+        self.participant2 = Participant.objects.create(
+            client=self.client_obj2, full_name="Contact Schedule 2",
+        )
+        self.enrollment2 = Enrollment.objects.create(
+            client=self.client_obj2,
+            participant=self.participant2,
+            offering=self.offering,
+            status="accepted",
+        )
+
+        self.staff = User.objects.create_user(
+            username="staffsched", password="x", is_staff=True, is_superuser=True,
+        )
+
+    def _schedule_url(self, enrollment=None):
+        return reverse(
+            "admin:enrollment_enrollment_schedule",
+            args=[(enrollment or self.enrollment).pk],
+        )
+
+    def _change_url(self, enrollment=None):
+        return f"/admin/enrollment/enrollment/{(enrollment or self.enrollment).pk}/change/"
+
+    # -- service function (10.7.1/10.7.4) ---------------------------------
+
+    def test_schedule_session_sets_date_and_locks_roster(self):
+        from .services import schedule_session
+
+        start = timezone.now().date() + timezone.timedelta(days=30)
+        ok, message = schedule_session(self.enrollment, start)
+        self.assertTrue(ok)
+        self.session_obj.refresh_from_db()
+        self.enrollment.refresh_from_db()
+        self.assertEqual(self.session_obj.start_date, start)
+        self.assertIsNotNone(self.enrollment.roster_locked_at)
+
+    def test_scheduling_second_enrollment_shares_date_not_lock(self):
+        from .services import schedule_session
+
+        start1 = timezone.now().date() + timezone.timedelta(days=10)
+        schedule_session(self.enrollment, start1)
+        self.enrollment.refresh_from_db()
+        first_lock = self.enrollment.roster_locked_at
+        self.assertIsNotNone(first_lock)
+        # Second enrollment's own roster starts out unlocked.
+        self.assertIsNone(self.enrollment2.roster_locked_at)
+
+        start2 = timezone.now().date() + timezone.timedelta(days=20)
+        schedule_session(self.enrollment2, start2)
+        self.enrollment.refresh_from_db()
+        self.enrollment2.refresh_from_db()
+        self.session_obj.refresh_from_db()
+
+        # Shared FK: the session now reflects the second call's date.
+        self.assertEqual(self.session_obj.start_date, start2)
+        # First enrollment's own lock timestamp is untouched by the second call.
+        self.assertEqual(self.enrollment.roster_locked_at, first_lock)
+        self.assertIsNotNone(self.enrollment2.roster_locked_at)
+
+    def test_schedule_session_emails_only_the_enrolling_client(self):
+        from django.core import mail
+
+        from .services import schedule_session
+
+        start = timezone.now().date() + timezone.timedelta(days=15)
+        mail.outbox = []
+        schedule_session(self.enrollment, start)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, [self.client_obj.email])
+
+    def test_scheduling_does_not_block_on_empty_roster(self):
+        # 10.7.2 — deliberately not gated on `enrollment.roster.exists()`.
+        from .services import schedule_session
+
+        self.assertEqual(self.enrollment.roster.count(), 0)
+        start = timezone.now().date() + timezone.timedelta(days=7)
+        ok, _message = schedule_session(self.enrollment, start)
+        self.assertTrue(ok)
+
+    def test_roster_page_read_only_after_scheduling_with_zero_rows(self):
+        from .services import schedule_session
+
+        start = timezone.now().date() + timezone.timedelta(days=5)
+        schedule_session(self.enrollment, start)
+        self.client.force_login(self.user)
+        response = self.client.get(
+            reverse("enrollment:enrollment_roster", args=[self.enrollment.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "القائمة مقفلة")
+
+    # -- admin entry point (10.7.1) ----------------------------------------
+
+    def test_schedule_link_appears_on_change_page(self):
+        self.client.force_login(self.staff)
+        response = self.client.get(self._change_url())
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "جدولة الجلسة")
+
+    def test_admin_schedule_view_requires_staff(self):
+        self.client.force_login(self.user)
+        response = self.client.get(self._schedule_url())
+        self.assertNotEqual(response.status_code, 200)
+
+    def test_admin_schedule_view_get_renders_form(self):
+        self.client.force_login(self.staff)
+        response = self.client.get(self._schedule_url())
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "جدولة الجلسة")
+
+    def test_admin_schedule_view_warns_when_not_accepted(self):
+        self.enrollment.status = "pending"
+        self.enrollment.save(update_fields=["status"])
+        self.client.force_login(self.staff)
+        response = self.client.get(self._schedule_url(), follow=True)
+        self.assertRedirects(response, self._change_url())
+
+    def test_admin_schedule_view_post_schedules_and_redirects(self):
+        self.client.force_login(self.staff)
+        start = timezone.now().date() + timezone.timedelta(days=40)
+        response = self.client.post(
+            self._schedule_url(),
+            {"start_date": start.isoformat(), "registration_deadline": ""},
+        )
+        self.assertRedirects(response, self._change_url())
+        self.session_obj.refresh_from_db()
+        self.enrollment.refresh_from_db()
+        self.assertEqual(self.session_obj.start_date, start)
+        self.assertIsNotNone(self.enrollment.roster_locked_at)
+
+    # -- session bundle download (10.7.3) -----------------------------------
+
+    def test_session_bundle_requires_staff(self):
+        self.client.force_login(self.user)
+        response = self.client.get(
+            reverse("enrollment:enrollment_session_bundle", args=[self.enrollment.pk])
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_session_bundle_contains_csv_and_brief(self):
+        import io
+        import zipfile
+
+        EnrollmentParticipant.objects.create(
+            enrollment=self.enrollment, first_name="Ahmed", last_name="Belaid",
+        )
+        self.client.force_login(self.staff)
+        response = self.client.get(
+            reverse("enrollment:enrollment_session_bundle", args=[self.enrollment.pk])
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/zip")
+        zf = zipfile.ZipFile(io.BytesIO(response.content))
+        names = zf.namelist()
+        csv_name = f"participants_{self.offering.code}_{self.enrollment.pk}.csv"
+        brief_name = f"session_brief_{self.enrollment.pk}.txt"
+        self.assertIn(csv_name, names)
+        self.assertIn(brief_name, names)
+        brief = zf.read(brief_name).decode("utf-8")
+        self.assertIn("Société Schedule", brief)
+
+
+class QuickRegisterPrefillTestCase(TestCase):
+    """TODO 10.3 — quick-register CTA + prefill on the individual subscribe
+    form for an authenticated client with an already-active account."""
+
+    def setUp(self):
+        session = FormationSession.objects.create(
+            name="Session QR", slug="session-qr", is_active=True
+        )
+        self.offering = Offering.objects.create(
+            session=session,
+            code="QR01",
+            title="Formation Quick Register",
+            duration_months=2,
+            is_active=True,
+            seats_available=10,
+        )
+        self.detail_url = self.offering.get_absolute_url()
+        self.subscribe_url = reverse(
+            "enrollment:subscribe", args=[session.slug, self.offering.code]
+        )
+
+    def _make_client(self, username, account_status="active"):
+        user = User.objects.create_user(username=username, password="x", is_active=True)
+        client = Client.objects.create(
+            user=user,
+            client_type="individual",
+            full_name="زبون تجريبي",
+            phone="0555000777",
+            email="quickreg@example.com",
+            wilaya="سطيف",
+            address="حي تجريبي",
+            birth_date="1990-01-01",
+            gender="m",
+            education_level="university",
+            account_status=account_status,
+        )
+        return user, client
+
+    # -- CTA visibility (10.3.1/10.3.3) ------------------------------------
+
+    def test_anonymous_visitor_sees_no_quick_register_cta(self):
+        response = self.client.get(self.detail_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "التسجيل السريع")
+
+    def test_active_client_sees_quick_register_cta(self):
+        user, _client = self._make_client("qr_active")
+        self.client.force_login(user)
+        response = self.client.get(self.detail_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "التسجيل السريع")
+        self.assertContains(response, f"{self.subscribe_url}?prefill=1")
+
+    def test_pending_client_sees_no_quick_register_cta(self):
+        user, _client = self._make_client("qr_pending", account_status="pending")
+        self.client.force_login(user)
+        response = self.client.get(self.detail_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "التسجيل السريع")
+
+    # -- prefill behaviour (10.3.2/10.3.3) ---------------------------------
+
+    def test_anonymous_get_form_is_blank(self):
+        response = self.client.get(self.subscribe_url, {"prefill": "1"})
+        self.assertEqual(response.status_code, 200)
+        form = response.context["form"]
+        self.assertIsNone(form.initial.get("full_name"))
+        self.assertIsNone(form.initial.get("phone"))
+
+    def test_active_client_get_with_prefill_populates_identity_fields(self):
+        user, client_obj = self._make_client("qr_prefill")
+        self.client.force_login(user)
+        response = self.client.get(self.subscribe_url, {"prefill": "1"})
+        self.assertEqual(response.status_code, 200)
+        form = response.context["form"]
+        self.assertEqual(form.initial.get("full_name"), client_obj.full_name)
+        self.assertEqual(form.initial.get("phone"), client_obj.phone)
+        self.assertEqual(form.initial.get("email"), client_obj.email)
+        self.assertEqual(form.initial.get("wilaya"), client_obj.wilaya)
+        self.assertEqual(form.initial.get("address"), client_obj.address)
+        self.assertEqual(form.initial.get("education_level"), client_obj.education_level)
+        # Rendered inputs actually carry the prefilled value.
+        self.assertContains(response, client_obj.full_name)
+        self.assertContains(response, client_obj.phone)
+
+    def test_get_without_prefill_param_stays_blank_even_when_logged_in(self):
+        user, _client = self._make_client("qr_noparam")
+        self.client.force_login(user)
+        response = self.client.get(self.subscribe_url)
+        self.assertEqual(response.status_code, 200)
+        form = response.context["form"]
+        self.assertIsNone(form.initial.get("full_name"))
+
+    def test_pending_client_prefill_request_still_blank(self):
+        user, _client = self._make_client("qr_pending2", account_status="pending")
+        self.client.force_login(user)
+        response = self.client.get(self.subscribe_url, {"prefill": "1"})
+        self.assertEqual(response.status_code, 200)
+        form = response.context["form"]
+        self.assertIsNone(form.initial.get("full_name"))
+
+    def test_per_registration_fields_never_prefilled(self):
+        user, _client = self._make_client("qr_perreg")
+        self.client.force_login(user)
+        response = self.client.get(self.subscribe_url, {"prefill": "1"})
+        form = response.context["form"]
+        self.assertNotIn("motivation", form.initial)
+        self.assertNotIn("employment_status", form.initial)
+        self.assertNotIn("preferred_contact_time", form.initial)
+
+    def test_prefilled_form_still_submits_like_the_manual_path(self):
+        user, client_obj = self._make_client("qr_submit")
+        self.client.force_login(user)
+        response = self.client.post(
+            self.subscribe_url,
+            {
+                "full_name": client_obj.full_name,
+                "birth_date": "1990-01-01",
+                "gender": "m",
+                "phone": "0660112233",
+                "email": "submitted@example.com",
+                "wilaya": "سطيف",
+                "address": "",
+                "education_level": "university",
+                "employment_status": "",
+                "preferred_contact_time": "",
+                "source": "web",
+                "motivation": "",
+                "agree_terms": "on",
+                "website": "",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            Enrollment.objects.filter(offering=self.offering, participant__phone="0660112233").exists()
+        )

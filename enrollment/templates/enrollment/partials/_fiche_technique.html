@@ -129,6 +129,11 @@
       <input type="hidden" name="next" value="{{ request.get_full_path }}">
       <button type="submit" class="btn-enroll full"><iconify-icon icon="{% if is_wishlisted %}mdi:heart{% else %}mdi:heart-outline{% endif %}"></iconify-icon> {% if is_wishlisted %}محفوظ في قائمة رغباتي{% else %}احفظ لوقت لاحق{% endif %}</button>
     </form>
+    {% if can_quick_register %}
+    <a class="btn-enroll outline" href="{% url 'enrollment:subscribe' offering.session.slug offering.code %}?prefill=1">
+      <iconify-icon icon="mdi:flash-outline"></iconify-icon> التسجيل السريع (لمشارك آخر)
+    </a>
+    {% endif %}
   {% else %}
     {% if offering.seats_remaining > 0 %}
       <a class="btn-enroll" href="{% url 'accounts:login' %}?next={{ request.get_full_path|urlencode }}"><iconify-icon icon="mdi:login"></iconify-icon> سجّل الدخول لإضافة هذا التخصص إلى سلتك</a>

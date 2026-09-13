@@ -54,6 +54,27 @@ urlpatterns = [
     path("mon-espace/<int:pk>/confirmer/", views.dashboard_confirm, name="dashboard_confirm"),
     path("mon-espace/<int:pk>/annuler/", views.dashboard_cancel, name="dashboard_cancel"),
 
+    # Company roster (TODO 10.2) — EnrollmentParticipant CRUD for an
+    # enterprise client's own enrollment, + CSV export. Staff reach the
+    # same roster URL read-only from a link on the admin change page.
+    path(
+        "mon-espace/inscriptions/<int:enrollment_id>/participants/",
+        views.enrollment_roster,
+        name="enrollment_roster",
+    ),
+    path(
+        "mon-espace/inscriptions/<int:enrollment_id>/participants/export/",
+        views.enrollment_roster_export,
+        name="enrollment_roster_export",
+    ),
+    # Bundled "session dossier" download (TODO 10.7.3) — roster CSV +
+    # session_brief_<id>.txt zipped together, staff-only.
+    path(
+        "mon-espace/inscriptions/<int:enrollment_id>/participants/dossier/",
+        views.enrollment_session_bundle,
+        name="enrollment_session_bundle",
+    ),
+
     # "مشترياتي" / "إحصائياتي" (TODO 4.5) — client-space nav tabs. My
     # Purchases surfaces confirmed enrollments today; Phase 5-8 will fold
     # proformas/quotes in once those models exist. Metrics are plain counts

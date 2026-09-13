@@ -1,0 +1,7 @@
+Formation (EEMS offering code): {{ offering.code }} — {{ offering.title }}
+Client (raison sociale):        {{ client.company_name }}
+NIF / NIS:                      {{ client.nif }} / {{ client.nis }}
+Contact:                        {{ client.responsible_name }} ({{ client.responsible_position }})
+                                 {{ client.phone }} — {{ client.email }}
+Scheduled date:                 {% if session.start_date %}{{ session.start_date|date:"d/m/Y" }}{% else %}غير محددة بعد{% endif %}
+Participants attached:          {{ participant_count }} (see participants_{{ offering.code }}_{{ enrollment.pk }}.csv)

@@ -1,0 +1,174 @@
+{% extends "pages/base.html" %}
+{% load static enrollment_extras %}
+
+{% block title %}قائمة المشاركين — {{ enrollment.offering.title }}{% endblock %}
+
+{% block extra_head %}
+<link href="{% static 'enrollment/css/subscribe.css' %}" rel="stylesheet">
+<link href="{% static 'enrollment/css/dashboard.css' %}" rel="stylesheet">
+<link href="{% static 'enrollment/css/roster.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{% include "pages/partials/_navbar.html" %}
+
+<section id="sub-hero">
+  <div class="container position-relative" style="z-index:1;">
+    <div class="crumb">
+      <a href="{% url 'pages:home' %}">الرئيسية</a> /
+      {% if not is_staff_view %}<a href="{% url 'enrollment:dashboard' %}">مساحتي</a> / {% endif %}
+      قائمة المشاركين
+    </div>
+    <h1><iconify-icon icon="mdi:account-group-outline"></iconify-icon> قائمة المشاركين</h1>
+    <p>{{ enrollment.offering.title }} — {{ enrollment.offering.session.name }}</p>
+  </div>
+</section>
+
+<div class="wrap" style="max-width:1100px;">
+  {% if not is_staff_view %}
+    {% include "enrollment/partials/_client_nav.html" %}
+  {% endif %}
+
+  {% if is_staff_view %}
+  <div class="roster-banner">
+    <iconify-icon icon="mdi:shield-account-outline"></iconify-icon>
+    عرض للموظفين (للقراءة فقط) — الزبون: {{ client.display_name }}
+  </div>
+  {% elif locked %}
+  <div class="roster-banner">
+    <iconify-icon icon="mdi:lock-outline"></iconify-icon>
+    تم تأكيد القائمة وجدولة الدورة{% if enrollment.offering.session.start_date %} بتاريخ {{ enrollment.offering.session.start_date|date:"d/m/Y" }}{% endif %} — القائمة مقفلة ولم تعد قابلة للتعديل.
+  </div>
+  {% endif %}
+
+  <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <h2 style="font-size:1.1rem;font-weight:800;margin:0;">
+      قائمة المشاركين ({{ roster_count }}{% if max_rows %} / {{ max_rows }}{% endif %})
+    </h2>
+    <a href="{% url 'enrollment:enrollment_roster_export' enrollment.pk %}" class="btn-add-more">
+      <iconify-icon icon="mdi:file-delimited-outline"></iconify-icon> تصدير CSV
+    </a>
+    {% if is_staff_view %}
+    <a href="{% url 'enrollment:enrollment_session_bundle' enrollment.pk %}" class="btn-add-more">
+      <iconify-icon icon="mdi:folder-zip-outline"></iconify-icon> تنزيل حزمة الجلسة (CSV + ملخص)
+    </a>
+    {% endif %}
+  </div>
+
+  {% if formset.non_form_errors %}
+  <ul class="errorlist">
+    {% for e in formset.non_form_errors %}<li>{{ e }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+
+  <form method="post" id="roster-form">
+    {% csrf_token %}
+    {{ formset.management_form }}
+
+    <div class="roster-table-wrap">
+      <table class="roster-table" id="roster-table" data-max-rows="{{ max_rows|default:0 }}">
+        <thead>
+          <tr>
+            <th>الاسم (Prénom)</th>
+            <th>اللقب (Nom)</th>
+            <th>الاسم بالعربية</th>
+            <th>اللقب بالعربية</th>
+            <th>الجنس</th>
+            <th>تاريخ الميلاد</th>
+            <th>مكان الميلاد</th>
+            <th>مكان الميلاد (AR)</th>
+            <th>الوظيفة</th>
+            <th>جهة العمل</th>
+            <th>الهاتف</th>
+            <th>البريد الإلكتروني</th>
+            {% if not locked %}<th></th>{% endif %}
+          </tr>
+        </thead>
+        <tbody id="roster-rows">
+          {% for form in formset %}
+          <tr class="roster-row{% if form.errors %} roster-row-error{% endif %}">
+            {{ form.id }}
+            <td>
+              {{ form.first_name }}
+              {% if form.first_name.errors %}<div class="errorlist inline">{{ form.first_name.errors|join:"، " }}</div>{% endif %}
+            </td>
+            <td>
+              {{ form.last_name }}
+              {% if form.last_name.errors %}<div class="errorlist inline">{{ form.last_name.errors|join:"، " }}</div>{% endif %}
+            </td>
+            <td>{{ form.first_name_ar }}</td>
+            <td>{{ form.last_name_ar }}</td>
+            <td>{{ form.gender }}</td>
+            <td>{{ form.date_of_birth }}</td>
+            <td>{{ form.place_of_birth }}</td>
+            <td>{{ form.place_of_birth_ar }}</td>
+            <td>{{ form.job_title }}</td>
+            <td>{{ form.employer }}</td>
+            <td>{{ form.phone }}</td>
+            <td>{{ form.email }}</td>
+            {% if not locked %}
+            <td>
+              <span style="display:none;">{{ form.DELETE }}</span>
+              <button type="button" class="roster-remove-row" title="إزالة هذا المشارك">
+                <iconify-icon icon="mdi:trash-can-outline"></iconify-icon>
+              </button>
+            </td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if not locked %}
+    <div class="roster-toolbar">
+      <button type="button" id="roster-add-row" class="btn-mini btn-mini-outline">
+        <iconify-icon icon="mdi:plus"></iconify-icon> إضافة مشارك
+      </button>
+      <button type="submit" class="cta">
+        <iconify-icon icon="mdi:content-save-outline"></iconify-icon> حفظ القائمة
+      </button>
+    </div>
+    {% if max_rows %}
+    <p class="roster-count-hint">الحد الأقصى لعدد المشاركين المسموح به لهذا العرض: {{ max_rows }}.</p>
+    {% endif %}
+    {% endif %}
+  </form>
+</div>
+
+{% comment %}
+JS-only template row (TODO 10.2.4) — built from `formset.empty_form`, whose
+`__prefix__` placeholder `roster.js` swaps out for the live TOTAL_FORMS
+index every time a new row is appended. Kept outside the visible table so
+the browser never renders it on its own.
+{% endcomment %}
+<template id="empty-row-template">
+  <tr class="roster-row">
+    {{ formset.empty_form.id }}
+    <td>{{ formset.empty_form.first_name }}</td>
+    <td>{{ formset.empty_form.last_name }}</td>
+    <td>{{ formset.empty_form.first_name_ar }}</td>
+    <td>{{ formset.empty_form.last_name_ar }}</td>
+    <td>{{ formset.empty_form.gender }}</td>
+    <td>{{ formset.empty_form.date_of_birth }}</td>
+    <td>{{ formset.empty_form.place_of_birth }}</td>
+    <td>{{ formset.empty_form.place_of_birth_ar }}</td>
+    <td>{{ formset.empty_form.job_title }}</td>
+    <td>{{ formset.empty_form.employer }}</td>
+    <td>{{ formset.empty_form.phone }}</td>
+    <td>{{ formset.empty_form.email }}</td>
+    <td>
+      <span style="display:none;">{{ formset.empty_form.DELETE }}</span>
+      <button type="button" class="roster-remove-row" title="إزالة هذا المشارك">
+        <iconify-icon icon="mdi:trash-can-outline"></iconify-icon>
+      </button>
+    </td>
+  </tr>
+</template>
+
+{% include "pages/partials/_footer.html" %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'enrollment/js/roster.js' %}"></script>
+{% endblock %}

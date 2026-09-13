@@ -2,7 +2,7 @@ from datetime import timedelta
 
 from django.contrib import admin, messages
 from django.db.models import Count
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import path, reverse
 from django.utils import timezone
 
@@ -11,6 +11,8 @@ from django.utils.html import format_html
 from accounts.services import activate_client_and_send_credentials
 from pages.emails import send_branded_mail
 
+from .forms import ScheduleSessionForm
+from .services import schedule_session
 from .models import (
     Cart,
     CartItem,
@@ -19,6 +21,7 @@ from .models import (
     Enquiry,
     Enrollment,
     EnrollmentNote,
+    EnrollmentParticipant,
     Formateur,
     FormateurCareerEntry,
     FormateurCertificate,
@@ -381,7 +384,7 @@ class EnrollmentNoteInline(admin.TabularInline):
     model = EnrollmentNote
     extra = 0
     readonly_fields = ("author", "created_at")
-    fields = ("text", "author", "created_at")
+    fields = ("text", "visible_to_client", "author", "created_at")
 
 
 @admin.register(Enrollment)
@@ -414,6 +417,12 @@ class EnrollmentAdmin(admin.ModelAdmin):
     inlines = [EnrollmentNoteInline]
     change_list_template = "admin/enrollment/enrollment_changelist.html"
     actions = ["mark_accepted", "mark_rejected", "mark_contacted"]
+    # TODO 10.2.5 / 10.7.1 — read-only staff entry points into the
+    # client-facing roster page and the schedule-session view. No
+    # `fieldsets` override exists on this admin, so listing them here is
+    # enough: Django appends readonly_fields to the auto-generated change
+    # form automatically.
+    readonly_fields = ("roster_link", "schedule_link")
 
     def client_type_display(self, obj):
         return obj.client.get_client_type_display()
@@ -424,6 +433,115 @@ class EnrollmentAdmin(admin.ModelAdmin):
         return obj.client.display_name
 
     client_link.short_description = "الزبون"
+
+    def roster_link(self, obj):
+        if not obj.pk:
+            return "—"
+        if obj.client.client_type != "enterprise" or obj.status not in (
+            "accepted",
+            "confirmed",
+        ):
+            return "غير متاح — يتطلب زبونا من نوع مؤسسة وحالة مقبول/مؤكد"
+        url = reverse("enrollment:enrollment_roster", args=[obj.pk])
+        return format_html(
+            '<a href="{}" target="_blank" rel="noopener">عرض قائمة المشاركين ({})</a>',
+            url,
+            obj.roster.count(),
+        )
+
+    roster_link.short_description = "قائمة المشاركين (مساحة الزبون)"
+
+    def schedule_link(self, obj):
+        if not obj.pk:
+            return "—"
+        if obj.status not in ("accepted", "confirmed"):
+            return "غير متاح — يجب أن يكون التسجيل مقبولا أو مؤكدا أولا."
+        url = reverse("admin:enrollment_enrollment_schedule", args=[obj.pk])
+        start_date = obj.offering.session.start_date
+        label = (
+            f"إعادة جدولة الدورة (التاريخ الحالي: {start_date:%d/%m/%Y})"
+            if start_date
+            else "📅 جدولة الجلسة (تحديد تاريخ الدورة)"
+        )
+        return format_html('<a href="{}">{}</a>', url, label)
+
+    schedule_link.short_description = "جدولة الجلسة"
+
+    def get_urls(self):
+        custom = [
+            path(
+                "dashboard/",
+                self.admin_site.admin_view(self.dashboard_view),
+                name="enrollment_enrollment_dashboard",
+            ),
+            path(
+                "<int:enrollment_id>/schedule/",
+                self.admin_site.admin_view(self.schedule_session_view),
+                name="enrollment_enrollment_schedule",
+            ),
+        ]
+        return custom + super().get_urls()
+
+    def schedule_session_view(self, request, enrollment_id):
+        """TODO 10.7.1 — the small intermediate page behind `schedule_link`
+        above. A plain (non-bulk) view rather than a Django admin action:
+        admin actions can't natively prompt for the extra date input
+        without a custom intermediate template, so this is that template's
+        view, reached from a link on the Enrollment change page instead of
+        the changelist action dropdown."""
+        enrollment = get_object_or_404(
+            Enrollment.objects.select_related("client", "offering__session"),
+            pk=enrollment_id,
+        )
+        change_url = reverse("admin:enrollment_enrollment_change", args=[enrollment.pk])
+
+        if enrollment.status not in ("accepted", "confirmed"):
+            self.message_user(
+                request,
+                f"{enrollment}: يجب أن يكون التسجيل مقبولا أو مؤكدا أولا.",
+                level=messages.WARNING,
+            )
+            return redirect(change_url)
+
+        session = enrollment.offering.session
+
+        if request.method == "POST":
+            form = ScheduleSessionForm(request.POST)
+            if form.is_valid():
+                ok, message = schedule_session(
+                    enrollment,
+                    form.cleaned_data["start_date"],
+                    form.cleaned_data.get("registration_deadline"),
+                )
+                self.message_user(
+                    request, message, level=messages.SUCCESS if ok else messages.WARNING
+                )
+                return redirect(change_url)
+        else:
+            form = ScheduleSessionForm(
+                initial={
+                    "start_date": session.start_date,
+                    "registration_deadline": session.registration_deadline,
+                }
+            )
+
+        context = dict(
+            self.admin_site.each_context(request),
+            title="جدولة الجلسة",
+            enrollment=enrollment,
+            form=form,
+            change_url=change_url,
+            # Same offering, other enrollments — the date about to be set
+            # will apply to all of them too (TODO 10.7.1), so the template
+            # calls that out explicitly rather than letting it surprise
+            # anyone the first time two companies share an offering.
+            other_enrollments_count=(
+                Enrollment.objects.filter(offering=enrollment.offering)
+                .exclude(pk=enrollment.pk)
+                .count()
+            ),
+        )
+        return render(request, "admin/enrollment/schedule_session.html", context)
 
     def changelist_view(self, request, extra_context=None):
         today = timezone.now().date()
@@ -438,16 +556,6 @@ class EnrollmentAdmin(admin.ModelAdmin):
             enr_pending=qs.filter(status="pending").count(),
         )
         return super().changelist_view(request, extra_context=extra_context)
-
-    def get_urls(self):
-        custom = [
-            path(
-                "dashboard/",
-                self.admin_site.admin_view(self.dashboard_view),
-                name="enrollment_enrollment_dashboard",
-            ),
-        ]
-        return custom + super().get_urls()
 
     def dashboard_view(self, request):
         today = timezone.now().date()
@@ -496,7 +604,13 @@ class EnrollmentAdmin(admin.ModelAdmin):
 
     @admin.action(description="وضع الحالة: مقبول")
     def mark_accepted(self, request, queryset):
-        queryset.update(status="accepted")
+        # Looped .save() rather than queryset.update() — the latter bypasses
+        # model signals entirely, and TODO 10.1's acceptance email relies on
+        # the pre_save/post_save pair in enrollment/signals.py firing on
+        # every entry point, bulk action included.
+        for enrollment in queryset:
+            enrollment.status = "accepted"
+            enrollment.save(update_fields=["status", "updated_at"])
 
     @admin.action(description="وضع الحالة: مرفوض")
     def mark_rejected(self, request, queryset):
@@ -505,6 +619,25 @@ class EnrollmentAdmin(admin.ModelAdmin):
     @admin.action(description="وضع الحالة: تم التواصل")
     def mark_contacted(self, request, queryset):
         queryset.update(status="contacted")
+
+
+@admin.register(EnrollmentParticipant)
+class EnrollmentParticipantAdmin(admin.ModelAdmin):
+    """Staff-side data-fixing entry point (TODO 10.2.5). The client-facing
+    roster page (TODO 10.2) is the normal editing path; this is here for
+    admins who need to correct a row directly."""
+
+    list_display = ("enrollment", "first_name", "last_name", "employer")
+    list_filter = ("enrollment__offering",)
+    search_fields = (
+        "first_name",
+        "last_name",
+        "first_name_ar",
+        "last_name_ar",
+        "employer",
+        "enrollment__client__company_name",
+    )
+    autocomplete_fields = ("enrollment",)
 
 
 class CartItemInline(admin.TabularInline):

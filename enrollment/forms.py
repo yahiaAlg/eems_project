@@ -9,6 +9,7 @@ from .models import (
     Client,
     Comment,
     Enquiry,
+    EnrollmentParticipant,
     Formateur,
     GENDER_CHOICES,
     SOURCE_CHOICES,
@@ -486,3 +487,111 @@ class EnquiryForm(forms.ModelForm):
             "email": "البريد الإلكتروني",
             "question": "سؤالك",
         }
+
+
+# --- Company roster formset (TODO 10.2) -------------------------------
+# One editable line per employee an enterprise client attaches to its own
+# Enrollment. Field set/order matches `EnrollmentParticipant` (itself a
+# 1:1 mirror of formations.Participant on the pedagogical side, see TODO
+# 10.0.1/10.2.6) so the CSV export round-trips with zero mapping.
+ROSTER_FIELDS = [
+    "first_name",
+    "last_name",
+    "first_name_ar",
+    "last_name_ar",
+    "gender",
+    "date_of_birth",
+    "place_of_birth",
+    "place_of_birth_ar",
+    "job_title",
+    "employer",
+    "phone",
+    "email",
+]
+
+ROSTER_WIDGETS = {
+    "first_name": forms.TextInput(
+        attrs={**WIDGET_ATTRS, "placeholder": "الاسم (Prénom)"}
+    ),
+    "last_name": forms.TextInput(attrs={**WIDGET_ATTRS, "placeholder": "اللقب (Nom)"}),
+    "first_name_ar": forms.TextInput(
+        attrs={**WIDGET_ATTRS, "placeholder": "الاسم بالعربية"}
+    ),
+    "last_name_ar": forms.TextInput(
+        attrs={**WIDGET_ATTRS, "placeholder": "اللقب بالعربية"}
+    ),
+    "gender": forms.Select(attrs=SELECT_ATTRS),
+    "date_of_birth": forms.DateInput(attrs={**WIDGET_ATTRS, "type": "date"}),
+    "place_of_birth": forms.TextInput(attrs=WIDGET_ATTRS),
+    "place_of_birth_ar": forms.TextInput(attrs=WIDGET_ATTRS),
+    "job_title": forms.TextInput(attrs=WIDGET_ATTRS),
+    "employer": forms.TextInput(attrs=WIDGET_ATTRS),
+    "phone": forms.TextInput(attrs={**WIDGET_ATTRS, "dir": "ltr"}),
+    "email": forms.EmailInput(attrs={**WIDGET_ATTRS, "dir": "ltr"}),
+}
+
+
+class BaseEnrollmentParticipantFormSet(forms.BaseModelFormSet):
+    """Adds the seat-cap check from TODO 10.2.3 on top of Django's normal
+    modelformset validation. `max_rows` is passed in per-request (it's
+    `enrollment.offering.seats_available`, not a fixed number), so it's an
+    __init__ kwarg rather than baked into the formset class."""
+
+    def __init__(self, *args, max_rows=None, **kwargs):
+        self.max_rows = max_rows
+        super().__init__(*args, **kwargs)
+
+    def clean(self):
+        super().clean()
+        if any(self.errors):
+            # Per-row errors already reported — don't pile on a count error
+            # that would only be noise until those are fixed first.
+            return
+        if not self.max_rows:
+            return
+        active_rows = 0
+        for form in self.forms:
+            cleaned = getattr(form, "cleaned_data", None)
+            if not cleaned:
+                continue
+            if cleaned.get("DELETE"):
+                continue
+            if not (cleaned.get("first_name") or "").strip() and not (
+                cleaned.get("last_name") or ""
+            ).strip():
+                continue  # untouched extra row
+            active_rows += 1
+        if active_rows > self.max_rows:
+            raise ValidationError(
+                f"لا يمكن أن يتجاوز عدد المشاركين {self.max_rows} "
+                "(سعة الاستيعاب المتاحة لهذا العرض)."
+            )
+
+
+EnrollmentParticipantFormSet = forms.modelformset_factory(
+    EnrollmentParticipant,
+    formset=BaseEnrollmentParticipantFormSet,
+    fields=ROSTER_FIELDS,
+    widgets=ROSTER_WIDGETS,
+    extra=1,
+    can_delete=True,
+)
+
+
+class ScheduleSessionForm(forms.Form):
+    """TODO 10.7.1 — the small intermediate form behind the admin
+    "schedule session" action. Plain admin-styled `forms.Form`, not a
+    ModelForm: it edits `FormationSession.start_date`/`registration_deadline`
+    (a different model from the `Enrollment` the view is reached from), and
+    the enrollment's own `roster_locked_at` side effect isn't a form field
+    at all — it's set by `enrollment/services.py::schedule_session`."""
+
+    start_date = forms.DateField(
+        label="تاريخ انطلاق الدورة",
+        widget=forms.DateInput(attrs={"type": "date"}),
+    )
+    registration_deadline = forms.DateField(
+        label="آخر أجل للتسجيل (اختياري)",
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}),
+    )

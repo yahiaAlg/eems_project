@@ -216,6 +216,17 @@ ul.tasks li::marker {
   color: var(--muted);
   border: 1px solid var(--card-border);
 }
+.btn-enroll.outline {
+  background: transparent;
+  color: var(--accent-dark);
+  border: 1px solid var(--accent-dark);
+}
+.btn-enroll.outline:hover {
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  transform: translateY(-2px);
+  box-shadow: none;
+}
 
 .related-card {
   display: block;

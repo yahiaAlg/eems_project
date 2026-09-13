@@ -38,6 +38,16 @@
 .enrollment-actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
 .enrollment-actions form { margin:0; }
 
+/* TODO 10.5 — client-visible staff notes, collapsed by default. Plain
+   <details>/<summary> so no JS is needed. */
+.enrollment-notes { margin-top:12px; }
+.enrollment-notes > summary { cursor:pointer; display:inline-flex; align-items:center; gap:6px; font-size:.82rem; font-weight:700; color:var(--navy); list-style:none; }
+.enrollment-notes > summary::-webkit-details-marker { display:none; }
+.enrollment-note { border-top:1px solid var(--card-border); padding:10px 0; font-size:.82rem; color:var(--navy); }
+.enrollment-note:last-child { padding-bottom:0; }
+.enrollment-note p { margin:0 0 4px; white-space:pre-line; }
+.enrollment-note .text-muted { font-size:.74rem; color:var(--muted); }
+
 .btn-mini { display:inline-flex; align-items:center; gap:6px; border-radius:8px; padding:8px 15px; font-size:.82rem; font-weight:700; text-decoration:none; border:none; cursor:pointer; transition:all .15s; }
 .btn-mini-outline { background:transparent; color:var(--navy); border:1px solid var(--card-border); }
 .btn-mini-outline:hover { background:var(--body-bg); }
