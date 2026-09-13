@@ -130,7 +130,7 @@
       <button type="submit" class="btn-enroll full"><iconify-icon icon="{% if is_wishlisted %}mdi:heart{% else %}mdi:heart-outline{% endif %}"></iconify-icon> {% if is_wishlisted %}محفوظ في قائمة رغباتي{% else %}احفظ لوقت لاحق{% endif %}</button>
     </form>
     {% if can_quick_register %}
-    <a class="btn-enroll outline" href="{% url 'enrollment:subscribe' offering.session.slug offering.code %}?prefill=1">
+    <a class="btn-enroll outline" href="{% url 'enrollment:subscribe' offering.session.slug offering.code %}">
       <iconify-icon icon="mdi:flash-outline"></iconify-icon> التسجيل السريع (لمشارك آخر)
     </a>
     {% endif %}

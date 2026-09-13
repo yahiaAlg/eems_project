@@ -439,29 +439,40 @@ def subscribe(request, session_slug, code):
             )
             return redirect("enrollment:subscribe_success")
     else:
-        # TODO 10.3.2 — quick-register prefill: only on GET, only for an
-        # authenticated client with an already-active account, and only
-        # the fields that genuinely overlap between `Client` and
-        # `IndividualSubscribeForm` (confirmed against the real form in
+        # Prefill for a logged-in, already-active client so they never have
+        # to retype what we already know about them — regardless of which
+        # link got them here.
+        #
+        # Bug fix: this used to only run when the URL carried an explicit
+        # `?prefill=1` — set by exactly one entry point (the detail page's
+        # "التسجيل السريع" CTA in _fiche_technique.html). Every other path
+        # into this exact same view landed on a blank form for an
+        # authenticated, fully-profiled client — most notably the
+        # branch-first flow launched from the persistent top-nav
+        # "التسجيل الإلكتروني" button (subscribe_general -> AJAX ->
+        # ajax_offerings_for_specialty's `subscribe_url`, built with no
+        # query string at all). Rather than track down and flag every
+        # current and future entry point, prefill unconditionally whenever
+        # we can — only the fields that genuinely overlap between `Client`
+        # and `IndividualSubscribeForm` (confirmed against the real form in
         # enrollment/forms.py — this form has no enterprise branch, so
         # company/responsible fields don't apply here). Per-registration
         # fields (motivation, employment_status, preferred_contact_time,
         # "كيف سمعت عنا") are deliberately left blank every time — those
         # aren't account-level facts to carry over.
         initial = {}
-        if request.GET.get("prefill"):
-            prefill_client = getattr(request.user, "client", None)
-            if prefill_client and prefill_client.account_status == "active":
-                initial = {
-                    "full_name": prefill_client.full_name,
-                    "birth_date": prefill_client.birth_date,
-                    "gender": prefill_client.gender,
-                    "phone": prefill_client.phone,
-                    "email": prefill_client.email,
-                    "wilaya": prefill_client.wilaya,
-                    "address": prefill_client.address,
-                    "education_level": prefill_client.education_level,
-                }
+        prefill_client = getattr(request.user, "client", None)
+        if prefill_client and prefill_client.account_status == "active":
+            initial = {
+                "full_name": prefill_client.full_name,
+                "birth_date": prefill_client.birth_date,
+                "gender": prefill_client.gender,
+                "phone": prefill_client.phone,
+                "email": prefill_client.email,
+                "wilaya": prefill_client.wilaya,
+                "address": prefill_client.address,
+                "education_level": prefill_client.education_level,
+            }
         form = IndividualSubscribeForm(initial=initial)
 
     context = {

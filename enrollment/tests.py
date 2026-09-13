@@ -1438,7 +1438,7 @@ class QuickRegisterPrefillTestCase(TestCase):
         response = self.client.get(self.detail_url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "التسجيل السريع")
-        self.assertContains(response, f"{self.subscribe_url}?prefill=1")
+        self.assertContains(response, self.subscribe_url)
 
     def test_pending_client_sees_no_quick_register_cta(self):
         user, _client = self._make_client("qr_pending", account_status="pending")
@@ -1447,19 +1447,20 @@ class QuickRegisterPrefillTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "التسجيل السريع")
 
-    # -- prefill behaviour (10.3.2/10.3.3) ---------------------------------
+    # -- prefill behaviour (10.3.2/10.3.3, bug fix: was gated behind
+    # ?prefill=1, now automatic on every GET) ------------------------------
 
     def test_anonymous_get_form_is_blank(self):
-        response = self.client.get(self.subscribe_url, {"prefill": "1"})
+        response = self.client.get(self.subscribe_url)
         self.assertEqual(response.status_code, 200)
         form = response.context["form"]
         self.assertIsNone(form.initial.get("full_name"))
         self.assertIsNone(form.initial.get("phone"))
 
-    def test_active_client_get_with_prefill_populates_identity_fields(self):
+    def test_active_client_get_populates_identity_fields(self):
         user, client_obj = self._make_client("qr_prefill")
         self.client.force_login(user)
-        response = self.client.get(self.subscribe_url, {"prefill": "1"})
+        response = self.client.get(self.subscribe_url)
         self.assertEqual(response.status_code, 200)
         form = response.context["form"]
         self.assertEqual(form.initial.get("full_name"), client_obj.full_name)
@@ -1468,22 +1469,42 @@ class QuickRegisterPrefillTestCase(TestCase):
         self.assertEqual(form.initial.get("wilaya"), client_obj.wilaya)
         self.assertEqual(form.initial.get("address"), client_obj.address)
         self.assertEqual(form.initial.get("education_level"), client_obj.education_level)
+        self.assertEqual(form.initial.get("gender"), client_obj.gender)
+        self.assertEqual(str(form.initial.get("birth_date")), str(client_obj.birth_date))
         # Rendered inputs actually carry the prefilled value.
         self.assertContains(response, client_obj.full_name)
         self.assertContains(response, client_obj.phone)
 
-    def test_get_without_prefill_param_stays_blank_even_when_logged_in(self):
-        user, _client = self._make_client("qr_noparam")
+    def test_active_client_get_with_legacy_prefill_param_still_populates(self):
+        """The old `?prefill=1` link (still used by the "quick register"
+        CTA on the offering detail page) keeps working exactly the same,
+        now that prefill runs regardless of the query string."""
+        user, client_obj = self._make_client("qr_prefill_legacy")
+        self.client.force_login(user)
+        response = self.client.get(self.subscribe_url, {"prefill": "1"})
+        self.assertEqual(response.status_code, 200)
+        form = response.context["form"]
+        self.assertEqual(form.initial.get("full_name"), client_obj.full_name)
+
+    def test_active_client_get_without_prefill_param_is_also_prefilled(self):
+        """Regression test — this used to be the bug: any entry point into
+        this exact view that didn't carry `?prefill=1` (e.g. the
+        branch-first flow launched from the top-nav "التسجيل الإلكتروني"
+        button, whose AJAX-built `subscribe_url` never set the param)
+        landed on a blank form for an already-active, fully-profiled
+        client. Prefill must not depend on how the person got here."""
+        user, client_obj = self._make_client("qr_noparam")
         self.client.force_login(user)
         response = self.client.get(self.subscribe_url)
         self.assertEqual(response.status_code, 200)
         form = response.context["form"]
-        self.assertIsNone(form.initial.get("full_name"))
+        self.assertEqual(form.initial.get("full_name"), client_obj.full_name)
+        self.assertEqual(form.initial.get("phone"), client_obj.phone)
 
-    def test_pending_client_prefill_request_still_blank(self):
+    def test_pending_client_get_stays_blank(self):
         user, _client = self._make_client("qr_pending2", account_status="pending")
         self.client.force_login(user)
-        response = self.client.get(self.subscribe_url, {"prefill": "1"})
+        response = self.client.get(self.subscribe_url)
         self.assertEqual(response.status_code, 200)
         form = response.context["form"]
         self.assertIsNone(form.initial.get("full_name"))
@@ -1491,7 +1512,7 @@ class QuickRegisterPrefillTestCase(TestCase):
     def test_per_registration_fields_never_prefilled(self):
         user, _client = self._make_client("qr_perreg")
         self.client.force_login(user)
-        response = self.client.get(self.subscribe_url, {"prefill": "1"})
+        response = self.client.get(self.subscribe_url)
         form = response.context["form"]
         self.assertNotIn("motivation", form.initial)
         self.assertNotIn("employment_status", form.initial)
