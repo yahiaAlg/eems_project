@@ -1412,8 +1412,18 @@ def dashboard(request):
         )
         .order_by("-updated_at")
     )
+    # Bug fix: "accepted" (مقبول — staff admitted the client) is exactly as
+    # actionable as "pending" — the client still needs to click "تأكيد
+    # التسجيل" (self-service confirm, see Enrollment.can_confirm) to turn
+    # it into an actual purchase (status "confirmed"), which is the only
+    # thing that counts toward Active Purchases. This banner used to only
+    # ever query status=="pending", so once staff accepted someone the
+    # Confirm button vanished from the whole client space and the
+    # enrollment could never progress into a purchase again. "contacted" /
+    # "waitlisted" / "rejected" are deliberately excluded here: those
+    # don't yet represent an offer the client can meaningfully accept.
     pending_enrollments = sorted(
-        (e for e in enrollments if e.status == "pending"),
+        (e for e in enrollments if e.status in ("pending", "accepted")),
         key=lambda e: e.created_at,
         reverse=True,
     )

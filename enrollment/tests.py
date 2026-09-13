@@ -833,6 +833,58 @@ class DashboardEnrollmentVisibilityTestCase(TestCase):
             Enrollment.objects.filter(client=self.client_obj).count(),
         )
 
+    # -- accepted -> confirm action reachable (bug fix) ---------------------
+
+    def test_accepted_enrollment_shows_in_actionable_confirm_banner(self):
+        """Regression test — the Confirm button used to vanish the moment
+        staff moved an enrollment from "pending" to "accepted", leaving no
+        way for the client to ever turn their acceptance into a purchase."""
+        self.client.force_login(self.user)
+        response = self.client.get("/mon-espace/")
+        self.assertIn(self.enrollment, response.context["pending_enrollments"])
+        self.assertContains(response, "تأكيد التسجيل")
+        self.assertContains(
+            response, reverse("enrollment:dashboard_confirm", args=[self.enrollment.pk])
+        )
+
+    def test_confirming_accepted_enrollment_makes_it_an_active_purchase(self):
+        self.client.force_login(self.user)
+        self.client.post(
+            reverse("enrollment:dashboard_confirm", args=[self.enrollment.pk]),
+            follow=True,
+        )
+        self.enrollment.refresh_from_db()
+        self.assertEqual(self.enrollment.status, "confirmed")
+        response = self.client.get(reverse("enrollment:my_purchases"))
+        self.assertIn(self.enrollment, response.context["purchases"])
+
+    def test_waitlisted_and_rejected_do_not_show_confirm_banner(self):
+        """Only "pending"/"accepted" are genuinely actionable — a
+        waitlisted or rejected application isn't an offer the client can
+        confirm into a purchase, so it must stay out of this banner (it
+        still shows, read-only, in the full "تسجيلاتي" list below)."""
+        self.enrollment.status = "waitlisted"
+        self.enrollment.save(update_fields=["status"])
+        rejected_offering = Offering.objects.create(
+            session=self.session,
+            code="D104C",
+            title="Formation Dashboard 10.4 C",
+            duration_months=1,
+            is_active=True,
+        )
+        rejected = Enrollment.objects.create(
+            client=self.client_obj,
+            participant=self.participant,
+            offering=rejected_offering,
+            status="rejected",
+        )
+        self.client.force_login(self.user)
+        response = self.client.get("/mon-espace/")
+        self.assertNotIn(self.enrollment, response.context["pending_enrollments"])
+        self.assertNotIn(rejected, response.context["pending_enrollments"])
+        self.assertIn(self.enrollment, response.context["enrollments"])
+        self.assertIn(rejected, response.context["enrollments"])
+
 
 class StaffNotesVisibilityTestCase(TestCase):
     """TODO 10.5 — staff notes only reach the client dashboard once opted

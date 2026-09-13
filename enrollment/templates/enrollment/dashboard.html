@@ -86,8 +86,9 @@
   {% endif %}
 
   {# TODO 10.4 — full list, every real status, so an enrollment staff
-     moved to "accepted" (etc.) never disappears here, unlike the
-     actionable banner above which only ever surfaces "pending". #}
+     moved to "accepted" (etc.) never disappears here. The actionable
+     banner above now also surfaces "accepted" (not just "pending") so
+     the client can still self-confirm it into an actual purchase. #}
   <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <h2 style="font-size:1.1rem;font-weight:800;margin:0;">
       <iconify-icon icon="mdi:clipboard-list-outline"></iconify-icon> تسجيلاتي ({{ enrollments|length }})
