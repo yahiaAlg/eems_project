@@ -1524,3 +1524,81 @@ class QuickRegisterPrefillTestCase(TestCase):
         self.assertTrue(
             Enrollment.objects.filter(offering=self.offering, participant__phone="0660112233").exists()
         )
+
+    # -- account linking on submit (bug fix) --------------------------------
+
+    def _post_data(self, **overrides):
+        data = {
+            "full_name": "اسم معدل عند التسجيل",
+            "birth_date": "1990-01-01",
+            "gender": "m",
+            "phone": "0660112244",
+            "email": "linked@example.com",
+            "wilaya": "سطيف",
+            "address": "",
+            "education_level": "university",
+            "employment_status": "",
+            "preferred_contact_time": "",
+            "source": "web",
+            "motivation": "",
+            "agree_terms": "on",
+            "website": "",
+        }
+        data.update(overrides)
+        return data
+
+    def test_authenticated_active_client_enrollment_links_to_account_not_orphan(self):
+        """Regression test — submitting subscribe while logged in used to
+        always create a brand-new orphan Client (no `user` link), so the
+        enrollment could never show up in the account's مساحتي/مشترياتي
+        even after staff changed its status. It must attach to the
+        account's own linked, active Client instead, and must not create
+        an extra Client at all."""
+        user, client_obj = self._make_client("qr_linked")
+        self.client.force_login(user)
+        clients_before = Client.objects.count()
+
+        response = self.client.post(self.subscribe_url, self._post_data(), follow=True)
+
+        self.assertEqual(response.status_code, 200)
+        # No new orphan Client was created for a logged-in, active account.
+        self.assertEqual(Client.objects.count(), clients_before)
+        enrollment = Enrollment.objects.get(
+            offering=self.offering, participant__phone="0660112244"
+        )
+        self.assertEqual(enrollment.client_id, client_obj.pk)
+        self.assertEqual(enrollment.client.user_id, user.pk)
+        # ...and therefore visible through the exact query the dashboard
+        # (`enrollment:dashboard`) uses, regardless of its later status.
+        self.assertIn(enrollment, Enrollment.objects.filter(client=client_obj))
+
+    def test_pending_client_enrollment_still_gets_own_orphan_client(self):
+        """A logged-in user whose account isn't active yet (`pending`) must
+        keep the old guest-style behaviour: a fresh, unlinked Client — same
+        guard as the GET prefill above — rather than silently attaching an
+        enrollment to a not-yet-approved account."""
+        user, client_obj = self._make_client("qr_pending_submit", account_status="pending")
+        self.client.force_login(user)
+
+        response = self.client.post(self.subscribe_url, self._post_data(), follow=True)
+
+        self.assertEqual(response.status_code, 200)
+        enrollment = Enrollment.objects.get(
+            offering=self.offering, participant__phone="0660112244"
+        )
+        self.assertNotEqual(enrollment.client_id, client_obj.pk)
+        self.assertIsNone(enrollment.client.user_id)
+
+    def test_anonymous_submission_still_creates_orphan_client(self):
+        """Genuine guests (TODO 1.8) keep working exactly as before: a
+        fresh Client with no `user` link."""
+        clients_before = Client.objects.count()
+
+        response = self.client.post(self.subscribe_url, self._post_data(), follow=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(Client.objects.count(), clients_before + 1)
+        enrollment = Enrollment.objects.get(
+            offering=self.offering, participant__phone="0660112244"
+        )
+        self.assertIsNone(enrollment.client.user_id)

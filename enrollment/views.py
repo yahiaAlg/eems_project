@@ -370,26 +370,37 @@ def subscribe(request, session_slug, code):
         form = IndividualSubscribeForm(request.POST)
         if form.is_valid():
             data = form.cleaned_data
-            client = Client.objects.create(
-                client_type="individual",
+            # Bug fix (was: always `Client.objects.create(...)`, even for an
+            # authenticated user): that orphaned every enrollment onto a
+            # brand-new Client with no `user` link, so it could never match
+            # `request.user.client` and the enrollment silently never
+            # appeared in "مساحتي"/"مشترياتي" — regardless of the status
+            # staff later set it to. Reuse the account's already-linked,
+            # active Client instead, same guard as the TODO 10.3.2 prefill
+            # above, and only create a fresh (unlinked) Client for genuine
+            # guests.
+            client = getattr(request.user, "client", None)
+            if not (client and client.account_status == "active"):
+                client = Client.objects.create(
+                    client_type="individual",
+                    phone=data["phone"],
+                    email=data.get("email", ""),
+                    wilaya=data.get("wilaya") or "سطيف",
+                    address=data.get("address", ""),
+                    full_name=data["full_name"],
+                    birth_date=data.get("birth_date"),
+                    gender=data.get("gender", ""),
+                    education_level=data.get("education_level", ""),
+                    source=data.get("source") or "web",
+                )
+            participant = Participant.objects.create(
+                client=client,
+                full_name=data["full_name"],
                 phone=data["phone"],
                 email=data.get("email", ""),
-                wilaya=data.get("wilaya") or "سطيف",
-                address=data.get("address", ""),
-                full_name=data["full_name"],
                 birth_date=data.get("birth_date"),
                 gender=data.get("gender", ""),
                 education_level=data.get("education_level", ""),
-                source=data.get("source") or "web",
-            )
-            participant = Participant.objects.create(
-                client=client,
-                full_name=client.full_name,
-                phone=client.phone,
-                email=client.email,
-                birth_date=client.birth_date,
-                gender=client.gender,
-                education_level=client.education_level,
             )
             motivation_lines = [data.get("motivation", "").strip()]
             extra = []
@@ -415,10 +426,13 @@ def subscribe(request, session_slug, code):
                 offering=offering,
                 motivation="\n\n".join(line for line in motivation_lines if line),
             )
-            # This quick-subscribe path creates a Client with no linked
-            # User (mon-espace now requires a real account, see TODO
-            # 1.8), so there's no self-service space to send them to yet —
-            # land on the static thank-you page instead.
+            # Guests still land on the static thank-you page below (their
+            # freshly-created Client has no linked User, so there's no
+            # self-service space to send them to yet — mon-espace requires
+            # a real account, see TODO 1.8). Logged-in users get the same
+            # confirmation message here, but the enrollment above is now
+            # correctly attached to their account and will show up right
+            # away in مساحتي/مشترياتي.
             messages.success(
                 request,
                 "تم استلام طلب تسجيلكم بنجاح. سيتواصل معكم فريقنا لتأكيد التسجيل.",
