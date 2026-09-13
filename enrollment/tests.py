@@ -9,6 +9,8 @@ from .models import (
     Cart,
     CartItem,
     Client,
+    Comment,
+    Enquiry,
     Enrollment,
     EnrollmentNote,
     EnrollmentParticipant,
@@ -1675,3 +1677,106 @@ class QuickRegisterPrefillTestCase(TestCase):
             offering=self.offering, participant__phone="0660112244"
         )
         self.assertIsNone(enrollment.client.user_id)
+
+
+class SpecialtyDetailFormPrefillTestCase(TestCase):
+    """The offering detail page's "أضف تعليقك" (comment) and "عندك سؤال
+    حول هذا التخصص؟" (enquiry) forms are public, but a logged-in,
+    already-active client shouldn't have to retype their own name/phone/
+    email — same fix as the subscribe form's prefill (TODO 10.3.2)."""
+
+    def setUp(self):
+        session = FormationSession.objects.create(
+            name="Session Detail Prefill", slug="session-detail-prefill", is_active=True
+        )
+        self.offering = Offering.objects.create(
+            session=session,
+            code="DP01",
+            title="Formation Detail Prefill",
+            duration_months=2,
+            is_active=True,
+            seats_available=10,
+        )
+        self.detail_url = self.offering.get_absolute_url()
+
+    def _make_client(self, username, account_status="active"):
+        user = User.objects.create_user(username=username, password="x", is_active=True)
+        client = Client.objects.create(
+            user=user,
+            client_type="individual",
+            full_name="زبون تجريبي للتعليقات",
+            phone="0555000888",
+            email="detailprefill@example.com",
+            account_status=account_status,
+        )
+        return user, client
+
+    def test_anonymous_get_forms_are_blank(self):
+        response = self.client.get(self.detail_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.context["comment_form"].initial.get("name"))
+        self.assertIsNone(response.context["enquiry_form"].initial.get("name"))
+
+    def test_active_client_get_prefills_comment_and_enquiry_forms(self):
+        user, client_obj = self._make_client("detail_active")
+        self.client.force_login(user)
+        response = self.client.get(self.detail_url)
+        self.assertEqual(response.status_code, 200)
+
+        comment_form = response.context["comment_form"]
+        self.assertEqual(comment_form.initial.get("name"), client_obj.display_name)
+        self.assertEqual(comment_form.initial.get("email"), client_obj.email)
+
+        enquiry_form = response.context["enquiry_form"]
+        self.assertEqual(enquiry_form.initial.get("name"), client_obj.display_name)
+        self.assertEqual(enquiry_form.initial.get("phone"), client_obj.phone)
+        self.assertEqual(enquiry_form.initial.get("email"), client_obj.email)
+
+        # Rendered inputs actually carry the prefilled value.
+        self.assertContains(response, client_obj.display_name)
+        self.assertContains(response, client_obj.phone)
+
+    def test_pending_client_get_forms_stay_blank(self):
+        user, _client = self._make_client("detail_pending", account_status="pending")
+        self.client.force_login(user)
+        response = self.client.get(self.detail_url)
+        self.assertIsNone(response.context["comment_form"].initial.get("name"))
+        self.assertIsNone(response.context["enquiry_form"].initial.get("name"))
+
+    def test_comment_submission_still_works_when_logged_in(self):
+        user, client_obj = self._make_client("detail_comment_submit")
+        self.client.force_login(user)
+        response = self.client.post(
+            self.detail_url,
+            {
+                "form_type": "comment",
+                "name": client_obj.display_name,
+                "email": client_obj.email,
+                "rating": 5,
+                "text": "تعليق تجريبي.",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            Comment.objects.filter(offering=self.offering, text="تعليق تجريبي.").exists()
+        )
+
+    def test_enquiry_submission_still_works_when_logged_in(self):
+        user, client_obj = self._make_client("detail_enquiry_submit")
+        self.client.force_login(user)
+        response = self.client.post(
+            self.detail_url,
+            {
+                "form_type": "enquiry",
+                "name": client_obj.display_name,
+                "phone": client_obj.phone,
+                "email": client_obj.email,
+                "question": "سؤال تجريبي؟",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            Enquiry.objects.filter(offering=self.offering, question="سؤال تجريبي؟").exists()
+        )

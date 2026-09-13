@@ -267,8 +267,28 @@ def specialty_detail(request, session_slug, code):
         is_active=True,
     )
 
-    comment_form = CommentForm()
-    enquiry_form = EnquiryForm()
+    detail_client = getattr(request.user, "client", None)
+
+    # Bug fix (matches the same gap already fixed on the subscribe form):
+    # these forms are public and anyone can fill them in blank, but a
+    # logged-in, already-active client shouldn't have to retype their own
+    # name/phone/email every time either. Only applies to the blank GET
+    # forms below — a POST is bound straight from request.POST regardless.
+    comment_initial = {}
+    enquiry_initial = {}
+    if detail_client and detail_client.account_status == "active":
+        comment_initial = {
+            "name": detail_client.display_name,
+            "email": detail_client.email,
+        }
+        enquiry_initial = {
+            "name": detail_client.display_name,
+            "phone": detail_client.phone,
+            "email": detail_client.email,
+        }
+
+    comment_form = CommentForm(initial=comment_initial)
+    enquiry_form = EnquiryForm(initial=enquiry_initial)
 
     if request.method == "POST" and request.POST.get("form_type") == "comment":
         comment_form = CommentForm(request.POST)
@@ -294,7 +314,6 @@ def specialty_detail(request, session_slug, code):
             )
             return redirect(offering.get_absolute_url() + "#enquiry")
 
-    detail_client = getattr(request.user, "client", None)
     is_wishlisted = bool(
         detail_client
         and WishlistItem.objects.filter(
