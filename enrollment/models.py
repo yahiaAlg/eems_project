@@ -1061,6 +1061,55 @@ class EnrollmentNote(models.Model):
         return f"note on enrollment #{self.enrollment_id}"
 
 
+class SessionChangeRequest(models.Model):
+    """A client-submitted request to change/reschedule a session's date.
+
+    Submitted against one specific `Enrollment` (the client's own
+    purchase) even though the underlying `FormationSession.start_date`
+    it's about is shared across every enrollment on that offering (see
+    `services.schedule_session`) — staff review it and action it manually
+    via the existing "schedule session" admin flow. This model is a
+    request log + admin-notification trigger, not an approval workflow:
+    there's no automatic effect on the session's actual date.
+    """
+
+    STATUS_PENDING = "pending"
+    STATUS_REVIEWED = "reviewed"
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "بانتظار المراجعة"),
+        (STATUS_REVIEWED, "تمت المراجعة"),
+    ]
+
+    enrollment = models.ForeignKey(
+        Enrollment,
+        on_delete=models.CASCADE,
+        related_name="session_change_requests",
+        verbose_name="التسجيل",
+    )
+    proposed_date = models.DateField("التاريخ المقترح")
+    reason = models.TextField("سبب الطلب", blank=True)
+    status = models.CharField(
+        "الحالة", max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING
+    )
+    created_at = models.DateTimeField("تاريخ الطلب", auto_now_add=True)
+    reviewed_at = models.DateTimeField("تاريخ المراجعة", null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="تمت المراجعة من طرف",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "طلب تغيير موعد الدورة"
+        verbose_name_plural = "طلبات تغيير موعد الدورة"
+
+    def __str__(self):
+        return f"{self.enrollment} → {self.proposed_date:%d/%m/%Y}"
+
+
 class EnrollmentParticipant(models.Model):
     """One roster line for an enterprise Enrollment (Phase 10, TODO 10.0.1).
 

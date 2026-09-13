@@ -1,0 +1,21 @@
+{% extends "emails/base_email.html" %}
+{% block title %}تعليق جديد بانتظار المراجعة — {{ site_name }}{% endblock %}
+{% block body %}
+<div style="font-size:12px;font-weight:700;color:#f59e0b;letter-spacing:.5px;margin-bottom:10px;">إشعار إداري</div>
+<h1 style="font-size:22px;font-weight:800;color:#0f172a;margin:0 0 16px;">تعليق جديد بانتظار المراجعة</h1>
+<p style="font-size:14.5px;line-height:1.9;color:#334155;margin:0 0 20px;">
+  ترك أحد الزوار تعليقا جديدا على صفحة تخصص. التعليق لن يظهر في الموقع إلا بعد الموافقة عليه من لوحة التحكم.
+</p>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:22px;">
+  <tr><td style="padding:10px 20px;border-bottom:1px solid #e2e8f0;"><span style="color:#64748b;font-size:12.5px;">الاسم</span><br><strong style="color:#0f172a;font-size:14.5px;">{{ name }}</strong></td></tr>
+  {% if email %}<tr><td style="padding:10px 20px;border-bottom:1px solid #e2e8f0;"><span style="color:#64748b;font-size:12.5px;">البريد الإلكتروني</span><br><strong style="color:#0f172a;font-size:14.5px;" dir="ltr">{{ email }}</strong></td></tr>{% endif %}
+  <tr><td style="padding:10px 20px;border-bottom:1px solid #e2e8f0;"><span style="color:#64748b;font-size:12.5px;">التخصص</span><br><strong style="color:#0f172a;font-size:14.5px;">{{ offering_title }} <span style="color:#94a3b8;font-weight:400;" dir="ltr">({{ offering_code }})</span></strong></td></tr>
+  <tr><td style="padding:10px 20px;border-bottom:1px solid #e2e8f0;"><span style="color:#64748b;font-size:12.5px;">التقييم</span><br><strong style="color:#0f172a;font-size:14.5px;">{{ rating }} / 5</strong></td></tr>
+  <tr><td style="padding:14px 20px;"><span style="color:#64748b;font-size:12.5px;">التعليق</span><br><span style="color:#334155;font-size:14px;line-height:1.8;white-space:pre-line;">{{ text }}</span></td></tr>
+</table>
+
+<div style="text-align:center;">
+  <a href="{{ site_url }}/admin/enrollment/comment/" style="display:inline-block;background:#f59e0b;color:#0f172a;font-weight:700;font-size:14px;text-decoration:none;padding:12px 26px;border-radius:8px;">مراجعة التعليقات في لوحة التحكم</a>
+</div>
+{% endblock %}

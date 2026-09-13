@@ -1,0 +1,92 @@
+{% extends "pages/base.html" %}
+{% load static %}
+
+{% block title %}مساحتي — طلب تغيير موعد الدورة{% endblock %}
+
+{% block extra_head %}
+<link href="{% static 'enrollment/css/subscribe.css' %}" rel="stylesheet">
+<link href="{% static 'enrollment/css/dashboard.css' %}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+{% include "pages/partials/_navbar.html" %}
+
+<section id="sub-hero">
+  <div class="container position-relative" style="z-index:1;">
+    <div class="crumb">
+      <a href="{% url 'pages:home' %}">الرئيسية</a> /
+      <a href="{% url 'enrollment:my_purchases' %}">مشترياتي</a> /
+      طلب تغيير موعد الدورة
+    </div>
+    <h1><iconify-icon icon="mdi:calendar-edit-outline"></iconify-icon> طلب تغيير موعد الدورة</h1>
+    <p>اقترح تاريخا بديلا لدورة "{{ enrollment.offering.title }}"، وسيراجع فريقنا طلبك.</p>
+  </div>
+</section>
+
+<div class="wrap">
+  {% include "enrollment/partials/_client_nav.html" %}
+
+  <div class="row g-4 mt-2">
+    <div class="col-lg-8">
+      <div class="panel">
+        <div class="enrollment-meta mb-3">
+          <span><iconify-icon icon="mdi:book-open-outline"></iconify-icon> {{ enrollment.offering.title }} <span dir="ltr">({{ enrollment.offering.code }})</span></span>
+          <span><iconify-icon icon="mdi:calendar-outline"></iconify-icon>
+            الموعد الحالي:
+            {% if enrollment.offering.session.start_date %}
+              {{ enrollment.offering.session.start_date|date:"d/m/Y" }}
+            {% else %}
+              لم يُحدد بعد
+            {% endif %}
+          </span>
+        </div>
+
+        {% if pending_request %}
+        <div class="alert-eems warning" style="display:flex;align-items:flex-start;gap:10px;">
+          <iconify-icon icon="mdi:clock-alert-outline" style="font-size:1.2rem;flex-shrink:0;margin-top:2px;"></iconify-icon>
+          <div>
+            <strong>لديك طلب قيد المراجعة.</strong>
+            أرسلت طلبا لتغيير الموعد إلى
+            <strong>{{ pending_request.proposed_date|date:"d/m/Y" }}</strong>
+            بتاريخ {{ pending_request.created_at|date:"d/m/Y" }}. سيتواصل معك فريقنا بمجرد مراجعته.
+          </div>
+        </div>
+        <a href="{% url 'enrollment:my_purchases' %}" class="cta mt-3">
+          <iconify-icon icon="mdi:arrow-right"></iconify-icon> العودة إلى مشترياتي
+        </a>
+        {% else %}
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          {% if form.non_field_errors %}
+          <ul class="errorlist">
+            {% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}
+          </ul>
+          {% endif %}
+
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">{{ form.proposed_date.label }}</label>
+              {{ form.proposed_date }}
+              {% if form.proposed_date.errors %}<ul class="errorlist">{% for e in form.proposed_date.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+            </div>
+            <div class="col-12">
+              <label class="form-label">{{ form.reason.label }}</label>
+              {{ form.reason }}
+              {% if form.reason.errors %}<ul class="errorlist">{% for e in form.reason.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+            </div>
+          </div>
+
+          <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="cta">
+              <iconify-icon icon="mdi:send-outline"></iconify-icon> إرسال الطلب
+            </button>
+            <a href="{% url 'enrollment:my_purchases' %}" class="btn-mini btn-mini-outline">إلغاء</a>
+          </div>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

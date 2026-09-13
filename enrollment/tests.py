@@ -1,3 +1,4 @@
+from datetime import date
 from decimal import Decimal
 
 from django.contrib.auth.models import User
@@ -21,6 +22,7 @@ from .models import (
     ProformaInvoiceItem,
     QuoteRequest,
     QuoteRequestItem,
+    SessionChangeRequest,
     STATUS_CHOICES,
     WishlistItem,
 )
@@ -1780,3 +1782,324 @@ class SpecialtyDetailFormPrefillTestCase(TestCase):
         self.assertTrue(
             Enquiry.objects.filter(offering=self.offering, question="سؤال تجريبي؟").exists()
         )
+
+
+class CommentAdminNotificationTestCase(TestCase):
+    """A new comment — whether from a logged-in client or a plain guest —
+    must alert the admin inbox (configured via `settings.ADMINS`) so staff
+    know there's something waiting for moderation."""
+
+    def setUp(self):
+        session = FormationSession.objects.create(
+            name="Session Comment Notif", slug="session-comment-notif", is_active=True
+        )
+        self.offering = Offering.objects.create(
+            session=session,
+            code="CN01",
+            title="Formation Comment Notif",
+            duration_months=2,
+            is_active=True,
+        )
+        self.detail_url = self.offering.get_absolute_url()
+
+    def _post_comment(self, **overrides):
+        data = {
+            "form_type": "comment",
+            "name": "زائر تجريبي",
+            "email": "guest@example.com",
+            "rating": 4,
+            "text": "تعليق تجريبي للإشعار.",
+        }
+        data.update(overrides)
+        return self.client.post(self.detail_url, data, follow=True)
+
+    def test_guest_comment_sends_admin_notification(self):
+        from django.core import mail
+        mail.outbox = []
+        response = self._post_comment()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), 1)
+        sent = mail.outbox[0]
+        self.assertIn("support@excellance-ms.dz", sent.to)
+        self.assertIn(self.offering.title, sent.subject)
+        self.assertIn("تعليق تجريبي للإشعار.", sent.alternatives[0][0])
+
+    def test_logged_in_client_comment_also_sends_admin_notification(self):
+        from django.core import mail
+        user = User.objects.create_user(username="commenter", password="x", is_active=True)
+        Client.objects.create(
+            user=user,
+            client_type="individual",
+            full_name="زبون معلق",
+            phone="0555000999",
+            email="commenter@example.com",
+            account_status="active",
+        )
+        self.client.force_login(user)
+        mail.outbox = []
+        response = self._post_comment(name="زبون معلق", email="commenter@example.com")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("support@excellance-ms.dz", mail.outbox[0].to)
+
+    def test_invalid_comment_sends_no_notification(self):
+        from django.core import mail
+        mail.outbox = []
+        response = self._post_comment(text="")  # blank text -> form invalid
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), 0)
+
+
+class EnrollmentConfirmedAdminNotificationTestCase(TestCase):
+    """Mirrors `CommentAdminNotificationTestCase`: once a client confirms
+    an enrollment into an Active Purchase via `dashboard_confirm`, the
+    admin inbox gets its own notification alongside the client's."""
+
+    def setUp(self):
+        self.session = FormationSession.objects.create(
+            name="Session Confirm Notif", slug="session-confirm-notif", is_active=True
+        )
+        self.offering = Offering.objects.create(
+            session=self.session,
+            code="CFN01",
+            title="Formation Confirm Notif",
+            duration_months=2,
+            is_active=True,
+        )
+        self.user = User.objects.create_user(
+            username="confirm_notif_client", password="x", is_active=True
+        )
+        self.client_obj = Client.objects.create(
+            user=self.user,
+            client_type="individual",
+            full_name="زبون تأكيد",
+            phone="0555000777",
+            email="confirmnotif@example.com",
+            account_status="active",
+        )
+        self.participant = Participant.objects.create(
+            client=self.client_obj, full_name="زبون تأكيد",
+        )
+        self.enrollment = Enrollment.objects.create(
+            client=self.client_obj,
+            participant=self.participant,
+            offering=self.offering,
+            status="accepted",
+        )
+
+    def test_confirming_sends_both_client_and_admin_emails(self):
+        from django.core import mail
+        self.client.force_login(self.user)
+        mail.outbox = []
+        self.client.post(
+            reverse("enrollment:dashboard_confirm", args=[self.enrollment.pk]),
+            follow=True,
+        )
+        self.assertEqual(len(mail.outbox), 2)
+        recipients = [addr for msg in mail.outbox for addr in msg.to]
+        self.assertIn("confirmnotif@example.com", recipients)
+        self.assertIn("support@excellance-ms.dz", recipients)
+        admin_mail = next(m for m in mail.outbox if "support@excellance-ms.dz" in m.to)
+        self.assertIn(self.client_obj.display_name, admin_mail.alternatives[0][0])
+
+    def test_no_admins_configured_still_sends_client_email(self):
+        from django.core import mail
+        from django.test import override_settings
+        self.client.force_login(self.user)
+        mail.outbox = []
+        with override_settings(ADMINS=[]):
+            self.client.post(
+                reverse("enrollment:dashboard_confirm", args=[self.enrollment.pk]),
+                follow=True,
+            )
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("confirmnotif@example.com", mail.outbox[0].to)
+
+
+class EnquiryNotificationTestCase(TestCase):
+    """Enquiries (offering-specific and general "talk to an advisor")
+    previously sent no email at all. Now they get the same admin+visitor
+    pair the actual contact form already sends."""
+
+    def setUp(self):
+        session = FormationSession.objects.create(
+            name="Session Enquiry Notif", slug="session-enquiry-notif", is_active=True
+        )
+        self.offering = Offering.objects.create(
+            session=session,
+            code="EQN01",
+            title="Formation Enquiry Notif",
+            duration_months=2,
+            is_active=True,
+        )
+        self.detail_url = self.offering.get_absolute_url()
+
+    def test_offering_enquiry_sends_admin_and_visitor_emails(self):
+        from django.core import mail
+        mail.outbox = []
+        response = self.client.post(
+            self.detail_url,
+            {
+                "form_type": "enquiry",
+                "name": "زائر مستفسر",
+                "phone": "0555111222",
+                "email": "asker@example.com",
+                "question": "هل هذا التخصص مفتوح للتسجيل؟",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), 2)
+        recipients = [addr for msg in mail.outbox for addr in msg.to]
+        self.assertIn("support@excellance-ms.dz", recipients)
+        self.assertIn("asker@example.com", recipients)
+        admin_mail = next(m for m in mail.outbox if "support@excellance-ms.dz" in m.to)
+        self.assertIn(self.offering.title, admin_mail.subject)
+
+    def test_offering_enquiry_without_email_only_notifies_admin(self):
+        from django.core import mail
+        mail.outbox = []
+        self.client.post(
+            self.detail_url,
+            {
+                "form_type": "enquiry",
+                "name": "زائر بدون بريد",
+                "phone": "0555111333",
+                "question": "سؤال بدون بريد إلكتروني؟",
+            },
+            follow=True,
+        )
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("support@excellance-ms.dz", mail.outbox[0].to)
+
+    def test_general_enquiry_sends_admin_and_visitor_emails(self):
+        from django.core import mail
+        mail.outbox = []
+        response = self.client.post(
+            reverse("enrollment:general_enquiry"),
+            {
+                "name": "زائر عام",
+                "phone": "0555111444",
+                "email": "general@example.com",
+                "question": "أريد التحدث مع مستشار.",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), 2)
+        recipients = [addr for msg in mail.outbox for addr in msg.to]
+        self.assertIn("support@excellance-ms.dz", recipients)
+        self.assertIn("general@example.com", recipients)
+        self.assertTrue(
+            Enquiry.objects.filter(email="general@example.com", offering__isnull=True).exists()
+        )
+
+    def test_invalid_enquiry_sends_no_notification(self):
+        from django.core import mail
+        mail.outbox = []
+        response = self.client.post(
+            self.detail_url,
+            {"form_type": "enquiry", "name": "", "question": ""},  # blank -> invalid
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), 0)
+
+
+class SessionChangeRequestTestCase(TestCase):
+    """A client can propose an alternative session date on a confirmed
+    enrollment ('مشترياتي'); this only logs the request and alerts the
+    admin inbox — it never touches the actual (shared) session date."""
+
+    def setUp(self):
+        self.session = FormationSession.objects.create(
+            name="Session Change Req", slug="session-change-req", is_active=True,
+            start_date=date(2026, 10, 1),
+        )
+        self.offering = Offering.objects.create(
+            session=self.session,
+            code="SCR01",
+            title="Formation Change Req",
+            duration_months=2,
+            is_active=True,
+        )
+        self.user = User.objects.create_user(
+            username="change_req_client", password="x", is_active=True
+        )
+        self.client_obj = Client.objects.create(
+            user=self.user,
+            client_type="individual",
+            full_name="زبون طلب تغيير",
+            phone="0555222333",
+            email="changereq@example.com",
+            account_status="active",
+        )
+        self.participant = Participant.objects.create(
+            client=self.client_obj, full_name="زبون طلب تغيير",
+        )
+        self.enrollment = Enrollment.objects.create(
+            client=self.client_obj,
+            participant=self.participant,
+            offering=self.offering,
+            status="confirmed",
+            confirmed_at=timezone.now(),
+        )
+        self.url = reverse(
+            "enrollment:dashboard_request_session_change", args=[self.enrollment.pk]
+        )
+
+    def test_only_confirmed_enrollment_owner_can_reach_the_form(self):
+        other_user = User.objects.create_user(
+            username="not_the_owner", password="x", is_active=True
+        )
+        self.client.force_login(other_user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 404)
+
+    def test_pending_enrollment_cannot_request_a_change(self):
+        self.enrollment.status = "pending"
+        self.enrollment.confirmed_at = None
+        self.enrollment.save()
+        self.client.force_login(self.user)
+        response = self.client.get(self.url)
+        self.assertEqual(response.status_code, 404)
+
+    def test_submitting_creates_request_and_notifies_admin(self):
+        from django.core import mail
+        self.client.force_login(self.user)
+        mail.outbox = []
+        response = self.client.post(
+            self.url,
+            {"proposed_date": "2026-11-15", "reason": "تعارض مع موعد آخر."},
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        change_request = SessionChangeRequest.objects.get(enrollment=self.enrollment)
+        self.assertEqual(change_request.proposed_date, date(2026, 11, 15))
+        self.assertEqual(change_request.status, SessionChangeRequest.STATUS_PENDING)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("support@excellance-ms.dz", mail.outbox[0].to)
+        self.assertIn(self.client_obj.display_name, mail.outbox[0].alternatives[0][0])
+
+    def test_second_submission_blocked_while_one_is_pending(self):
+        self.client.force_login(self.user)
+        self.client.post(self.url, {"proposed_date": "2026-11-15", "reason": ""})
+        from django.core import mail
+        mail.outbox = []
+        self.client.post(
+            self.url, {"proposed_date": "2026-12-01", "reason": "محاولة ثانية"}, follow=True,
+        )
+        self.assertEqual(
+            SessionChangeRequest.objects.filter(enrollment=self.enrollment).count(), 1
+        )
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_no_admins_configured_sends_no_email_but_still_logs_request(self):
+        from django.core import mail
+        from django.test import override_settings
+        self.client.force_login(self.user)
+        mail.outbox = []
+        with override_settings(ADMINS=[]):
+            self.client.post(self.url, {"proposed_date": "2026-11-15", "reason": ""})
+        self.assertTrue(SessionChangeRequest.objects.filter(enrollment=self.enrollment).exists())
+        self.assertEqual(len(mail.outbox), 0)

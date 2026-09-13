@@ -87,11 +87,17 @@
       <div class="enrollment-meta">
         <span><iconify-icon icon="mdi:calendar-outline"></iconify-icon> تاريخ التسجيل: {{ e.created_at|date:"d/m/Y" }}</span>
         <span><iconify-icon icon="mdi:check-decagram-outline"></iconify-icon> تم التأكيد: {{ e.confirmed_at|date:"d/m/Y" }}</span>
+        <span><iconify-icon icon="mdi:calendar-clock-outline"></iconify-icon>
+          موعد الدورة: {% if e.offering.session.start_date %}{{ e.offering.session.start_date|date:"d/m/Y" }}{% else %}لم يُحدد بعد{% endif %}
+        </span>
       </div>
 
       <div class="enrollment-actions">
         <a href="{% url 'enrollment:detail' e.offering.session.slug e.offering.code %}" class="btn-mini btn-mini-outline">
           <iconify-icon icon="mdi:information-outline"></iconify-icon> تفاصيل التخصص
+        </a>
+        <a href="{% url 'enrollment:dashboard_request_session_change' e.pk %}" class="btn-mini btn-mini-outline">
+          <iconify-icon icon="mdi:calendar-edit-outline"></iconify-icon> طلب تغيير الموعد
         </a>
         <span class="locked-note">
           <iconify-icon icon="mdi:lock-check-outline"></iconify-icon> تسجيل مؤكد ونهائي

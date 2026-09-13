@@ -53,6 +53,14 @@ urlpatterns = [
     path("mon-espace/profil/", views.profile, name="profile"),
     path("mon-espace/<int:pk>/confirmer/", views.dashboard_confirm, name="dashboard_confirm"),
     path("mon-espace/<int:pk>/annuler/", views.dashboard_cancel, name="dashboard_cancel"),
+    # Client-side "request a session date change" (propose-only — staff
+    # still action any actual reschedule through the admin flow, since
+    # the date is shared with every other enrollment on the offering).
+    path(
+        "mon-espace/<int:pk>/changement-date/",
+        views.dashboard_request_session_change,
+        name="dashboard_request_session_change",
+    ),
 
     # Company roster (TODO 10.2) — EnrollmentParticipant CRUD for an
     # enterprise client's own enrollment, + CSV export. Staff reach the

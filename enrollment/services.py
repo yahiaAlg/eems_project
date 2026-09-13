@@ -6,6 +6,7 @@ admin messages only, mail-server errors are reported as a failed result
 instead of blowing up whatever save triggered the call.
 """
 
+from django.conf import settings
 from django.template.loader import render_to_string
 from django.utils import timezone
 
@@ -111,6 +112,83 @@ def schedule_session(enrollment, start_date, registration_deadline=None):
         f"{client.display_name}: تم تحديد تاريخ الدورة ({date_display})، "
         f"إغلاق القائمة، وإرسال الإشعار إلى {client.email}.",
     )
+
+
+def notify_new_enquiry(enquiry):
+    """Alert the admin inbox and auto-reply to the visitor for a new
+    `Enquiry` — offering-specific ("عندك سؤال حول هذا التخصص؟") or general
+    ("تحدث مع مستشار"). Mirrors `pages/views.py::contact`'s own
+    admin+user pair (the contact form already does both; this closes the
+    same gap for enquiries, which previously sent nothing). Never raises,
+    fire-and-forget like every other notifier in this module — no return
+    value needed since neither view branch surfaces per-recipient status
+    to the visitor.
+    """
+    context = {
+        "name": enquiry.name,
+        "phone": enquiry.phone,
+        "email": enquiry.email,
+        "question": enquiry.question,
+        "offering_title": enquiry.offering.title if enquiry.offering else "",
+        "offering_code": enquiry.offering.code if enquiry.offering else "",
+    }
+
+    admin_emails = [addr for _name, addr in getattr(settings, "ADMINS", [])]
+    if admin_emails:
+        subject = (
+            f"استفسار جديد: {enquiry.offering.title}"
+            if enquiry.offering
+            else f"استفسار عام جديد من {enquiry.name}"
+        )
+        send_branded_mail(
+            template="emails/enquiry_admin_notification.html",
+            subject=subject,
+            to=admin_emails,
+            reply_to=enquiry.email or None,
+            context=context,
+        )
+
+    if enquiry.email:
+        send_branded_mail(
+            template="emails/enquiry_user_confirmation.html",
+            subject="استلمنا استفسارك — إيمس",
+            to=[enquiry.email],
+            context=context,
+        )
+
+
+def notify_admin_of_session_change_request(change_request):
+    """Alert the admin inbox once a client proposes a new session date
+    (TODO: client-side reschedule request). Mirrors the other
+    `send_branded_mail`-based notifiers in this module: never raises,
+    returns a `(ok, message)` tuple meant for admin/flash messages only.
+    """
+    enrollment = change_request.enrollment
+    client = enrollment.client
+    admin_emails = [addr for _name, addr in getattr(settings, "ADMINS", [])]
+    if not admin_emails:
+        return False, "لا يوجد بريد إداري مضبوط — لم يُرسل إشعار طلب تغيير الموعد."
+
+    session = enrollment.offering.session
+    sent = send_branded_mail(
+        template="emails/session_change_request_admin_notification.html",
+        subject=f"طلب تغيير موعد الدورة — {client.display_name}",
+        to=admin_emails,
+        context={
+            "client_name": client.display_name,
+            "client_type": client.get_client_type_display(),
+            "participant_name": enrollment.participant.full_name,
+            "offering_title": enrollment.offering.title,
+            "offering_code": enrollment.offering.code,
+            "session_name": session.name,
+            "current_date": session.start_date,
+            "proposed_date": change_request.proposed_date,
+            "reason": change_request.reason,
+        },
+    )
+    if not sent:
+        return False, f"تعذر إرسال إشعار طلب تغيير الموعد ({client.display_name})."
+    return True, f"تم إرسال إشعار طلب تغيير الموعد ({client.display_name})."
 
 
 def build_session_brief(enrollment):

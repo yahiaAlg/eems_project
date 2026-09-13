@@ -35,6 +35,7 @@ from .forms import (
     GeneralEnquiryForm,
     IndividualSubscribeForm,
     ProformaLineConfirmForm,
+    SessionChangeRequestForm,
 )
 from .models import (
     Cart,
@@ -51,9 +52,11 @@ from .models import (
     ProformaInvoiceItem,
     QuoteRequest,
     QuoteRequestItem,
+    SessionChangeRequest,
     STATUS_CHOICES,
     WishlistItem,
 )
+from .services import notify_admin_of_session_change_request, notify_new_enquiry
 
 
 def _shared_chrome_context():
@@ -250,6 +253,7 @@ def general_enquiry(request):
             enquiry = form.save(commit=False)
             enquiry.offering = None
             enquiry.save()
+            notify_new_enquiry(enquiry)
             messages.success(
                 request,
                 "تم استلام طلبكم، سيتواصل معكم أحد مستشارينا في أقرب وقت ممكن.",
@@ -296,6 +300,21 @@ def specialty_detail(request, session_slug, code):
             comment = comment_form.save(commit=False)
             comment.offering = offering
             comment.save()
+            admin_emails = _admin_emails()
+            if admin_emails:
+                send_branded_mail(
+                    template="emails/comment_admin_notification.html",
+                    subject=f"تعليق جديد بانتظار المراجعة — {offering.title}",
+                    to=admin_emails,
+                    context={
+                        "name": comment.name,
+                        "email": comment.email,
+                        "rating": comment.rating,
+                        "text": comment.text,
+                        "offering_title": offering.title,
+                        "offering_code": offering.code,
+                    },
+                )
             messages.success(
                 request,
                 "شكرا لك! تم استلام تعليقك وسيظهر بعد مراجعته من طرف فريقنا.",
@@ -308,6 +327,7 @@ def specialty_detail(request, session_slug, code):
             enquiry = enquiry_form.save(commit=False)
             enquiry.offering = offering
             enquiry.save()
+            notify_new_enquiry(enquiry)
             messages.success(
                 request,
                 "تم استلام استفساركم، سيتواصل معكم فريقنا في أقرب وقت ممكن.",
@@ -1550,18 +1570,28 @@ def dashboard_confirm(request, pk):
         enrollment.status = "confirmed"
         enrollment.confirmed_at = timezone.now()
         enrollment.save(update_fields=["status", "confirmed_at", "updated_at"])
+        admin_notification_context = {
+            "client_name": enrollment.client.display_name,
+            "client_type": enrollment.client.get_client_type_display(),
+            "participant_name": enrollment.participant.full_name,
+            "offering_title": enrollment.offering.title,
+            "offering_code": enrollment.offering.code,
+            "session_name": enrollment.offering.session.name,
+        }
         if enrollment.client.email:
             send_branded_mail(
                 template="emails/enrollment_confirmed.html",
                 subject="تأكيد تسجيلك — إيمس",
                 to=[enrollment.client.email],
-                context={
-                    "client_name": enrollment.client.display_name,
-                    "participant_name": enrollment.participant.full_name,
-                    "offering_title": enrollment.offering.title,
-                    "offering_code": enrollment.offering.code,
-                    "session_name": enrollment.offering.session.name,
-                },
+                context=dict(admin_notification_context),
+            )
+        admin_emails = _admin_emails()
+        if admin_emails:
+            send_branded_mail(
+                template="emails/enrollment_confirmed_admin_notification.html",
+                subject=f"تأكيد تسجيل — شراء نشط: {enrollment.client.display_name}",
+                to=admin_emails,
+                context=admin_notification_context,
             )
         messages.success(
             request, "تم تأكيد تسجيلك بنجاح. لم يعد بالإمكان إلغاؤه بعد الآن."
@@ -1569,6 +1599,58 @@ def dashboard_confirm(request, pk):
     else:
         messages.warning(request, "لا يمكن تأكيد هذا التسجيل في وضعه الحالي.")
     return redirect("enrollment:dashboard")
+
+
+@login_required
+def dashboard_request_session_change(request, pk):
+    """Let a client propose an alternative date for a confirmed
+    enrollment's session — only a request log + admin notification (see
+    `SessionChangeRequest`), not an approval workflow: staff still action
+    any actual reschedule through the existing admin "schedule session"
+    flow, since the date is shared with every other enrollment on the
+    same offering."""
+    client = getattr(request.user, "client", None)
+    enrollment = get_object_or_404(
+        Enrollment.objects.select_related("offering__session", "participant"),
+        pk=pk,
+        client=client,
+        status="confirmed",
+    )
+    pending_request = enrollment.session_change_requests.filter(
+        status=SessionChangeRequest.STATUS_PENDING
+    ).first()
+
+    if request.method == "POST":
+        if pending_request:
+            messages.info(
+                request,
+                "لديك بالفعل طلب تغيير موعد بانتظار المراجعة لهذا التسجيل.",
+            )
+            return redirect("enrollment:my_purchases")
+        form = SessionChangeRequestForm(request.POST)
+        if form.is_valid():
+            change_request = form.save(commit=False)
+            change_request.enrollment = enrollment
+            change_request.save()
+            notify_admin_of_session_change_request(change_request)
+            messages.success(
+                request,
+                "تم إرسال طلبك لتغيير موعد الدورة، سيراجعه فريقنا في أقرب وقت ممكن.",
+            )
+            return redirect("enrollment:my_purchases")
+    else:
+        form = SessionChangeRequestForm()
+
+    context = {
+        "settings": SiteSettings.load(),
+        "client": client,
+        "enrollment": enrollment,
+        "form": form,
+        "pending_request": pending_request,
+        "active_tab": "purchases",
+        **_shared_chrome_context(),
+    }
+    return render(request, "enrollment/session_change_request.html", context)
 
 
 @login_required

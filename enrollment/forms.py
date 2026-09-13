@@ -12,6 +12,7 @@ from .models import (
     EnrollmentParticipant,
     Formateur,
     GENDER_CHOICES,
+    SessionChangeRequest,
     SOURCE_CHOICES,
 )
 
@@ -486,6 +487,32 @@ class EnquiryForm(forms.ModelForm):
             "phone": "الهاتف",
             "email": "البريد الإلكتروني",
             "question": "سؤالك",
+        }
+
+
+class SessionChangeRequestForm(forms.ModelForm):
+    """Client-facing form on \"مشترياتي\": propose an alternative date for
+    a confirmed enrollment's (still shared) session — see
+    `SessionChangeRequest` for why this doesn't touch the date itself."""
+
+    class Meta:
+        model = SessionChangeRequest
+        fields = ["proposed_date", "reason"]
+        widgets = {
+            "proposed_date": forms.DateInput(
+                attrs={**WIDGET_ATTRS, "type": "date"}
+            ),
+            "reason": forms.Textarea(
+                attrs={
+                    **WIDGET_ATTRS,
+                    "rows": 3,
+                    "placeholder": "اذكر سبب طلب تغيير الموعد (اختياري)...",
+                }
+            ),
+        }
+        labels = {
+            "proposed_date": "التاريخ المقترح",
+            "reason": "سبب الطلب",
         }
 
 

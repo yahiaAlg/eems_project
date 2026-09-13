@@ -34,6 +34,7 @@ from .models import (
     ProformaInvoiceItem,
     QuoteRequest,
     QuoteRequestItem,
+    SessionChangeRequest,
     WishlistItem,
 )
 
@@ -932,3 +933,37 @@ class EnquiryAdmin(admin.ModelAdmin):
             obj.answered_at = timezone.now()
             obj.answered_by = request.user
         super().save_model(request, obj, form, change)
+
+
+@admin.register(SessionChangeRequest)
+class SessionChangeRequestAdmin(admin.ModelAdmin):
+    list_display = (
+        "enrollment",
+        "current_date",
+        "proposed_date",
+        "status",
+        "created_at",
+    )
+    list_filter = ("status", "enrollment__offering__session")
+    search_fields = (
+        "enrollment__client__full_name",
+        "enrollment__client__company_name",
+        "enrollment__offering__code",
+        "enrollment__offering__title",
+    )
+    autocomplete_fields = ("enrollment",)
+    readonly_fields = ("created_at",)
+    actions = ["mark_reviewed"]
+
+    def current_date(self, obj):
+        return obj.enrollment.offering.session.start_date or "—"
+
+    current_date.short_description = "التاريخ الحالي للدورة"
+
+    @admin.action(description="✔ وضع علامة \"تمت المراجعة\" على الطلبات المحددة")
+    def mark_reviewed(self, request, queryset):
+        queryset.update(
+            status=SessionChangeRequest.STATUS_REVIEWED,
+            reviewed_at=timezone.now(),
+            reviewed_by=request.user,
+        )
