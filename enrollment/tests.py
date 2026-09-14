@@ -2103,3 +2103,207 @@ class SessionChangeRequestTestCase(TestCase):
             self.client.post(self.url, {"proposed_date": "2026-11-15", "reason": ""})
         self.assertTrue(SessionChangeRequest.objects.filter(enrollment=self.enrollment).exists())
         self.assertEqual(len(mail.outbox), 0)
+
+
+class AdminDashboardChartDataTestCase(TestCase):
+    """The four Chart.js datasets on the admin dashboard used to be
+    dumped straight from Python (`{{ by_status|safe }}` etc.) — that
+    happened to look like a JS object literal for plain strings/ints,
+    but `daily_last_week`'s `created_at__date` is a real `datetime.date`,
+    whose Python repr (`datetime.date(2026, 9, 13)`) is not valid
+    JavaScript at all, breaking every chart on the page. Now every
+    dataset goes through `json_script`, which properly serializes dates
+    via `DjangoJSONEncoder`."""
+
+    def setUp(self):
+        self.staff = User.objects.create_superuser(
+            username="dash_admin", password="x", email="dash_admin@example.com"
+        )
+        session = FormationSession.objects.create(
+            name="Session Dash", slug="session-dash", is_active=True
+        )
+        self.offering = Offering.objects.create(
+            session=session, code="DASH01", title="Formation Dash",
+            duration_months=2, is_active=True,
+        )
+        user = User.objects.create_user(username="dash_client", password="x", is_active=True)
+        client = Client.objects.create(
+            user=user, client_type="individual", full_name="زبون",
+            phone="0555999888", account_status="active",
+        )
+        participant = Participant.objects.create(client=client, full_name="زبون")
+        Enrollment.objects.create(
+            client=client, participant=participant, offering=self.offering, status="accepted",
+        )
+
+    def test_dashboard_renders_without_leaking_python_repr(self):
+        self.client.force_login(self.staff)
+        response = self.client.get("/admin/enrollment/enrollment/dashboard/")
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertNotIn("datetime.date(", content)
+
+    def test_dashboard_datasets_are_valid_json(self):
+        import json
+        import re
+
+        self.client.force_login(self.staff)
+        response = self.client.get("/admin/enrollment/enrollment/dashboard/")
+        content = response.content.decode()
+        for element_id in ("status-data", "source-data", "offering-data", "daily-data"):
+            match = re.search(
+                rf'<script id="{element_id}"[^>]*>(.*?)</script>', content, re.S
+            )
+            self.assertIsNotNone(match, f"missing json_script block: {element_id}")
+            json.loads(match.group(1))  # raises if not valid JSON
+
+
+class AccountantPurchaseNotificationTestCase(TestCase):
+    """Once a client confirms an enrollment into an Active Purchase, the
+    billing team (Accountant-group users with an email) gets its own
+    notification alongside the client and admin ones."""
+
+    def setUp(self):
+        from django.contrib.auth.models import Group
+        from django.core.management import call_command
+
+        call_command("seed_accountant_group", verbosity=0)
+        self.accountant_group = Group.objects.get(name="Accountant")
+
+        session = FormationSession.objects.create(
+            name="Session Accountant Notif", slug="session-accountant-notif", is_active=True
+        )
+        self.offering = Offering.objects.create(
+            session=session, code="ACC01", title="Formation Accountant Notif",
+            duration_months=2, is_active=True,
+        )
+        self.user = User.objects.create_user(
+            username="accountant_notif_client", password="x", is_active=True
+        )
+        self.client_obj = Client.objects.create(
+            user=self.user, client_type="individual", full_name="زبون محاسبة",
+            phone="0555333444", email="accountantnotif@example.com", account_status="active",
+        )
+        self.participant = Participant.objects.create(
+            client=self.client_obj, full_name="زبون محاسبة",
+        )
+        self.enrollment = Enrollment.objects.create(
+            client=self.client_obj, participant=self.participant,
+            offering=self.offering, status="accepted",
+        )
+
+    def test_confirming_notifies_accountant_alongside_client_and_admin(self):
+        from django.core import mail
+
+        accountant = User.objects.create_user(
+            username="accountant_with_email", password="x", is_staff=True,
+            email="accountant@example.com",
+        )
+        accountant.groups.add(self.accountant_group)
+
+        self.client.force_login(self.user)
+        mail.outbox = []
+        self.client.post(
+            reverse("enrollment:dashboard_confirm", args=[self.enrollment.pk]), follow=True,
+        )
+        self.assertEqual(len(mail.outbox), 3)
+        recipients = [addr for msg in mail.outbox for addr in msg.to]
+        self.assertIn("accountantnotif@example.com", recipients)
+        self.assertIn("support@excellance-ms.dz", recipients)
+        self.assertIn("accountant@example.com", recipients)
+
+    def test_accountant_without_email_is_skipped(self):
+        from django.core import mail
+
+        accountant = User.objects.create_user(
+            username="accountant_no_email", password="x", is_staff=True,
+        )
+        accountant.groups.add(self.accountant_group)
+
+        self.client.force_login(self.user)
+        mail.outbox = []
+        self.client.post(
+            reverse("enrollment:dashboard_confirm", args=[self.enrollment.pk]), follow=True,
+        )
+        recipients = [addr for msg in mail.outbox for addr in msg.to]
+        self.assertNotIn("", recipients)
+        self.assertEqual(len(mail.outbox), 2)  # client + admin only
+
+    def test_inactive_accountant_is_skipped(self):
+        from django.core import mail
+
+        accountant = User.objects.create_user(
+            username="accountant_inactive", password="x", is_staff=True,
+            email="inactive_accountant@example.com", is_active=False,
+        )
+        accountant.groups.add(self.accountant_group)
+
+        self.client.force_login(self.user)
+        mail.outbox = []
+        self.client.post(
+            reverse("enrollment:dashboard_confirm", args=[self.enrollment.pk]), follow=True,
+        )
+        recipients = [addr for msg in mail.outbox for addr in msg.to]
+        self.assertNotIn("inactive_accountant@example.com", recipients)
+
+    def test_no_accountant_group_at_all_does_not_break_confirmation(self):
+        from django.contrib.auth.models import Group
+        from django.core import mail
+
+        Group.objects.filter(name="Accountant").delete()
+        self.client.force_login(self.user)
+        mail.outbox = []
+        response = self.client.post(
+            reverse("enrollment:dashboard_confirm", args=[self.enrollment.pk]), follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.enrollment.refresh_from_db()
+        self.assertEqual(self.enrollment.status, "confirmed")
+        self.assertEqual(len(mail.outbox), 2)  # client + admin only
+
+
+class SeedAccountantUserCommandTestCase(TestCase):
+    """The minimal, standalone command that gets a single Accountant
+    account (with an email) into an environment that isn't running the
+    full `seed_demo_users` demo dataset."""
+
+    def test_creates_group_membership_and_email(self):
+        from django.contrib.auth.models import Group
+        from django.core.management import call_command
+
+        call_command("seed_accountant_user")
+
+        group = Group.objects.get(name="Accountant")
+        user = User.objects.get(username="comptable")
+        self.assertTrue(user.is_staff)
+        self.assertTrue(user.is_active)
+        self.assertEqual(user.email, "comptable@eems.dz")
+        self.assertIn(group, user.groups.all())
+
+    def test_respects_env_var_overrides(self):
+        from django.core.management import call_command
+        from django.test import override_settings
+        import os
+
+        os.environ["EEMS_ACCOUNTANT_USERNAME"] = "compta_custom"
+        os.environ["EEMS_ACCOUNTANT_EMAIL"] = "custom@example.com"
+        try:
+            call_command("seed_accountant_user")
+            user = User.objects.get(username="compta_custom")
+            self.assertEqual(user.email, "custom@example.com")
+        finally:
+            os.environ.pop("EEMS_ACCOUNTANT_USERNAME", None)
+            os.environ.pop("EEMS_ACCOUNTANT_EMAIL", None)
+
+    def test_is_idempotent_and_does_not_reset_existing_flags(self):
+        from django.core.management import call_command
+
+        call_command("seed_accountant_user")
+        user = User.objects.get(username="comptable")
+        user.is_active = False
+        user.save(update_fields=["is_active"])
+
+        call_command("seed_accountant_user")  # must not raise or duplicate
+        user.refresh_from_db()
+        self.assertTrue(user.is_active)
+        self.assertEqual(User.objects.filter(username="comptable").count(), 1)

@@ -7,10 +7,62 @@ instead of blowing up whatever save triggered the call.
 """
 
 from django.conf import settings
+from django.contrib.auth.models import Group
 from django.template.loader import render_to_string
 from django.utils import timezone
 
 from pages.emails import send_branded_mail
+
+from accounts.management.commands.seed_accountant_group import (
+    ACCOUNTANT_GROUP_NAME,
+)
+
+
+def get_accountant_emails():
+    """Every active Accountant-group user's email, for notifying the
+    small billing team (see `seed_accountant_user` for the minimal way
+    to get one such account into a fresh environment). Never raises —
+    an environment that hasn't seeded the group at all just gets an
+    empty list, same as an empty `settings.ADMINS`."""
+    try:
+        group = Group.objects.get(name=ACCOUNTANT_GROUP_NAME)
+    except Group.DoesNotExist:
+        return []
+    return list(
+        group.user_set.filter(is_active=True)
+        .exclude(email="")
+        .values_list("email", flat=True)
+    )
+
+
+def notify_accountants_of_confirmed_purchase(enrollment):
+    """Alert the billing team once a client confirms an enrollment into
+    an Active Purchase — same trigger as `enrollment_confirmed` (client)
+    and `enrollment_confirmed_admin_notification` (admin), just a third,
+    billing-focused recipient list. Never raises, `(ok, message)` tuple
+    meant for admin/flash messages only, same contract as every other
+    notifier in this module."""
+    accountant_emails = get_accountant_emails()
+    if not accountant_emails:
+        return False, "لا يوجد محاسب مفعل ببريد إلكتروني — لم يُرسل إشعار الشراء."
+
+    client = enrollment.client
+    sent = send_branded_mail(
+        template="emails/purchase_accountant_notification.html",
+        subject=f"شراء جديد مؤكد — {client.display_name}",
+        to=accountant_emails,
+        context={
+            "client_name": client.display_name,
+            "client_type": client.get_client_type_display(),
+            "participant_name": enrollment.participant.full_name,
+            "offering_title": enrollment.offering.title,
+            "offering_code": enrollment.offering.code,
+            "session_name": enrollment.offering.session.name,
+        },
+    )
+    if not sent:
+        return False, f"تعذر إرسال إشعار الشراء للمحاسبين ({client.display_name})."
+    return True, f"تم إرسال إشعار الشراء للمحاسبين ({client.display_name})."
 
 
 def notify_enrollment_accepted(enrollment):

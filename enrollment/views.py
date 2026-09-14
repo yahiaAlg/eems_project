@@ -56,7 +56,11 @@ from .models import (
     STATUS_CHOICES,
     WishlistItem,
 )
-from .services import notify_admin_of_session_change_request, notify_new_enquiry
+from .services import (
+    notify_accountants_of_confirmed_purchase,
+    notify_admin_of_session_change_request,
+    notify_new_enquiry,
+)
 
 
 def _shared_chrome_context():
@@ -1593,6 +1597,7 @@ def dashboard_confirm(request, pk):
                 to=admin_emails,
                 context=admin_notification_context,
             )
+        notify_accountants_of_confirmed_purchase(enrollment)
         messages.success(
             request, "تم تأكيد تسجيلك بنجاح. لم يعد بالإمكان إلغاؤه بعد الآن."
         )

@@ -213,34 +213,30 @@ class Command(BaseCommand):
         )
 
     def _seed_accountant_user(self, User, password):
-        username = "comptable"
-        user, created = User.objects.get_or_create(
-            username=username,
-            defaults={
-                "email": "comptable@demo.eems.dz",
-                "is_active": True,
-                "is_staff": True,
-            },
-        )
-        if created:
-            user.set_password(password)
-            user.save()
-        elif not user.is_staff:
-            # An Accountant must be able to reach /admin/ at all — see
-            # seed_accountant_group's docstring on is_staff being separate
-            # from the group's scoped model permissions.
-            user.is_staff = True
-            user.save(update_fields=["is_staff"])
-
-        from django.contrib.auth.models import Group
-
-        accountant_group = Group.objects.get(name=ACCOUNTANT_GROUP_NAME)
-        user.groups.add(accountant_group)
+        # Delegates to the minimal, standalone `seed_accountant_user`
+        # command (env-configurable) rather than duplicating its logic —
+        # this demo dataset just needs *an* accountant account to exist,
+        # with the demo password/email convention this command already
+        # uses for every other seeded user here.
+        env_overrides = {
+            "EEMS_ACCOUNTANT_USERNAME": "comptable",
+            "EEMS_ACCOUNTANT_EMAIL": "comptable@demo.eems.dz",
+            "EEMS_ACCOUNTANT_PASSWORD": password,
+        }
+        previous = {key: os.environ.get(key) for key in env_overrides}
+        os.environ.update(env_overrides)
+        try:
+            call_command("seed_accountant_user")
+        finally:
+            for key, value in previous.items():
+                if value is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = value
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"✔ حساب محاسب تجريبي: {username} — عضو في مجموعة "
-                f"«{ACCOUNTANT_GROUP_NAME}» "
-                + ("[جديد]" if created else "[موجود مسبقا]")
+                f"✔ حساب محاسب تجريبي: comptable — عضو في مجموعة "
+                f"«{ACCOUNTANT_GROUP_NAME}»"
             )
         )

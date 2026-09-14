@@ -67,11 +67,15 @@
 </style>
 
 <script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+{{ by_status|json_script:"status-data" }}
+{{ by_source|json_script:"source-data" }}
+{{ by_offering|json_script:"offering-data" }}
+{{ daily_last_week|json_script:"daily-data" }}
 <script>
-  const statusData = {{ by_status|safe }};
-  const sourceData = {{ by_source|safe }};
-  const offeringData = {{ by_offering|safe }};
-  const dailyData = {{ daily_last_week|safe }};
+  const statusData = JSON.parse(document.getElementById('status-data').textContent);
+  const sourceData = JSON.parse(document.getElementById('source-data').textContent);
+  const offeringData = JSON.parse(document.getElementById('offering-data').textContent);
+  const dailyData = JSON.parse(document.getElementById('daily-data').textContent);
 
   const statusLabels = {
     pending: "قيد الدراسة", contacted: "تم التواصل", accepted: "مقبول",
