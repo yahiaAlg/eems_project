@@ -44,24 +44,69 @@
 
         <div class="progress-steps"><span class="done"></span><span class="done"></span><span></span></div>
 
-        <form method="post" novalidate>
+        <form method="post" novalidate id="subscribeForm">
           {% csrf_token %}
           <div class="honeypot">{{ form.website }}</div>
 
-          <div class="form-section-title"><iconify-icon icon="mdi:account-outline"></iconify-icon> الهوية</div>
-          <div class="row g-3">
-            <div class="col-md-6">
-              <label class="form-label">{{ form.full_name.label }} *</label>
-              {{ form.full_name }}
-              {% if form.full_name.errors %}<ul class="errorlist">{% for e in form.full_name.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+          <div class="form-section-title"><iconify-icon icon="mdi:account-question-outline"></iconify-icon> نوع المسجّل</div>
+          <div class="login-method-toggle">
+            <label class="login-method-option">
+              <input type="radio" name="client_type" value="individual"
+                {% if form.client_type.value|default:"individual" != "enterprise" %}checked{% endif %}>
+              <span><iconify-icon icon="mdi:account-outline"></iconify-icon> فرد (خاص)</span>
+            </label>
+            <label class="login-method-option">
+              <input type="radio" name="client_type" value="enterprise"
+                {% if form.client_type.value == "enterprise" %}checked{% endif %}>
+              <span><iconify-icon icon="mdi:domain"></iconify-icon> مؤسسة</span>
+            </label>
+          </div>
+          {% if form.client_type.errors %}<ul class="errorlist">{% for e in form.client_type.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+
+          <div class="login-field" data-type="individual">
+            <div class="form-section-title"><iconify-icon icon="mdi:account-outline"></iconify-icon> الهوية</div>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">{{ form.full_name.label }} *</label>
+                {{ form.full_name }}
+                {% if form.full_name.errors %}<ul class="errorlist">{% for e in form.full_name.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">{{ form.birth_date.label }}</label>
+                {{ form.birth_date }}
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">{{ form.gender.label }}</label>
+                {{ form.gender }}
+              </div>
             </div>
-            <div class="col-md-3">
-              <label class="form-label">{{ form.birth_date.label }}</label>
-              {{ form.birth_date }}
-            </div>
-            <div class="col-md-3">
-              <label class="form-label">{{ form.gender.label }}</label>
-              {{ form.gender }}
+          </div>
+
+          <div class="login-field" data-type="enterprise">
+            <div class="form-section-title"><iconify-icon icon="mdi:domain"></iconify-icon> بيانات المؤسسة</div>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">{{ form.company_name.label }} *</label>
+                {{ form.company_name }}
+                {% if form.company_name.errors %}<ul class="errorlist">{% for e in form.company_name.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">{{ form.trade_register_number.label }}</label>
+                {{ form.trade_register_number }}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">{{ form.sector.label }}</label>
+                {{ form.sector }}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">{{ form.responsible_name.label }} *</label>
+                {{ form.responsible_name }}
+                {% if form.responsible_name.errors %}<ul class="errorlist">{% for e in form.responsible_name.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">{{ form.responsible_position.label }}</label>
+                {{ form.responsible_position }}
+              </div>
             </div>
           </div>
 
@@ -86,19 +131,21 @@
             </div>
           </div>
 
-          <div class="form-section-title"><iconify-icon icon="mdi:school-outline"></iconify-icon> المسار الدراسي والمهني</div>
-          <div class="row g-3">
-            <div class="col-md-4">
-              <label class="form-label">{{ form.education_level.label }}</label>
-              {{ form.education_level }}
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">{{ form.employment_status.label }}</label>
-              {{ form.employment_status }}
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">{{ form.preferred_contact_time.label }}</label>
-              {{ form.preferred_contact_time }}
+          <div class="login-field" data-type="individual">
+            <div class="form-section-title"><iconify-icon icon="mdi:school-outline"></iconify-icon> المسار الدراسي والمهني</div>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label">{{ form.education_level.label }}</label>
+                {{ form.education_level }}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">{{ form.employment_status.label }}</label>
+                {{ form.employment_status }}
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">{{ form.preferred_contact_time.label }}</label>
+                {{ form.preferred_contact_time }}
+              </div>
             </div>
           </div>
 

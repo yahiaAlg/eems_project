@@ -33,7 +33,7 @@ from .forms import (
     EnquiryForm,
     EnrollmentParticipantFormSet,
     GeneralEnquiryForm,
-    IndividualSubscribeForm,
+    SubscribeForm,
     ProformaLineConfirmForm,
     SessionChangeRequestForm,
 )
@@ -410,9 +410,10 @@ def subscribe(request, session_slug, code):
         )
 
     if request.method == "POST":
-        form = IndividualSubscribeForm(request.POST)
+        form = SubscribeForm(request.POST)
         if form.is_valid():
             data = form.cleaned_data
+            is_enterprise = data["client_type"] == "enterprise"
             # Bug fix (was: always `Client.objects.create(...)`, even for an
             # authenticated user): that orphaned every enrollment onto a
             # brand-new Client with no `user` link, so it could never match
@@ -424,27 +425,56 @@ def subscribe(request, session_slug, code):
             # guests.
             client = getattr(request.user, "client", None)
             if not (client and client.account_status == "active"):
-                client = Client.objects.create(
-                    client_type="individual",
+                if is_enterprise:
+                    client = Client.objects.create(
+                        client_type="enterprise",
+                        phone=data["phone"],
+                        email=data.get("email", ""),
+                        wilaya=data.get("wilaya") or "سطيف",
+                        address=data.get("address", ""),
+                        company_name=data["company_name"],
+                        trade_register_number=data.get("trade_register_number", ""),
+                        sector=data.get("sector", ""),
+                        responsible_name=data.get("responsible_name", ""),
+                        responsible_position=data.get("responsible_position", ""),
+                        source=data.get("source") or "web",
+                    )
+                else:
+                    client = Client.objects.create(
+                        client_type="individual",
+                        phone=data["phone"],
+                        email=data.get("email", ""),
+                        wilaya=data.get("wilaya") or "سطيف",
+                        address=data.get("address", ""),
+                        full_name=data["full_name"],
+                        birth_date=data.get("birth_date"),
+                        gender=data.get("gender", ""),
+                        education_level=data.get("education_level", ""),
+                        source=data.get("source") or "web",
+                    )
+            if is_enterprise:
+                # The enterprise's own point of contact stands in as the
+                # placeholder Enrollment participant (Client/Participant's
+                # 1:1 rule) — the actual employees attending are added
+                # afterwards via the company roster (EnrollmentParticipant,
+                # once the enrollment is accepted), not here.
+                participant = Participant.objects.create(
+                    client=client,
+                    full_name=data.get("responsible_name") or data["company_name"],
                     phone=data["phone"],
                     email=data.get("email", ""),
-                    wilaya=data.get("wilaya") or "سطيف",
-                    address=data.get("address", ""),
+                    position=data.get("responsible_position", ""),
+                )
+            else:
+                participant = Participant.objects.create(
+                    client=client,
                     full_name=data["full_name"],
+                    phone=data["phone"],
+                    email=data.get("email", ""),
                     birth_date=data.get("birth_date"),
                     gender=data.get("gender", ""),
                     education_level=data.get("education_level", ""),
-                    source=data.get("source") or "web",
                 )
-            participant = Participant.objects.create(
-                client=client,
-                full_name=data["full_name"],
-                phone=data["phone"],
-                email=data.get("email", ""),
-                birth_date=data.get("birth_date"),
-                gender=data.get("gender", ""),
-                education_level=data.get("education_level", ""),
-            )
             motivation_lines = [data.get("motivation", "").strip()]
             extra = []
             if data.get("employment_status"):
@@ -497,26 +527,42 @@ def subscribe(request, session_slug, code):
         # query string at all). Rather than track down and flag every
         # current and future entry point, prefill unconditionally whenever
         # we can — only the fields that genuinely overlap between `Client`
-        # and `IndividualSubscribeForm` (confirmed against the real form in
-        # enrollment/forms.py — this form has no enterprise branch, so
-        # company/responsible fields don't apply here). Per-registration
-        # fields (motivation, employment_status, preferred_contact_time,
+        # and `SubscribeForm` (confirmed against the real form in
+        # enrollment/forms.py, which branches on client_type just like
+        # `Client` itself). Per-registration fields (motivation,
+        # employment_status, preferred_contact_time,
         # "كيف سمعت عنا") are deliberately left blank every time — those
         # aren't account-level facts to carry over.
         initial = {}
         prefill_client = getattr(request.user, "client", None)
         if prefill_client and prefill_client.account_status == "active":
             initial = {
-                "full_name": prefill_client.full_name,
-                "birth_date": prefill_client.birth_date,
-                "gender": prefill_client.gender,
+                "client_type": prefill_client.client_type,
                 "phone": prefill_client.phone,
                 "email": prefill_client.email,
                 "wilaya": prefill_client.wilaya,
                 "address": prefill_client.address,
-                "education_level": prefill_client.education_level,
             }
-        form = IndividualSubscribeForm(initial=initial)
+            if prefill_client.is_enterprise:
+                initial.update(
+                    {
+                        "company_name": prefill_client.company_name,
+                        "trade_register_number": prefill_client.trade_register_number,
+                        "sector": prefill_client.sector,
+                        "responsible_name": prefill_client.responsible_name,
+                        "responsible_position": prefill_client.responsible_position,
+                    }
+                )
+            else:
+                initial.update(
+                    {
+                        "full_name": prefill_client.full_name,
+                        "birth_date": prefill_client.birth_date,
+                        "gender": prefill_client.gender,
+                        "education_level": prefill_client.education_level,
+                    }
+                )
+        form = SubscribeForm(initial=initial)
 
     context = {
         "settings": SiteSettings.load(),
@@ -1537,7 +1583,7 @@ def profile(request):
     """'ملفي الشخصي' — My Profile (TODO 2.2): lets the logged-in client
     edit their own personal/contact fields (individuals) or personal +
     legal/enterprise fields (enterprises), reusing the individual/
-    enterprise field split from `IndividualSubscribeForm`/`Client`."""
+    enterprise field split from `SubscribeForm`/`Client`."""
     client = getattr(request.user, "client", None)
     if client is None:
         messages.info(

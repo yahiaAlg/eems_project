@@ -7,6 +7,7 @@ from .models import (
     BILLING_BASIS_CHOICES,
     CartItem,
     Client,
+    CLIENT_TYPE_CHOICES,
     Comment,
     Enquiry,
     EnrollmentParticipant,
@@ -45,14 +46,26 @@ WIDGET_ATTRS = {"class": "form-control"}
 SELECT_ATTRS = {"class": "form-select"}
 
 
-class IndividualSubscribeForm(forms.Form):
-    """Registration form for an individual candidate — collects rich profile data
-    about the client in addition to the minimum contact fields."""
+class SubscribeForm(forms.Form):
+    """Registration form for a single offering — branches into an individual
+    candidate profile or an enterprise/company profile depending on
+    `client_type`, the same individual/enterprise split already used by
+    `accounts.RegistrationForm` and `Client` itself. An enterprise
+    registrant provides company details and a coordination contact instead
+    of a personal identity (name/birth date/gender/education)."""
 
-    # --- identity ---
+    client_type = forms.ChoiceField(
+        label="نوع المسجّل",
+        choices=CLIENT_TYPE_CHOICES,
+        initial="individual",
+        widget=forms.RadioSelect,
+    )
+
+    # --- individual-only identity ---
     full_name = forms.CharField(
         label="الاسم واللقب",
         max_length=150,
+        required=False,
         widget=forms.TextInput(
             attrs={**WIDGET_ATTRS, "placeholder": "مثال: أحمد بلعيد"}
         ),
@@ -67,6 +80,40 @@ class IndividualSubscribeForm(forms.Form):
         choices=[("", "اختر")] + list(GENDER_CHOICES),
         required=False,
         widget=forms.Select(attrs=SELECT_ATTRS),
+    )
+
+    # --- enterprise-only identity (mirrors accounts.RegistrationForm) ---
+    company_name = forms.CharField(
+        label="اسم المؤسسة",
+        max_length=200,
+        required=False,
+        widget=forms.TextInput(
+            attrs={**WIDGET_ATTRS, "placeholder": "مثال: مؤسسة النجاح ش.ذ.م.م"}
+        ),
+    )
+    trade_register_number = forms.CharField(
+        label="رقم السجل التجاري",
+        max_length=60,
+        required=False,
+        widget=forms.TextInput(attrs={**WIDGET_ATTRS, "dir": "ltr"}),
+    )
+    sector = forms.CharField(
+        label="قطاع النشاط",
+        max_length=120,
+        required=False,
+        widget=forms.TextInput(attrs=WIDGET_ATTRS),
+    )
+    responsible_name = forms.CharField(
+        label="الشخص المسؤول عن التنسيق",
+        max_length=150,
+        required=False,
+        widget=forms.TextInput(attrs=WIDGET_ATTRS),
+    )
+    responsible_position = forms.CharField(
+        label="منصب المسؤول",
+        max_length=100,
+        required=False,
+        widget=forms.TextInput(attrs=WIDGET_ATTRS),
     )
 
     # --- contact ---
@@ -152,6 +199,26 @@ class IndividualSubscribeForm(forms.Form):
         if value:
             raise forms.ValidationError("تعذر إرسال الطلب.")
         return value
+
+    def clean(self):
+        cleaned = super().clean()
+        client_type = cleaned.get("client_type")
+        # Mirrors Client.clean()'s / accounts.RegistrationForm's own
+        # individual-vs-enterprise requirement — an enterprise registrant
+        # never needs to supply a personal name/birth date, and an
+        # individual never needs to supply company details.
+        if client_type == "enterprise":
+            if not cleaned.get("company_name"):
+                self.add_error("company_name", "اسم المؤسسة مطلوب بالنسبة للمؤسسات.")
+            if not cleaned.get("responsible_name"):
+                self.add_error(
+                    "responsible_name",
+                    "اسم الشخص المسؤول عن التنسيق مطلوب لتتمكن إيمس من التواصل معكم.",
+                )
+        else:
+            if not cleaned.get("full_name"):
+                self.add_error("full_name", "الاسم الكامل مطلوب بالنسبة للأفراد.")
+        return cleaned
 
 
 # Fields relevant only to individual clients — dropped from

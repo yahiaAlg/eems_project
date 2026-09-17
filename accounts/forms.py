@@ -76,7 +76,7 @@ class RegistrationForm(forms.Form):
 
     Reuses the exact individual/enterprise field split already defined on
     `enrollment.models.Client` (see TODO 1.3), rather than the richer
-    `enrollment.forms.IndividualSubscribeForm` (which also carries
+    `enrollment.forms.SubscribeForm` (which also carries
     enrollment-specific fields like `motivation`/`employment_status` that
     don't belong on the account itself).
 
@@ -196,7 +196,7 @@ class RegistrationForm(forms.Form):
     )
 
     # Honeypot — real humans never fill this. Same pattern as
-    # IndividualSubscribeForm.
+    # SubscribeForm.
     website = forms.CharField(required=False, widget=forms.HiddenInput())
 
     def clean_website(self):
