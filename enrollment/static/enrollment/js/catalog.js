@@ -1,26 +1,35 @@
 // catalog.html — hero/card entrance animations + seat-bar fill (GSAP).
 (function () {
-  gsap.registerPlugin(ScrollTrigger);
+  // Guarded: if gsap/ScrollTrigger failed to load, this must not throw —
+  // an uncaught error here would abort the rest of this script, including
+  // the grid/list view toggle below (see subscribe.js for the same fix).
+  try {
+    if (window.gsap && window.ScrollTrigger) {
+      gsap.registerPlugin(ScrollTrigger);
 
-  gsap.from("#catalog-hero .catalog-badge, #catalog-hero h1, #catalog-hero p, #catalog-hero .stat-pill", {
-    y: 18, opacity: 0, duration: .6, stagger: .08, ease: "power2.out",
-  });
+      gsap.from("#catalog-hero .catalog-badge, #catalog-hero h1, #catalog-hero p, #catalog-hero .stat-pill", {
+        y: 18, opacity: 0, duration: .6, stagger: .08, ease: "power2.out",
+      });
 
-  document.querySelectorAll(".offer-item").forEach((card, i) => {
-    gsap.from(card, {
-      scrollTrigger: { trigger: card, start: "top 92%" },
-      y: 26, opacity: 0, duration: .55, delay: (i % 3) * .05, ease: "power2.out",
-    });
-  });
+      document.querySelectorAll(".offer-item").forEach((card, i) => {
+        gsap.from(card, {
+          scrollTrigger: { trigger: card, start: "top 92%" },
+          y: 26, opacity: 0, duration: .55, delay: (i % 3) * .05, ease: "power2.out",
+        });
+      });
 
-  document.querySelectorAll(".seats-bar span").forEach((bar) => {
-    ScrollTrigger.create({
-      trigger: bar,
-      start: "top 95%",
-      onEnter: () => gsap.to(bar, { width: bar.dataset.fill + "%", duration: 1.1, ease: "power2.out" }),
-      once: true,
-    });
-  });
+      document.querySelectorAll(".seats-bar span").forEach((bar) => {
+        ScrollTrigger.create({
+          trigger: bar,
+          start: "top 95%",
+          onEnter: () => gsap.to(bar, { width: bar.dataset.fill + "%", duration: 1.1, ease: "power2.out" }),
+          once: true,
+        });
+      });
+    }
+  } catch (err) {
+    console.warn("catalog.js: entrance animation skipped", err);
+  }
 
   // Grid / list view toggle
   const grid = document.getElementById("offer-grid");

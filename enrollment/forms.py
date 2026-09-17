@@ -587,13 +587,18 @@ class SessionChangeRequestForm(forms.ModelForm):
 # One editable line per employee an enterprise client attaches to its own
 # Enrollment. Field set/order matches `EnrollmentParticipant` (itself a
 # 1:1 mirror of formations.Participant on the pedagogical side, see TODO
-# 10.0.1/10.2.6) so the CSV export round-trips with zero mapping.
+# 10.0.1/10.2.6) so the CSV export round-trips with zero mapping. Kept in
+# the exact same order as the CSV header row (enrollment_roster_export /
+# ROSTER_IMPORT_HEADER_MAP below) so the on-screen table, the export and
+# the import all show/expect the same columns in the same order. `gender`
+# stays on the model (other call sites still use it) but is deliberately
+# left out here: it isn't part of the roster file format the client
+# downloads/uploads, so showing it on-screen only invited mismatches.
 ROSTER_FIELDS = [
     "first_name",
     "last_name",
     "first_name_ar",
     "last_name_ar",
-    "gender",
     "date_of_birth",
     "place_of_birth",
     "place_of_birth_ar",
@@ -614,7 +619,6 @@ ROSTER_WIDGETS = {
     "last_name_ar": forms.TextInput(
         attrs={**WIDGET_ATTRS, "placeholder": "اللقب بالعربية"}
     ),
-    "gender": forms.Select(attrs=SELECT_ATTRS),
     "date_of_birth": forms.DateInput(attrs={**WIDGET_ATTRS, "type": "date"}),
     "place_of_birth": forms.TextInput(attrs=WIDGET_ATTRS),
     "place_of_birth_ar": forms.TextInput(attrs=WIDGET_ATTRS),
@@ -623,6 +627,27 @@ ROSTER_WIDGETS = {
     "phone": forms.TextInput(attrs={**WIDGET_ATTRS, "dir": "ltr"}),
     "email": forms.EmailInput(attrs={**WIDGET_ATTRS, "dir": "ltr"}),
 }
+
+
+class RosterImportForm(forms.Form):
+    """Upload widget behind `enrollment_roster_import` (CSV/Excel import of
+    the company roster). Actual row parsing/validation happens in the view
+    (`enrollment/views.py`) — this just gates the file's extension so a
+    clearly-wrong upload (a PDF, a .docx…) is rejected before we even try
+    to open it."""
+
+    import_file = forms.FileField(label="ملف CSV أو Excel")
+
+    ALLOWED_EXTENSIONS = (".csv", ".xlsx")
+
+    def clean_import_file(self):
+        f = self.cleaned_data["import_file"]
+        ext = os.path.splitext(f.name)[1].lower()
+        if ext not in self.ALLOWED_EXTENSIONS:
+            raise ValidationError(
+                "صيغة الملف غير مدعومة. الصيغ المقبولة: CSV (.csv) أو Excel (.xlsx)."
+            )
+        return f
 
 
 class BaseEnrollmentParticipantFormSet(forms.BaseModelFormSet):

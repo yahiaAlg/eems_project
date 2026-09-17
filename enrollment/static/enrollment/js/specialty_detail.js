@@ -1,24 +1,33 @@
 // specialty_detail.html — hero/panel entrance animations, seat-bar fill, hash-scroll to comments/enquiry.
 (function () {
-  gsap.registerPlugin(ScrollTrigger);
+  // Guarded: a gsap/ScrollTrigger failure must not throw here, or it would
+  // abort the rest of this script — including the hash-scroll and gallery
+  // lightbox below (see subscribe.js for the same fix).
+  try {
+    if (window.gsap && window.ScrollTrigger) {
+      gsap.registerPlugin(ScrollTrigger);
 
-  gsap.from("#detail-hero .crumb, #detail-hero .hero-code, #detail-hero h1, #detail-hero .hero-sub", {
-    y: 16, opacity: 0, duration: .55, stagger: .07, ease: "power2.out",
-  });
+      gsap.from("#detail-hero .crumb, #detail-hero .hero-code, #detail-hero h1, #detail-hero .hero-sub", {
+        y: 16, opacity: 0, duration: .55, stagger: .07, ease: "power2.out",
+      });
 
-  document.querySelectorAll(".reveal-item").forEach((el, i) => {
-    gsap.from(el, {
-      scrollTrigger: { trigger: el, start: "top 90%" },
-      y: 24, opacity: 0, duration: .5, delay: i * .04, ease: "power2.out",
-    });
-  });
+      document.querySelectorAll(".reveal-item").forEach((el, i) => {
+        gsap.from(el, {
+          scrollTrigger: { trigger: el, start: "top 90%" },
+          y: 24, opacity: 0, duration: .5, delay: i * .04, ease: "power2.out",
+        });
+      });
 
-  document.querySelectorAll(".seats-bar span").forEach((bar) => {
-    ScrollTrigger.create({
-      trigger: bar, start: "top 95%", once: true,
-      onEnter: () => gsap.to(bar, { width: bar.dataset.fill + "%", duration: 1.2, ease: "power2.out" }),
-    });
-  });
+      document.querySelectorAll(".seats-bar span").forEach((bar) => {
+        ScrollTrigger.create({
+          trigger: bar, start: "top 95%", once: true,
+          onEnter: () => gsap.to(bar, { width: bar.dataset.fill + "%", duration: 1.2, ease: "power2.out" }),
+        });
+      });
+    }
+  } catch (err) {
+    console.warn("specialty_detail.js: entrance animation skipped", err);
+  }
 
   // Smooth-scroll to #comments / #enquiry if the URL asks for it (e.g. after a POST redirect)
   if (location.hash === "#comments" || location.hash === "#enquiry") {

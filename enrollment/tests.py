@@ -1580,6 +1580,7 @@ class QuickRegisterPrefillTestCase(TestCase):
         response = self.client.post(
             self.subscribe_url,
             {
+                "client_type": "individual",
                 "full_name": client_obj.full_name,
                 "birth_date": "1990-01-01",
                 "gender": "m",
@@ -1606,6 +1607,7 @@ class QuickRegisterPrefillTestCase(TestCase):
 
     def _post_data(self, **overrides):
         data = {
+            "client_type": "individual",
             "full_name": "اسم معدل عند التسجيل",
             "birth_date": "1990-01-01",
             "gender": "m",

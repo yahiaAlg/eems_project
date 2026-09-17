@@ -75,6 +75,11 @@ urlpatterns = [
         views.enrollment_roster_export,
         name="enrollment_roster_export",
     ),
+    path(
+        "mon-espace/inscriptions/<int:enrollment_id>/participants/import/",
+        views.enrollment_roster_import,
+        name="enrollment_roster_import",
+    ),
     # Bundled "session dossier" download (TODO 10.7.3) — roster CSV +
     # session_brief_<id>.txt zipped together, staff-only.
     path(

@@ -33,6 +33,7 @@ from .forms import (
     EnquiryForm,
     EnrollmentParticipantFormSet,
     GeneralEnquiryForm,
+    RosterImportForm,
     SubscribeForm,
     ProformaLineConfirmForm,
     SessionChangeRequestForm,
@@ -1192,6 +1193,218 @@ def enrollment_roster(request, enrollment_id):
         **_shared_chrome_context(),
     }
     return render(request, "enrollment/enrollment_roster.html", context)
+
+
+# Maps the accent-stripped, lower-cased CSV/Excel header (see
+# "Format du fichier" help card on the roster page) to the matching
+# `EnrollmentParticipant` field — same column set/order as ROSTER_FIELDS
+# and the export below, so a file exported here re-imports with zero
+# mapping and vice-versa.
+ROSTER_IMPORT_HEADER_MAP = {
+    "prenom": "first_name",
+    "nom": "last_name",
+    "prenom ar": "first_name_ar",
+    "nom ar": "last_name_ar",
+    "date naissance": "date_of_birth",
+    "lieu naissance": "place_of_birth",
+    "lieu naissance ar": "place_of_birth_ar",
+    "fonction": "job_title",
+    "employeur": "employer",
+    "telephone": "phone",
+    "email": "email",
+}
+ROSTER_IMPORT_REQUIRED_FIELDS = {"first_name", "last_name"}
+ROSTER_IMPORT_DATE_FORMATS = ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y", "%d.%m.%Y")
+
+
+def _normalize_header(raw):
+    """'Prénom AR' -> 'prenom ar' — accent/case/whitespace-insensitive so
+    the header row matches regardless of how the client typed it."""
+    import unicodedata
+
+    text = unicodedata.normalize("NFKD", str(raw or ""))
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    return " ".join(text.strip().lower().split())
+
+
+def _parse_roster_import_date(raw):
+    """Accepts a date/datetime cell (native Excel dates) or a text value
+    in any of ROSTER_IMPORT_DATE_FORMATS (dd/mm/YYYY, per the file-format
+    example, plus a few common variants). Returns None for a blank cell
+    and raises ValueError for anything else unparseable."""
+    import datetime as dt
+
+    if raw in (None, ""):
+        return None
+    if isinstance(raw, dt.datetime):
+        return raw.date()
+    if isinstance(raw, dt.date):
+        return raw
+    text = str(raw).strip()
+    if not text:
+        return None
+    for fmt in ROSTER_IMPORT_DATE_FORMATS:
+        try:
+            return dt.datetime.strptime(text, fmt).date()
+        except ValueError:
+            continue
+    raise ValueError(text)
+
+
+def _read_roster_import_rows(uploaded_file):
+    """Returns (header_row, data_rows) as lists of raw cell values, read
+    from either a .csv or a .xlsx upload. Sheet/dialect details are
+    handled here so the caller only deals with plain rows."""
+    import csv
+    import io
+
+    name = uploaded_file.name.lower()
+    if name.endswith(".xlsx"):
+        import openpyxl
+
+        workbook = openpyxl.load_workbook(uploaded_file, read_only=True, data_only=True)
+        sheet = workbook.active
+        rows = [list(row) for row in sheet.iter_rows(values_only=True)]
+    else:
+        raw = uploaded_file.read().decode("utf-8-sig", errors="replace")
+        rows = list(csv.reader(io.StringIO(raw)))
+
+    rows = [r for r in rows if any(c not in (None, "") for c in r)]  # drop blank lines
+    if not rows:
+        return [], []
+    return rows[0], rows[1:]
+
+
+@login_required
+@require_POST
+def enrollment_roster_import(request, enrollment_id):
+    """CSV/Excel import for the company roster — the upload counterpart of
+    `enrollment_roster_export` below. Client-only (staff view of the
+    roster is read-only, same as the formset above); the whole file is
+    validated up front and applied in one atomic transaction, so a bad
+    row never leaves the roster half-updated."""
+    enrollment, is_staff_view = _get_enrollment_for_roster(request, enrollment_id)
+    locked = is_staff_view or enrollment.roster_locked_at is not None
+    if locked:
+        messages.error(request, "القائمة مقفلة، لا يمكن استيراد ملف.")
+        return redirect("enrollment:enrollment_roster", enrollment_id=enrollment.pk)
+
+    form = RosterImportForm(request.POST, request.FILES)
+    if not form.is_valid():
+        for error in form.errors.get("import_file", []):
+            messages.error(request, error)
+        return redirect("enrollment:enrollment_roster", enrollment_id=enrollment.pk)
+
+    try:
+        header_row, data_rows = _read_roster_import_rows(form.cleaned_data["import_file"])
+    except Exception:
+        messages.error(
+            request, "تعذر قراءة الملف. تأكد من أنه بصيغة CSV أو Excel صحيحة."
+        )
+        return redirect("enrollment:enrollment_roster", enrollment_id=enrollment.pk)
+
+    if not header_row:
+        messages.error(request, "الملف فارغ.")
+        return redirect("enrollment:enrollment_roster", enrollment_id=enrollment.pk)
+
+    column_fields = [ROSTER_IMPORT_HEADER_MAP.get(_normalize_header(h)) for h in header_row]
+    if not ROSTER_IMPORT_REQUIRED_FIELDS.issubset(set(column_fields)):
+        messages.error(
+            request,
+            "يجب أن يحتوي الملف على عمودي \"Prénom\" و \"Nom\" على الأقل "
+            "(بالإضافة إلى الأعمدة الاختيارية — راجع تنسيق الملف).",
+        )
+        return redirect("enrollment:enrollment_roster", enrollment_id=enrollment.pk)
+
+    existing_by_name = {
+        (p.first_name, p.last_name): p
+        for p in EnrollmentParticipant.objects.filter(enrollment=enrollment)
+    }
+    max_rows = enrollment.offering.seats_available
+
+    parsed_rows = {}  # (first_name, last_name) -> field dict, later rows win on dupes
+    row_errors = []
+    for row_number, row in enumerate(data_rows, start=2):  # 1 = header row
+        values = {}
+        for field, cell in zip(column_fields, row):
+            if field:
+                values[field] = cell
+
+        first_name = str(values.get("first_name") or "").strip()
+        last_name = str(values.get("last_name") or "").strip()
+        if not first_name and not last_name and not any(
+            str(v or "").strip() for v in values.values()
+        ):
+            continue  # blank row
+        if not first_name or not last_name:
+            row_errors.append(f"السطر {row_number}: \"Prénom\" و \"Nom\" إلزاميان.")
+            continue
+
+        try:
+            date_of_birth = _parse_roster_import_date(values.get("date_of_birth"))
+        except ValueError:
+            row_errors.append(
+                f"السطر {row_number}: تاريخ الميلاد غير صحيح (الصيغة المتوقعة: يوم/شهر/سنة)."
+            )
+            continue
+
+        parsed_rows[(first_name, last_name)] = {
+            "first_name": first_name,
+            "last_name": last_name,
+            "first_name_ar": str(values.get("first_name_ar") or "").strip(),
+            "last_name_ar": str(values.get("last_name_ar") or "").strip(),
+            "date_of_birth": date_of_birth,
+            "place_of_birth": str(values.get("place_of_birth") or "").strip(),
+            "place_of_birth_ar": str(values.get("place_of_birth_ar") or "").strip(),
+            "job_title": str(values.get("job_title") or "").strip(),
+            "employer": str(values.get("employer") or "").strip(),
+            "phone": str(values.get("phone") or "").strip(),
+            "email": str(values.get("email") or "").strip(),
+        }
+
+    if row_errors:
+        for error in row_errors[:10]:
+            messages.error(request, error)
+        if len(row_errors) > 10:
+            messages.error(request, f"و {len(row_errors) - 10} أخطاء أخرى...")
+        return redirect("enrollment:enrollment_roster", enrollment_id=enrollment.pk)
+
+    if not parsed_rows:
+        messages.error(request, "لم يتم العثور على أي مشارك صالح في الملف.")
+        return redirect("enrollment:enrollment_roster", enrollment_id=enrollment.pk)
+
+    new_count = sum(1 for key in parsed_rows if key not in existing_by_name)
+    if max_rows and (len(existing_by_name) + new_count) > max_rows:
+        messages.error(
+            request,
+            f"يتجاوز عدد المشاركين في الملف الحد الأقصى المسموح به ({max_rows}).",
+        )
+        return redirect("enrollment:enrollment_roster", enrollment_id=enrollment.pk)
+
+    from django.db import transaction
+
+    created_count = 0
+    updated_count = 0
+    with transaction.atomic():
+        for key, fields in parsed_rows.items():
+            obj = existing_by_name.get(key)
+            is_new = obj is None
+            obj = obj or EnrollmentParticipant(enrollment=enrollment)
+            for field, value in fields.items():
+                setattr(obj, field, value)
+            if not obj.employer:
+                obj.employer = enrollment.client.company_name
+            obj.save()
+            if is_new:
+                created_count += 1
+            else:
+                updated_count += 1
+
+    messages.success(
+        request,
+        f"تم استيراد الملف: {created_count} مشارك جديد، {updated_count} تم تحديثه.",
+    )
+    return redirect("enrollment:enrollment_roster", enrollment_id=enrollment.pk)
 
 
 @login_required

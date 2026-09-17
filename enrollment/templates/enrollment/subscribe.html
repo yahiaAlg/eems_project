@@ -63,7 +63,7 @@
           </div>
           {% if form.client_type.errors %}<ul class="errorlist">{% for e in form.client_type.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
 
-          <div class="login-field" data-type="individual">
+          <div class="login-field" data-type="individual"{% if form.client_type.value == "enterprise" %} style="display:none;"{% endif %}>
             <div class="form-section-title"><iconify-icon icon="mdi:account-outline"></iconify-icon> الهوية</div>
             <div class="row g-3">
               <div class="col-md-6">
@@ -82,7 +82,7 @@
             </div>
           </div>
 
-          <div class="login-field" data-type="enterprise">
+          <div class="login-field" data-type="enterprise"{% if form.client_type.value != "enterprise" %} style="display:none;"{% endif %}>
             <div class="form-section-title"><iconify-icon icon="mdi:domain"></iconify-icon> بيانات المؤسسة</div>
             <div class="row g-3">
               <div class="col-md-6">
@@ -131,7 +131,7 @@
             </div>
           </div>
 
-          <div class="login-field" data-type="individual">
+          <div class="login-field" data-type="individual"{% if form.client_type.value == "enterprise" %} style="display:none;"{% endif %}>
             <div class="form-section-title"><iconify-icon icon="mdi:school-outline"></iconify-icon> المسار الدراسي والمهني</div>
             <div class="row g-3">
               <div class="col-md-4">

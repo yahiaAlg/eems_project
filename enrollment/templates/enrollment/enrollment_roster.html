@@ -48,12 +48,32 @@
     <a href="{% url 'enrollment:enrollment_roster_export' enrollment.pk %}" class="btn-add-more">
       <iconify-icon icon="mdi:file-delimited-outline"></iconify-icon> تصدير CSV
     </a>
+    {% if not locked %}
+    <form method="post" action="{% url 'enrollment:enrollment_roster_import' enrollment.pk %}"
+          enctype="multipart/form-data" id="roster-import-form" style="display:inline;">
+      {% csrf_token %}
+      <label for="roster-import-input" class="btn-add-more" style="cursor:pointer;margin:0;">
+        <iconify-icon icon="mdi:file-upload-outline"></iconify-icon> استيراد من ملف (CSV/Excel)
+      </label>
+      <input type="file" id="roster-import-input" name="import_file" accept=".csv,.xlsx"
+             style="display:none;" onchange="this.form.submit();">
+    </form>
+    {% endif %}
     {% if is_staff_view %}
     <a href="{% url 'enrollment:enrollment_session_bundle' enrollment.pk %}" class="btn-add-more">
       <iconify-icon icon="mdi:folder-zip-outline"></iconify-icon> تنزيل حزمة الجلسة (CSV + ملخص)
     </a>
     {% endif %}
   </div>
+
+  {% if not locked %}
+  <p class="roster-count-hint" style="margin-top:-0.5rem;">
+    الأعمدة الإلزامية في ملف الاستيراد: <strong>Prénom</strong> و<strong>Nom</strong>. الأعمدة
+    الاختيارية: Prénom AR، Nom AR، Date naissance (يوم/شهر/سنة)، Lieu naissance،
+    Lieu naissance AR، Fonction، Employeur، Téléphone، Email. السطر الأول يجب أن
+    يحتوي على أسماء الأعمدة (غير حساسة لحالة الأحرف).
+  </p>
+  {% endif %}
 
   {% if formset.non_form_errors %}
   <ul class="errorlist">
@@ -73,7 +93,6 @@
             <th>اللقب (Nom)</th>
             <th>الاسم بالعربية</th>
             <th>اللقب بالعربية</th>
-            <th>الجنس</th>
             <th>تاريخ الميلاد</th>
             <th>مكان الميلاد</th>
             <th>مكان الميلاد (AR)</th>
@@ -98,7 +117,6 @@
             </td>
             <td>{{ form.first_name_ar }}</td>
             <td>{{ form.last_name_ar }}</td>
-            <td>{{ form.gender }}</td>
             <td>{{ form.date_of_birth }}</td>
             <td>{{ form.place_of_birth }}</td>
             <td>{{ form.place_of_birth_ar }}</td>
@@ -149,7 +167,6 @@ the browser never renders it on its own.
     <td>{{ formset.empty_form.last_name }}</td>
     <td>{{ formset.empty_form.first_name_ar }}</td>
     <td>{{ formset.empty_form.last_name_ar }}</td>
-    <td>{{ formset.empty_form.gender }}</td>
     <td>{{ formset.empty_form.date_of_birth }}</td>
     <td>{{ formset.empty_form.place_of_birth }}</td>
     <td>{{ formset.empty_form.place_of_birth_ar }}</td>
