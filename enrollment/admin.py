@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from django.contrib import admin, messages
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import path, reverse
 from django.utils import timezone
@@ -156,6 +156,47 @@ class FormationSessionAdmin(admin.ModelAdmin):
     prepopulated_fields = {"slug": ("name",)}
 
 
+class FicheTechniqueStatusFilter(admin.SimpleListFilter):
+    """Filter the offerings changelist by the same four states the
+    `fiche_technique_badge` column shows. Custom filter rather than a
+    plain field filter because the status is derived from two fields
+    (`fiche_technique_mode` + `fiche_technique_file`) plus the optional
+    extras, and the useful question — "which offerings are missing a
+    technical sheet?" — cuts across all three."""
+
+    title = "حالة الملف التقني"
+    parameter_name = "fiche_status"
+
+    def lookups(self, request, model_admin):
+        return [
+            (Offering.FICHE_STATUS_CUSTOM, "ملف مخصص مرفوع"),
+            (Offering.FICHE_STATUS_MISSING, "⚠ ملف مخصص مفقود"),
+            (Offering.FICHE_STATUS_AUTO_FULL, "تلقائي — مكتمل"),
+            (Offering.FICHE_STATUS_AUTO_THIN, "تلقائي — ناقص"),
+        ]
+
+    def queryset(self, request, queryset):
+        value = self.value()
+        if not value:
+            return queryset
+
+        custom = Q(fiche_technique_mode="custom")
+        has_file = ~Q(fiche_technique_file="") & Q(fiche_technique_file__isnull=False)
+        has_extras = (
+            ~Q(objectives="") | ~Q(program_outline="") | ~Q(prerequisites="")
+        )
+
+        if value == Offering.FICHE_STATUS_CUSTOM:
+            return queryset.filter(custom & has_file)
+        if value == Offering.FICHE_STATUS_MISSING:
+            return queryset.filter(custom & ~has_file)
+        if value == Offering.FICHE_STATUS_AUTO_FULL:
+            return queryset.filter(~custom & has_extras)
+        if value == Offering.FICHE_STATUS_AUTO_THIN:
+            return queryset.filter(~custom & ~has_extras)
+        return queryset
+
+
 @admin.register(Offering)
 class OfferingAdmin(admin.ModelAdmin):
     list_display = (
@@ -166,12 +207,19 @@ class OfferingAdmin(admin.ModelAdmin):
         "duration_months",
         "monthly_fee",
         "seats_display",
+        "fiche_technique_badge",
         "is_active",
         "is_featured",
         "order",
     )
     list_editable = ("is_active", "is_featured", "order")
-    list_filter = ("session", "qualification_level", "is_active", "is_featured")
+    list_filter = (
+        "session",
+        "qualification_level",
+        FicheTechniqueStatusFilter,
+        "is_active",
+        "is_featured",
+    )
     search_fields = ("code", "title")
     autocomplete_fields = ("specialty", "formateur")
     inlines = [OfferingImageInline, OfferingAttachmentInline]
@@ -245,6 +293,31 @@ class OfferingAdmin(admin.ModelAdmin):
         return f"{obj.seats_taken} / {obj.seats_available} ({obj.fill_rate}%)"
 
     seats_display.short_description = "المقاعد المشغولة"
+
+    # Colour + icon per `Offering.fiche_technique_status`. Green = a real
+    # uploaded file, blue = auto template with enough content, amber =
+    # auto template that would print nearly empty, red = mode says
+    # "custom" but nothing was uploaded (the only actually-broken case).
+    FICHE_BADGE_STYLES = {
+        Offering.FICHE_STATUS_CUSTOM: ("#065f46", "#d1fae5", "📄"),
+        Offering.FICHE_STATUS_AUTO_FULL: ("#1e3a8a", "#dbeafe", "⚙"),
+        Offering.FICHE_STATUS_AUTO_THIN: ("#92400e", "#fef3c7", "○"),
+        Offering.FICHE_STATUS_MISSING: ("#991b1b", "#fee2e2", "⚠"),
+    }
+
+    def fiche_technique_badge(self, obj):
+        colour, background, icon = self.FICHE_BADGE_STYLES[obj.fiche_technique_status]
+        return format_html(
+            '<span style="display:inline-block;padding:2px 9px;border-radius:999px;'
+            'background:{};color:{};font-size:11.5px;font-weight:700;'
+            'white-space:nowrap;">{} {}</span>',
+            background,
+            colour,
+            icon,
+            obj.fiche_technique_status_label,
+        )
+
+    fiche_technique_badge.short_description = "الملف التقني"
 
 
 class ParticipantInline(admin.TabularInline):
@@ -396,6 +469,7 @@ class EnrollmentAdmin(admin.ModelAdmin):
         "client_link",
         "offering",
         "status",
+        "roster_badge",
         "created_at",
     )
     list_editable = ("status",)
@@ -445,12 +519,49 @@ class EnrollmentAdmin(admin.ModelAdmin):
             return "غير متاح — يتطلب زبونا من نوع مؤسسة وحالة مقبول/مؤكد"
         url = reverse("enrollment:enrollment_roster", args=[obj.pk])
         return format_html(
-            '<a href="{}" target="_blank" rel="noopener">عرض قائمة المشاركين ({})</a>',
+            '<a href="{}" target="_blank" rel="noopener">فتح وتعديل قائمة المشاركين ({})</a>'
+            '<br><span style="color:#64748b;font-size:11.5px;">كل حفظ يرسل نسخة كاملة '
+            "محدثة إلى البريد الإداري للأرشفة.</span>",
             url,
             obj.roster.count(),
         )
 
-    roster_link.short_description = "قائمة المشاركين (مساحة الزبون)"
+    roster_link.short_description = "قائمة المشاركين"
+
+    def roster_badge(self, obj):
+        """Changelist shortcut into the participants list (TODO 10.2.5) —
+        colour-coded against the offering's capacity so an under-filled
+        or still-empty enterprise roster is visible without opening the
+        row. Blank for enrollments that can't have a roster at all."""
+        if obj.client.client_type != "enterprise" or obj.status not in (
+            "accepted",
+            "confirmed",
+        ):
+            return format_html('<span style="color:#cbd5e1;">—</span>')
+
+        count = obj.roster.count()
+        capacity = obj.offering.seats_available
+        if count == 0:
+            colour, background = "#991b1b", "#fee2e2"
+        elif capacity and count < capacity:
+            colour, background = "#92400e", "#fef3c7"
+        else:
+            colour, background = "#065f46", "#d1fae5"
+
+        return format_html(
+            '<a href="{}" target="_blank" rel="noopener" '
+            'style="display:inline-block;padding:2px 9px;border-radius:999px;'
+            'background:{};color:{};font-size:11.5px;font-weight:700;'
+            'text-decoration:none;white-space:nowrap;">👥 {}{} {}</a>',
+            reverse("enrollment:enrollment_roster", args=[obj.pk]),
+            background,
+            colour,
+            count,
+            f" / {capacity}" if capacity else "",
+            "مقفلة" if obj.roster_locked_at else "",
+        )
+
+    roster_badge.short_description = "قائمة المشاركين"
 
     def schedule_link(self, obj):
         if not obj.pk:

@@ -59,6 +59,7 @@ from .models import (
 )
 from .services import (
     notify_accountants_of_confirmed_purchase,
+    notify_admin_of_roster_update,
     notify_admin_of_session_change_request,
     notify_new_enquiry,
 )
@@ -1151,12 +1152,18 @@ def enrollment_roster(request, enrollment_id):
     """'قائمة المشاركين' — dynamic formset the enterprise client fills in
     themselves (no per-row reload, one POST for the whole table, see
     `enrollment/static/enrollment/js/roster.js`). Staff reach the same
-    view read-only from a link on the admin change page (TODO 10.2.5);
-    once `roster_locked_at` is set (TODO 10.7), the roster is read-only
-    for the client too, but stays visible so they can see what was
-    submitted."""
+    view from a link on the admin change page (TODO 10.2.5) and may edit
+    it too, including after `roster_locked_at` is set (TODO 10.7) — the
+    lock exists to stop the *client* changing an already-scheduled list,
+    not to stop staff correcting it. For the client the page stays
+    visible once locked so they can see what was submitted.
+
+    Every successful save mails the admin inbox the whole updated list
+    (`notify_admin_of_roster_update`), so each version is archived with a
+    timestamp and a CSV attachment."""
     enrollment, is_staff_view = _get_enrollment_for_roster(request, enrollment_id)
-    locked = is_staff_view or enrollment.roster_locked_at is not None
+    client_locked = enrollment.roster_locked_at is not None
+    locked = client_locked and not is_staff_view
     queryset = EnrollmentParticipant.objects.filter(enrollment=enrollment)
     max_rows = enrollment.offering.seats_available
 
@@ -1174,6 +1181,17 @@ def enrollment_roster(request, enrollment_id):
             for obj in formset.deleted_objects:
                 obj.delete()
             messages.success(request, "تم حفظ قائمة المشاركين.")
+            # Notify after the save has committed, and only report the
+            # mail result to staff: a client has no use for "the admin
+            # notification failed", and the roster itself is already saved
+            # either way (the notifier never raises).
+            ok, note = notify_admin_of_roster_update(
+                enrollment,
+                updated_by=request.user,
+                source="staff" if is_staff_view else "form",
+            )
+            if is_staff_view:
+                messages.info(request, note) if ok else messages.warning(request, note)
             return redirect("enrollment:enrollment_roster", enrollment_id=enrollment.pk)
     else:
         formset = EnrollmentParticipantFormSet(
@@ -1186,6 +1204,7 @@ def enrollment_roster(request, enrollment_id):
         "enrollment": enrollment,
         "formset": formset,
         "locked": locked,
+        "client_locked": client_locked,
         "is_staff_view": is_staff_view,
         "max_rows": max_rows,
         "roster_count": queryset.count(),
@@ -1279,12 +1298,12 @@ def _read_roster_import_rows(uploaded_file):
 @require_POST
 def enrollment_roster_import(request, enrollment_id):
     """CSV/Excel import for the company roster — the upload counterpart of
-    `enrollment_roster_export` below. Client-only (staff view of the
-    roster is read-only, same as the formset above); the whole file is
-    validated up front and applied in one atomic transaction, so a bad
-    row never leaves the roster half-updated."""
+    `enrollment_roster_export` below. Open to whoever may edit the
+    formset above (the client until the roster locks, staff at any time);
+    the whole file is validated up front and applied in one atomic
+    transaction, so a bad row never leaves the roster half-updated."""
     enrollment, is_staff_view = _get_enrollment_for_roster(request, enrollment_id)
-    locked = is_staff_view or enrollment.roster_locked_at is not None
+    locked = enrollment.roster_locked_at is not None and not is_staff_view
     if locked:
         messages.error(request, "القائمة مقفلة، لا يمكن استيراد ملف.")
         return redirect("enrollment:enrollment_roster", enrollment_id=enrollment.pk)
@@ -1404,6 +1423,13 @@ def enrollment_roster_import(request, enrollment_id):
         request,
         f"تم استيراد الملف: {created_count} مشارك جديد، {updated_count} تم تحديثه.",
     )
+    ok, note = notify_admin_of_roster_update(
+        enrollment,
+        updated_by=request.user,
+        source="staff" if is_staff_view else "import",
+    )
+    if is_staff_view:
+        messages.info(request, note) if ok else messages.warning(request, note)
     return redirect("enrollment:enrollment_roster", enrollment_id=enrollment.pk)
 
 

@@ -261,3 +261,129 @@ def build_session_brief(enrollment):
             "participant_count": enrollment.roster.count(),
         },
     )
+
+
+# --- Company roster change notification --------------------------------
+# Every save of an enterprise client's participants list (the client's own
+# formset save, a CSV/Excel import, or a staff correction made from the
+# same page) mails the admin inbox the *whole* updated list, with the CSV
+# attached, so the admin keeps a dated record of every version the roster
+# went through without having to open the site.
+
+ROSTER_CSV_HEADER = [
+    "Prénom",
+    "Nom",
+    "Prénom AR",
+    "Nom AR",
+    "Date naissance",
+    "Lieu naissance",
+    "Lieu naissance AR",
+    "Fonction",
+    "Employeur",
+    "Téléphone",
+    "Email",
+]
+
+
+def build_roster_rows(enrollment):
+    """The roster as a list of plain string rows, in the exact column
+    order of `ROSTER_CSV_HEADER` — shared by the CSV attachment below and
+    the HTML table in the notification email, so the two can never drift
+    apart."""
+    return [
+        [
+            p.first_name,
+            p.last_name,
+            p.first_name_ar,
+            p.last_name_ar,
+            p.date_of_birth.strftime("%d/%m/%Y") if p.date_of_birth else "",
+            p.place_of_birth,
+            p.place_of_birth_ar,
+            p.job_title,
+            p.employer,
+            p.phone,
+            p.email,
+        ]
+        for p in enrollment.roster.all().order_by("last_name", "first_name")
+    ]
+
+
+def build_roster_csv_bytes(enrollment):
+    """Same file `enrollment_roster_export` serves as a download, as raw
+    bytes for mail attachment. utf-8-sig (BOM) deliberately: the admins
+    open these in Excel, which mis-decodes plain utf-8 Arabic/accents."""
+    import csv
+    import io
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(ROSTER_CSV_HEADER)
+    for row in build_roster_rows(enrollment):
+        writer.writerow(row)
+    return buffer.getvalue().encode("utf-8-sig")
+
+
+def notify_admin_of_roster_update(enrollment, updated_by=None, source="form"):
+    """Mail the admin inbox the updated participants list of one
+    enterprise enrollment. Same contract as every other notifier here:
+    never raises, returns an `(ok, message)` tuple meant for admin/flash
+    messages only, so a dead mail server can't lose a roster save that
+    already committed.
+
+    `source` is one of "form" (the on-page table), "import" (CSV/Excel
+    upload) or "staff" (a correction made by a staff member) — it only
+    changes the wording of the mail, not what's sent.
+    """
+    admin_emails = [addr for _name, addr in getattr(settings, "ADMINS", [])]
+    if not admin_emails:
+        return False, "لا يوجد بريد إداري مضبوط — لم يُرسل إشعار تحديث قائمة المشاركين."
+
+    client = enrollment.client
+    offering = enrollment.offering
+    rows = build_roster_rows(enrollment)
+    updated_at = timezone.now()
+
+    source_labels = {
+        "form": "تعديل مباشر من جدول القائمة",
+        "import": "استيراد ملف (CSV/Excel)",
+        "staff": "تصحيح من طرف الإدارة",
+    }
+
+    filename = (
+        f"participants_{offering.code}_{enrollment.pk}"
+        f"_{updated_at:%Y%m%d-%H%M}.csv"
+    )
+
+    sent = send_branded_mail(
+        template="emails/roster_updated_admin_notification.html",
+        subject=(
+            f"تحديث قائمة المشاركين — {client.display_name} "
+            f"({offering.code}) — {len(rows)} مشارك"
+        ),
+        to=admin_emails,
+        context={
+            "client_name": client.display_name,
+            "client_type": client.get_client_type_display(),
+            "offering_title": offering.title,
+            "offering_code": offering.code,
+            "session_name": offering.session.name,
+            "session_start_date": offering.session.start_date,
+            "enrollment_id": enrollment.pk,
+            "seats_available": offering.seats_available,
+            "participant_count": len(rows),
+            "updated_at": updated_at,
+            "updated_by": (
+                updated_by.get_full_name() or updated_by.get_username()
+                if updated_by and updated_by.is_authenticated
+                else client.display_name
+            ),
+            "source_label": source_labels.get(source, source),
+            "is_locked": enrollment.roster_locked_at is not None,
+            "header": ROSTER_CSV_HEADER,
+            "rows": rows,
+        },
+        attachments=[(filename, build_roster_csv_bytes(enrollment), "text/csv")],
+    )
+    if not sent:
+        return False, f"تعذر إرسال إشعار تحديث قائمة المشاركين ({client.display_name})."
+    return True, f"تم إرسال نسخة محدثة من قائمة المشاركين إلى الإدارة ({len(rows)} مشارك)."

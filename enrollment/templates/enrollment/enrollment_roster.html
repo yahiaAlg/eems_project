@@ -32,7 +32,8 @@
   {% if is_staff_view %}
   <div class="roster-banner">
     <iconify-icon icon="mdi:shield-account-outline"></iconify-icon>
-    عرض للموظفين (للقراءة فقط) — الزبون: {{ client.display_name }}
+    عرض إداري — الزبون: {{ client.display_name }}. يمكنك تعديل القائمة{% if client_locked %} رغم كونها مقفلة أمام الزبون{% endif %}؛
+    ترسَل نسخة محدثة كاملة إلى البريد الإداري عند كل حفظ.
   </div>
   {% elif locked %}
   <div class="roster-banner">

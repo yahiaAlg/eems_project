@@ -1,0 +1,50 @@
+{% extends "emails/base_email.html" %}
+{% block title %}تحديث قائمة المشاركين — {{ site_name }}{% endblock %}
+{% block body %}
+<div style="font-size:12px;font-weight:700;color:#0ea5e9;letter-spacing:.5px;margin-bottom:10px;">إشعار إداري — أرشيف القوائم</div>
+<h1 style="font-size:22px;font-weight:800;color:#0f172a;margin:0 0 16px;">تحديث قائمة المشاركين</h1>
+<p style="font-size:14.5px;line-height:1.9;color:#334155;margin:0 0 20px;">
+  تم حفظ نسخة جديدة من قائمة المشاركين الخاصة بهذا التسجيل. النسخة الكاملة كما هي الآن مرفقة
+  بهذه الرسالة كملف CSV، ومعروضة أدناه للاطلاع السريع — احتفظ بهذه الرسالة كسجل مؤرخ لهذه النسخة.
+</p>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;margin-bottom:22px;">
+  <tr><td style="padding:10px 20px;border-bottom:1px solid #e2e8f0;"><span style="color:#64748b;font-size:12.5px;">المؤسسة</span><br><strong style="color:#0f172a;font-size:14.5px;">{{ client_name }} <span style="color:#94a3b8;font-weight:400;">({{ client_type }})</span></strong></td></tr>
+  <tr><td style="padding:10px 20px;border-bottom:1px solid #e2e8f0;"><span style="color:#64748b;font-size:12.5px;">التخصص</span><br><strong style="color:#0f172a;font-size:14.5px;">{{ offering_title }} <span style="color:#94a3b8;font-weight:400;" dir="ltr">({{ offering_code }})</span></strong></td></tr>
+  <tr><td style="padding:10px 20px;border-bottom:1px solid #e2e8f0;"><span style="color:#64748b;font-size:12.5px;">الدورة</span><br><strong style="color:#0f172a;font-size:14.5px;">{{ session_name }}{% if session_start_date %} — {{ session_start_date|date:"d/m/Y" }}{% endif %}</strong></td></tr>
+  <tr><td style="padding:10px 20px;border-bottom:1px solid #e2e8f0;"><span style="color:#64748b;font-size:12.5px;">عدد المشاركين</span><br><strong style="color:#0f172a;font-size:14.5px;">{{ participant_count }}{% if seats_available %} / {{ seats_available }}{% endif %}</strong></td></tr>
+  <tr><td style="padding:10px 20px;border-bottom:1px solid #e2e8f0;"><span style="color:#64748b;font-size:12.5px;">نوع التعديل</span><br><strong style="color:#0f172a;font-size:14.5px;">{{ source_label }}</strong></td></tr>
+  <tr><td style="padding:10px 20px;{% if is_locked %}border-bottom:1px solid #e2e8f0;{% endif %}"><span style="color:#64748b;font-size:12.5px;">تم التعديل من طرف</span><br><strong style="color:#0f172a;font-size:14.5px;">{{ updated_by }}</strong> <span style="color:#94a3b8;font-size:12.5px;">— {{ updated_at|date:"d/m/Y H:i" }}</span></td></tr>
+  {% if is_locked %}<tr><td style="padding:10px 20px;"><span style="color:#64748b;font-size:12.5px;">الحالة</span><br><strong style="color:#b45309;font-size:14.5px;">القائمة مقفلة أمام الزبون (الدورة مجدولة)</strong></td></tr>{% endif %}
+</table>
+
+{% if rows %}
+<div style="font-size:13px;font-weight:700;color:#0f172a;margin:0 0 8px;">النسخة الكاملة ({{ participant_count }} سطر)</div>
+<div style="overflow-x:auto;margin-bottom:22px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" dir="ltr" style="border-collapse:collapse;border:1px solid #e2e8f0;border-radius:10px;font-size:11.5px;">
+    <tr style="background:#f1f5f9;">
+      <th style="padding:7px 8px;text-align:left;color:#475569;border-bottom:1px solid #e2e8f0;font-weight:700;">#</th>
+      {% for column in header %}
+      <th style="padding:7px 8px;text-align:left;color:#475569;border-bottom:1px solid #e2e8f0;font-weight:700;white-space:nowrap;">{{ column }}</th>
+      {% endfor %}
+    </tr>
+    {% for row in rows %}
+    <tr style="background:{% cycle '#ffffff' '#f8fafc' %};">
+      <td style="padding:7px 8px;color:#94a3b8;border-bottom:1px solid #f1f5f9;">{{ forloop.counter }}</td>
+      {% for value in row %}
+      <td style="padding:7px 8px;color:#334155;border-bottom:1px solid #f1f5f9;white-space:nowrap;">{{ value|default:"—" }}</td>
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% else %}
+<p style="font-size:14px;color:#b45309;background:#fef3c7;border-radius:10px;padding:12px 16px;margin:0 0 22px;">
+  القائمة فارغة حاليا — تم حذف كل الأسطر في هذا التعديل.
+</p>
+{% endif %}
+
+<div style="text-align:center;">
+  <a href="{{ site_url }}/admin/enrollment/enrollment/{{ enrollment_id }}/change/" style="display:inline-block;background:#0ea5e9;color:#ffffff;font-weight:700;font-size:14px;text-decoration:none;padding:12px 26px;border-radius:8px;">فتح التسجيل في لوحة التحكم</a>
+</div>
+{% endblock %}

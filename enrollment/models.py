@@ -551,6 +551,52 @@ class Offering(models.Model):
     def fiche_technique_is_custom(self):
         return self.fiche_technique_mode == "custom" and bool(self.fiche_technique_file)
 
+    # --- fiche technique status (admin list badge) --------------------
+    # Four mutually exclusive states, computed from the two fiche fields
+    # plus the optional extras above. `missing` is the only one that is
+    # actually broken: the offering says "use my uploaded file" but no
+    # file was ever uploaded, so `fiche_technique_url` silently falls
+    # back to the auto template and the admin never notices.
+    FICHE_STATUS_CUSTOM = "custom"
+    FICHE_STATUS_MISSING = "missing"
+    FICHE_STATUS_AUTO_FULL = "auto_full"
+    FICHE_STATUS_AUTO_THIN = "auto_thin"
+
+    FICHE_STATUS_LABELS = {
+        FICHE_STATUS_CUSTOM: "ملف مرفوع",
+        FICHE_STATUS_MISSING: "ملف مفقود",
+        FICHE_STATUS_AUTO_FULL: "تلقائي — مكتمل",
+        FICHE_STATUS_AUTO_THIN: "تلقائي — ناقص",
+    }
+
+    @property
+    def fiche_technique_status(self):
+        if self.fiche_technique_mode == "custom":
+            return (
+                self.FICHE_STATUS_CUSTOM
+                if self.fiche_technique_file
+                else self.FICHE_STATUS_MISSING
+            )
+        return (
+            self.FICHE_STATUS_AUTO_FULL
+            if self.has_fiche_technique_extras
+            else self.FICHE_STATUS_AUTO_THIN
+        )
+
+    @property
+    def fiche_technique_status_label(self):
+        return self.FICHE_STATUS_LABELS[self.fiche_technique_status]
+
+    @property
+    def has_fiche_technique(self):
+        """True when a client actually gets a usable technical sheet —
+        either a real uploaded file, or an auto template with enough
+        content in it to be worth printing."""
+        return self.fiche_technique_status in (
+            self.FICHE_STATUS_CUSTOM,
+            self.FICHE_STATUS_AUTO_FULL,
+        )
+
     @property
     def fiche_technique_url(self):
         if self.fiche_technique_is_custom:
