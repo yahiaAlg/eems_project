@@ -1,7 +1,10 @@
+from datetime import timedelta
+
 from django.core.validators import FileExtensionValidator, MinValueValidator
 from django.db import models
 from django.conf import settings
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.text import slugify
 
 # Allowed extensions for admin-uploaded "custom" documents (CV / fiche
@@ -487,6 +490,12 @@ class Offering(models.Model):
         "تخصص مميز (يظهر في الصفحة الرئيسية)", default=False
     )
     order = models.PositiveIntegerField("الترتيب", default=0)
+    created_at = models.DateTimeField("تاريخ الإضافة", auto_now_add=True, null=True)
+    updated_at = models.DateTimeField("آخر تعديل", auto_now=True, null=True)
+
+    # How long after an admin edit an offering counts as "recently
+    # modified" for the catalog badge/sort — see `recently_modified` below.
+    RECENTLY_MODIFIED_WINDOW = timedelta(days=14)
 
     class Meta:
         ordering = ["order", "code"]
@@ -496,6 +505,19 @@ class Offering(models.Model):
 
     def __str__(self):
         return f"{self.code} — {self.title} ({self.session})"
+
+    @property
+    def recently_modified(self):
+        """True once an admin has actually *edited* this offering after
+        creating it (not just created it) within the last two weeks —
+        `created_at`/`updated_at` land within a couple of seconds of each
+        other on the initial save, so a fresh offering never counts as
+        "recently modified" until someone comes back and changes it."""
+        if not self.created_at or not self.updated_at:
+            return False
+        if self.updated_at - self.created_at < timedelta(minutes=2):
+            return False
+        return timezone.now() - self.updated_at <= self.RECENTLY_MODIFIED_WINDOW
 
     @property
     def seats_taken(self):

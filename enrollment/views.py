@@ -170,6 +170,32 @@ def catalog(request):
     specialty_code = request.GET.get("specialty") or ""
     query = request.GET.get("q") or ""
 
+    # --- sorting -----------------------------------------------------
+    # Whitelisted rather than passed straight into order_by(): a raw GET
+    # value there would let anyone probe unrelated fields/relations
+    # (e.g. "session__client__..."), so only these four criteria are
+    # ever accepted. "updated" is the default so admin edits surface
+    # first, matching the "حُدّث مؤخرا" badge on the cards.
+    SORT_FIELDS = {
+        "updated": "updated_at",
+        "title": "title",
+        "duration": "duration_months",
+        "fee": "monthly_fee",
+    }
+    sort = request.GET.get("sort") or "updated"
+    if sort not in SORT_FIELDS:
+        sort = "updated"
+    direction = request.GET.get("dir") or "desc"
+    if direction not in ("asc", "desc"):
+        direction = "desc"
+
+    field = SORT_FIELDS[sort]
+    order_fields = [field if direction == "asc" else f"-{field}"]
+    # Stable, deterministic secondary order (ties are common on
+    # duration/fee, and "updated" can be NULL for rows untouched since
+    # the field was added) — falls back to the staff's manual ordering.
+    order_fields += ["order", "code"]
+
     offerings = Offering.objects.filter(
         is_active=True, session__is_active=True
     ).select_related("session", "specialty__branch", "formateur")
@@ -189,6 +215,7 @@ def catalog(request):
             | Q(code__icontains=query)
             | Q(branch_label__icontains=query)
         )
+    offerings = offerings.order_by(*order_fields)
 
     wishlisted_offering_ids = set()
     catalog_client = getattr(request.user, "client", None)
@@ -217,6 +244,8 @@ def catalog(request):
         "selected_formateur": formateur_slug,
         "selected_specialty": specialty_code,
         "query": query,
+        "sort": sort,
+        "direction": direction,
         **_shared_chrome_context(),
     }
     return render(request, "enrollment/catalog.html", context)

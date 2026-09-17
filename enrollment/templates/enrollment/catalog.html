@@ -114,9 +114,24 @@
       <div class="col-lg-9">
         <div id="results-toolbar">
           <div class="results-count"><strong>{{ offerings|length }}</strong> تخصص{% if query or selected_session or selected_branch or selected_level or selected_formateur or selected_specialty %} مطابق للفلاتر{% endif %}</div>
-          <div class="view-toggle">
-            <button type="button" data-view="grid"><i class="bi bi-grid-3x3-gap-fill"></i> شبكة</button>
-            <button type="button" data-view="list"><i class="bi bi-list-ul"></i> قائمة</button>
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <div class="sort-controls d-flex align-items-center gap-2">
+              <label for="sortField" class="visually-hidden">ترتيب حسب</label>
+              <select id="sortField" class="form-select form-select-sm" style="width:auto;">
+                <option value="updated" {% if sort == "updated" %}selected{% endif %}>آخر تعديل</option>
+                <option value="title" {% if sort == "title" %}selected{% endif %}>الاسم</option>
+                <option value="duration" {% if sort == "duration" %}selected{% endif %}>مدة التكوين</option>
+                <option value="fee" {% if sort == "fee" %}selected{% endif %}>القيمة الشهرية</option>
+              </select>
+              <button type="button" id="sortDirToggle" class="sort-dir-btn" data-dir="{{ direction }}" title="{% if direction == 'desc' %}تنازلي — اضغط للتبديل إلى تصاعدي{% else %}تصاعدي — اضغط للتبديل إلى تنازلي{% endif %}">
+                <iconify-icon icon="{% if direction == 'desc' %}mdi:sort-descending{% else %}mdi:sort-ascending{% endif %}"></iconify-icon>
+                <span>{% if direction == "desc" %}تنازلي{% else %}تصاعدي{% endif %}</span>
+              </button>
+            </div>
+            <div class="view-toggle">
+              <button type="button" data-view="grid"><i class="bi bi-grid-3x3-gap-fill"></i> شبكة</button>
+              <button type="button" data-view="list"><i class="bi bi-list-ul"></i> قائمة</button>
+            </div>
           </div>
         </div>
 
@@ -130,6 +145,7 @@
               <div>
                 <div class="offer-top">
                   <span class="offer-code">{{ offering.code }}</span>
+                  {% if offering.recently_modified %}<span class="offer-updated-badge" title="حُدّثت بواسطة الإدارة بتاريخ {{ offering.updated_at|date:'d/m/Y' }}"><iconify-icon icon="mdi:pencil-circle"></iconify-icon> حُدّث مؤخرا</span>{% endif %}
                   {% if offering.get_qualification_level_display %}<span class="offer-level">{{ offering.qualification_level }} — {{ offering.get_certificate_type_display }}</span>{% endif %}
                 </div>
                 <h3>{{ offering.title }}</h3>
@@ -223,6 +239,35 @@
     specialtiesApiUrl: "{% url 'specialty-list' %}",
     selectedSpecialty: "{{ selected_specialty|escapejs }}"
   };
+
+  (function () {
+    // Sort controls live outside the filters <form> (they sit in the
+    // results toolbar, not the sidebar) so they navigate directly by
+    // rewriting the query string, keeping every other active filter
+    // (q, session, branch, level, formateur, specialty) untouched.
+    function goWithParams(updates) {
+      var params = new URLSearchParams(window.location.search);
+      Object.keys(updates).forEach(function (key) {
+        params.set(key, updates[key]);
+      });
+      window.location.search = params.toString();
+    }
+
+    var sortField = document.getElementById("sortField");
+    if (sortField) {
+      sortField.addEventListener("change", function () {
+        goWithParams({ sort: sortField.value });
+      });
+    }
+
+    var dirToggle = document.getElementById("sortDirToggle");
+    if (dirToggle) {
+      dirToggle.addEventListener("click", function () {
+        var next = dirToggle.dataset.dir === "desc" ? "asc" : "desc";
+        goWithParams({ dir: next });
+      });
+    }
+  })();
 </script>
 <script src="{% static 'enrollment/js/catalog-filters.js' %}"></script>
 <script src="{% static 'enrollment/js/catalog.js' %}"></script>

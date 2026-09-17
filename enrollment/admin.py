@@ -211,8 +211,10 @@ class OfferingAdmin(admin.ModelAdmin):
         "is_active",
         "is_featured",
         "order",
+        "updated_at",
     )
     list_editable = ("is_active", "is_featured", "order")
+    ordering = ("-updated_at",)
     list_filter = (
         "session",
         "qualification_level",
