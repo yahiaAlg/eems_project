@@ -318,6 +318,18 @@
   padding: 3px 9px;
   direction: ltr;
 }
+.offer-pinned-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.14);
+  border-radius: 6px;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
 .offer-updated-badge {
   display: inline-flex;
   align-items: center;

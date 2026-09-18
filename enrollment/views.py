@@ -195,6 +195,9 @@ def catalog(request):
     # duration/fee, and "updated" can be NULL for rows untouched since
     # the field was added) — falls back to the staff's manual ordering.
     order_fields += ["order", "code"]
+    # Pinned offerings (set by staff in admin) always lead the catalog,
+    # ahead of whatever sort/direction the visitor picked.
+    order_fields = ["-is_pinned"] + order_fields
 
     offerings = Offering.objects.filter(
         is_active=True, session__is_active=True

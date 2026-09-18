@@ -210,17 +210,19 @@ class OfferingAdmin(admin.ModelAdmin):
         "fiche_technique_badge",
         "is_active",
         "is_featured",
+        "is_pinned",
         "order",
         "updated_at",
     )
-    list_editable = ("is_active", "is_featured", "order")
-    ordering = ("-updated_at",)
+    list_editable = ("is_active", "is_featured", "is_pinned", "order")
+    ordering = ("-is_pinned", "-updated_at")
     list_filter = (
         "session",
         "qualification_level",
         FicheTechniqueStatusFilter,
         "is_active",
         "is_featured",
+        "is_pinned",
     )
     search_fields = ("code", "title")
     autocomplete_fields = ("specialty", "formateur")
@@ -288,7 +290,16 @@ class OfferingAdmin(admin.ModelAdmin):
                 ),
             },
         ),
-        ("العرض على الموقع", {"fields": ("is_active", "is_featured", "order")}),
+        (
+            "العرض على الموقع",
+            {
+                "fields": ("is_active", "is_featured", "is_pinned", "order"),
+                "description": (
+                    "العروض المثبّتة (is_pinned) تظهر دائما في أول الكتالوج، "
+                    "قبل بقية العروض، مهما كان الفرز المختار من طرف الزائر."
+                ),
+            },
+        ),
     )
 
     def seats_display(self, obj):

@@ -145,6 +145,7 @@
               <div>
                 <div class="offer-top">
                   <span class="offer-code">{{ offering.code }}</span>
+                  {% if offering.is_pinned %}<span class="offer-pinned-badge" title="عرض مثبّت من طرف الإدارة"><iconify-icon icon="mdi:pin"></iconify-icon> مثبّت</span>{% endif %}
                   {% if offering.recently_modified %}<span class="offer-updated-badge" title="حُدّثت بواسطة الإدارة بتاريخ {{ offering.updated_at|date:'d/m/Y' }}"><iconify-icon icon="mdi:pencil-circle"></iconify-icon> حُدّث مؤخرا</span>{% endif %}
                   {% if offering.get_qualification_level_display %}<span class="offer-level">{{ offering.qualification_level }} — {{ offering.get_certificate_type_display }}</span>{% endif %}
                 </div>

@@ -489,6 +489,11 @@ class Offering(models.Model):
     is_featured = models.BooleanField(
         "تخصص مميز (يظهر في الصفحة الرئيسية)", default=False
     )
+    is_pinned = models.BooleanField(
+        "مثبّت (يظهر أولا في الكتالوج)",
+        default=False,
+        help_text="العروض المثبّتة تظهر دائما في مقدمة الكتالوج، قبل الترتيب/الفرز المختار.",
+    )
     order = models.PositiveIntegerField("الترتيب", default=0)
     created_at = models.DateTimeField("تاريخ الإضافة", auto_now_add=True, null=True)
     updated_at = models.DateTimeField("آخر تعديل", auto_now=True, null=True)
@@ -498,7 +503,7 @@ class Offering(models.Model):
     RECENTLY_MODIFIED_WINDOW = timedelta(days=14)
 
     class Meta:
-        ordering = ["order", "code"]
+        ordering = ["-is_pinned", "order", "code"]
         unique_together = ("session", "code")
         verbose_name = "عرض تكوين"
         verbose_name_plural = "عروض التكوين"
