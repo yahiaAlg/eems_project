@@ -192,9 +192,16 @@
   overflow: hidden;
 }
 .view-toggle button {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
   background: #fff;
+  background-image: none;
+  box-shadow: none;
+  outline: none;
   border: none;
   padding: 8px 14px;
+  font-family: inherit;
   color: var(--muted);
   cursor: pointer;
   display: flex;
@@ -214,15 +221,23 @@
   border-inline-end: 1px solid var(--card-border);
 }
 .sort-dir-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   background: #fff;
+  background-image: none;
+  box-shadow: none;
+  outline: none;
   border: 1px solid var(--card-border);
   border-radius: 8px;
   padding: 7px 12px;
+  font-family: inherit;
   font-size: 13px;
   font-weight: 700;
+  line-height: 1.4;
   color: var(--muted);
   cursor: pointer;
   transition: all 0.18s;
@@ -231,6 +246,14 @@
   border-color: var(--accent);
   color: var(--accent-dark);
   background: var(--accent-soft);
+}
+.sort-dir-btn:focus,
+.sort-dir-btn:focus-visible {
+  box-shadow: 0 0 0 3px var(--accent-glow);
+  border-color: var(--accent);
+}
+.sort-dir-btn iconify-icon {
+  font-size: 15px;
 }
 @media (max-width: 575.98px) {
   .sort-controls {
