@@ -1,6 +1,6 @@
 # Subscription flow — what changed
 
-Extract this zip over your project root (`eems_project/`), same paths, then:
+Extract this zip over your project root (`config/`), same paths, then:
 
 ```
 python manage.py migrate
@@ -49,6 +49,7 @@ across `accounts` (new app) and extensions to `enrollment`. Summary — see
 for the manual test matrix.
 
 ## Accounts (Phase 1)
+
 Real `django.contrib.auth.User` login (no custom `AUTH_USER_MODEL`) replaces
 the old phone/session dashboard login. Public registration (individual or
 enterprise) creates an inactive user + a `pending` `Client`; an admin action
@@ -58,22 +59,26 @@ live under `/account/...` via Django's built-in views with branded templates.
 "VIP"/"Normal" Groups mirror `Client.is_vip` automatically (`accounts.signals`).
 
 ## Profile & enterprise legal info (Phase 2)
+
 `Client` gained the full enterprise legal/accounting field set (forme
 juridique, NIF, NIS, RIB, TVA exemption, billing contact, ...). A "My
 Profile" page lets clients edit their own record; a VIP enterprise can't
 submit a proforma request until those fields are complete.
 
 ## Role-based pricing (Phase 3)
+
 Base prices are omitted from the rendered HTML entirely for anonymous and
 non-VIP visitors — everywhere a price could appear (catalog, detail, cart,
 checkout, purchase history).
 
 ## Cart & wishlist (Phase 4)
+
 `Cart`/`CartItem` (trainer selection VIP-only, enforced server-side) and
 `WishlistItem` replace the old single-offering subscribe flow as the primary
 entry point; the legacy direct-subscribe route still works.
 
 ## Checkout, branched by role (Phase 5)
+
 VIP → "Request Proforma" (billing basis + trainer per line + optional bon de
 commande upload) → `ProformaInvoice`/`ProformaInvoiceItem`, cart lines frozen
 at submission time. Non-VIP → "Request Quote" (offering + participant count
@@ -81,6 +86,7 @@ only) → `QuoteRequest`/`QuoteRequestItem`, priced later by staff. Both flows
 lock/clear the source cart on submit.
 
 ## Tarification (Phase 6)
+
 "Accountant" Group scoped to viewing/pricing `ProformaInvoice`/`QuoteRequest`
 only. Admin/accountant sets `unit_price`+`billing_basis` per quote line;
 once fully priced, a printable invoice is generated the same way as a VIP
@@ -88,17 +94,20 @@ proforma (plain HTML + `@media print`, no PDF library) and surfaced in the
 client's "My Purchases".
 
 ## Notification emails (Phase 7)
+
 Dedicated templates (all extending `emails/base_email.html`) for: pending
 account, activated + credentials, password reset, VIP proforma → admin/
 accountant (with the bon de commande attached/linked), non-VIP quote →
 admin/accountant, and quote-priced → client.
 
 ## Client space overhaul (Phase 8)
+
 `/mon-espace/` rebuilt with Profile, Active Purchases, Cart, Wishlist,
 Request History, and Chart.js-based Metrics — all re-checked against the
 Phase 3 pricing rule.
 
 ## QA & polish (Phase 9)
+
 - Manual test matrix documented in `docs/TESTING_ACCOUNTS_AND_CHECKOUT.md`.
 - New `accounts.seed_demo_users` management command (idempotent) seeds a
   VIP individual, a VIP enterprise (legal info pre-filled, clears the Phase
@@ -107,9 +116,10 @@ Phase 3 pricing rule.
 - This README/CHANGES update.
 
 ## Files touched (Phase 1–9, high level)
+
 Added: `accounts/` (app), `enrollment/{cart,wishlist,proforma,quote}`-related
 model/view/template additions, `accounts/management/commands/{seed_account_groups,
 seed_accountant_group,seed_demo_users}.py`, `emails/*` templates for the new
 notifications, `docs/TESTING_ACCOUNTS_AND_CHECKOUT.md`.
 Modified: `enrollment/{models,forms,views,urls,admin,signals}.py`,
-`eems_project/settings.py` (INSTALLED_APPS), `reseed_all.sh`, `README.md`.
+`config/settings.py` (INSTALLED_APPS), `reseed_all.sh`, `README.md`.

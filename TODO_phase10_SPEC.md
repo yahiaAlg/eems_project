@@ -1,10 +1,10 @@
 # Functional Spec — Phase 10: Enrollment lifecycle, company rosters, client‑space fixes & pedagogical bridge
 
-**How to use this doc:** hand this file (plus fresh copies of `eems_project.zip` and `isi_pedagogical_webapp.zip`) to a new session and implement section by section, in order — 10.0 is a hard dependency for everything else. Every "ASSUME" tag below marks something I inferred from `db.sqlite3`'s schema or from cross‑references in `accounts/*.py`, because `enrollment/models.py`, `enrollment/views.py`, `enrollment/forms.py`, `enrollment/admin.py` and `enrollment/urls.py` were **not** in the reference zip I was given — only `accounts/` was. **Before touching anything in `enrollment/`, open those five files first and reconcile them against each ASSUME note**; adjust names, don't guess past that point.
+**How to use this doc:** hand this file (plus fresh copies of `config.zip` and `isi_pedagogical_webapp.zip`) to a new session and implement section by section, in order — 10.0 is a hard dependency for everything else. Every "ASSUME" tag below marks something I inferred from `db.sqlite3`'s schema or from cross‑references in `accounts/*.py`, because `enrollment/models.py`, `enrollment/views.py`, `enrollment/forms.py`, `enrollment/admin.py` and `enrollment/urls.py` were **not** in the reference zip I was given — only `accounts/` was. **Before touching anything in `enrollment/`, open those five files first and reconcile them against each ASSUME note**; adjust names, don't guess past that point.
 
-Two separate Django projects/DBs throughout: `eems_project` (apps: `accounts`, `enrollment`, `pages` — the last also not in the reference zip) and `isi_pedagogical_webapp` (apps: `formations`, `clients`, `resources`, `core`, `reporting`, `documents`). No shared FK. Every hand‑off is a generated file, not a join.
+Two separate Django projects/DBs throughout: `config` (apps: `accounts`, `enrollment`, `pages` — the last also not in the reference zip) and `isi_pedagogical_webapp` (apps: `formations`, `clients`, `resources`, `core`, `reporting`, `documents`). No shared FK. Every hand‑off is a generated file, not a join.
 
-Confirmed today, from `eems_project/db.sqlite3` schema and code actually in the zip:
+Confirmed today, from `config/db.sqlite3` schema and code actually in the zip:
 
 ```
 enrollment_enrollment(id, motivation, status, created_at, updated_at,
@@ -156,7 +156,7 @@ Migration: `enrollment/migrations/00XX_add_enrollmentparticipant.py` (plain `mak
 roster_locked_at = models.DateTimeField(null=True, blank=True)
 ```
 
-`roster_locked_at` is set the moment 10.7's "Planifier la session" action runs; `None` = roster still editable by the client. (No separate boolean — the timestamp doubles as both the flag and an audit trail of *when* it was locked.)
+`roster_locked_at` is set the moment 10.7's "Planifier la session" action runs; `None` = roster still editable by the client. (No separate boolean — the timestamp doubles as both the flag and an audit trail of _when_ it was locked.)
 
 ### 10.0.3 `EnrollmentNote` — client visibility flag
 
@@ -183,7 +183,7 @@ One migration for all three changes above is fine (`enrollment/migrations/00XX_p
 
 ### 10.1.1 Detection: signal, not admin hook
 
-Don't hook this into whatever admin action currently sets `status="accepted"` (there may be more than one entry point — direct field edit on the change form *and* the bulk action seen in the enrollment list screenshot). Instead, in `enrollment/signals.py` (create if it doesn't exist yet, or add to it):
+Don't hook this into whatever admin action currently sets `status="accepted"` (there may be more than one entry point — direct field edit on the change form _and_ the bulk action seen in the enrollment list screenshot). Instead, in `enrollment/signals.py` (create if it doesn't exist yet, or add to it):
 
 ```python
 from django.db.models.signals import pre_save
@@ -274,12 +274,13 @@ def notify_enrollment_accepted(enrollment):
 ### 10.2.1 Gating
 
 Roster page reachable only when **all** of:
+
 - `request.user` is authenticated and `request.user.client_id == enrollment.client_id` (or staff, read‑only for staff — see 10.2.5).
 - `enrollment.client.client_type == "enterprise"`.
 - `enrollment.status in ("accepted", "confirmed")`.
 - `enrollment.roster_locked_at is None` for **editing**; a locked roster still renders read‑only (so the client can see what was submitted after 10.7 locks it).
 
-Anything else → `404` (don't leak enrollment existence to other users) or a plain "غير متاح" message if it's the *client's own* enrollment but wrong status/type.
+Anything else → `404` (don't leak enrollment existence to other users) or a plain "غير متاح" message if it's the _client's own_ enrollment but wrong status/type.
 
 ### 10.2.2 URL & view
 
@@ -365,12 +366,12 @@ Cap the roster at `enrollment.offering.seats_available` client‑side (JS disabl
   - `addRow()`: clone `#empty-row-template` content, replace every `__prefix__` occurrence in `name=`/`id=`/`for=` attributes with the current `TOTAL_FORMS` value, append to `#roster-rows`, then increment the `TOTAL_FORMS` hidden input. Disable the "Add" button once row count reaches `max_rows` (from a `data-max-rows` attribute on the table, sourced from the `max_rows` context var).
   - `removeRow(rowEl)`: if the row has an `id` field with a value (existing DB row), check its `DELETE` checkbox and hide the row (`display:none`) — **don't** remove it from the DOM, Django's formset needs the `DELETE=on` POST value to actually delete it server-side. If the row has no `id` value (a still-unsaved new row), just remove it from the DOM and decrement `TOTAL_FORMS`.
   - Client‑side validation before submit: `first_name` and `last_name` non‑empty on every non‑deleted row (mirrors the server‑side `clean()` from 10.0.1) — block submit and highlight the offending row instead of round‑tripping to the server for a mistake this cheap to catch.
-- Whole thing is one `<form method="post">` around the table — **one** submit, not one request per row. This matches "dynamic JS, no reload per row" *for adding/removing rows*; the save itself is still a single normal POST, which is the correct/simplest reading of "submitted as one POST" from the original ask.
+- Whole thing is one `<form method="post">` around the table — **one** submit, not one request per row. This matches "dynamic JS, no reload per row" _for adding/removing rows_; the save itself is still a single normal POST, which is the correct/simplest reading of "submitted as one POST" from the original ask.
 - If `locked`: render the same table with all inputs `disabled`, hide Add/Remove/Save controls, show a banner "تم تأكيد القائمة وجدولة الدورة بتاريخ {{ enrollment.offering.session.start_date|date:"d/m/Y" }} — القائمة مقفلة."
 
 ### 10.2.5 Staff-side entry points
 
-- Enrollment change page (staff admin) gets a read‑only inline or a link "عرض قائمة المشاركين (N)" to the same roster view (staff can view but this spec doesn't require staff *editing* rows — that's a `data-fixing` job better done in `/admin/` directly on `EnrollmentParticipant` via a standard `ModelAdmin`, which register anyway for that reason: `admin.site.register(EnrollmentParticipant)` with `list_display = ["enrollment", "first_name", "last_name", "employer"]`, `list_filter = ["enrollment__offering"]`).
+- Enrollment change page (staff admin) gets a read‑only inline or a link "عرض قائمة المشاركين (N)" to the same roster view (staff can view but this spec doesn't require staff _editing_ rows — that's a `data-fixing` job better done in `/admin/` directly on `EnrollmentParticipant` via a standard `ModelAdmin`, which register anyway for that reason: `admin.site.register(EnrollmentParticipant)` with `list_display = ["enrollment", "first_name", "last_name", "employer"]`, `list_filter = ["enrollment__offering"]`).
 - `/mon-espace/` enrollment card (from 10.4) shows a "participants: N" badge and, for enterprise + accepted/confirmed, a button straight into `enrollment_roster`.
 
 ### 10.2.6 CSV export
@@ -465,7 +466,7 @@ def subscribe(request, offering_pk):
     ...
 ```
 
-**Before implementing:** open `enrollment/forms.py` and confirm the exact field names on the subscribe form(s) — they are *not* guaranteed to be named identically to `Client`'s fields (the earlier `RegistrationForm` docstring in `accounts/forms.py` explicitly says the subscribe form "also carries enrollment‑specific fields like `motivation`/`employment_status` that don't belong on the account" — meaning the subscribe form is a **different, richer** form than `RegistrationForm`, and only the fields that genuinely overlap with `Client` should be prefilled; leave `motivation`, `employment_status`, "كيف سمعت عنا", "الوقت المفضل للاتصال" etc. blank for the client to fill fresh each time, since those are per‑registration, not account‑level facts).
+**Before implementing:** open `enrollment/forms.py` and confirm the exact field names on the subscribe form(s) — they are _not_ guaranteed to be named identically to `Client`'s fields (the earlier `RegistrationForm` docstring in `accounts/forms.py` explicitly says the subscribe form "also carries enrollment‑specific fields like `motivation`/`employment_status` that don't belong on the account" — meaning the subscribe form is a **different, richer** form than `RegistrationForm`, and only the fields that genuinely overlap with `Client` should be prefilled; leave `motivation`, `employment_status`, "كيف سمعت عنا", "الوقت المفضل للاتصال" etc. blank for the client to fill fresh each time, since those are per‑registration, not account‑level facts).
 
 ### 10.3.3 Tests
 
@@ -540,13 +541,13 @@ Under each enrollment row (10.4.3), a collapsible "ملاحظات" section listi
 
 ### 10.6.1 Redirect
 
-In `eems_project/settings.py`:
+In `config/settings.py`:
 
 ```python
 LOGIN_REDIRECT_URL = "enrollment:dashboard"  # ASSUME url name — confirm against enrollment/urls.py
 ```
 
-`EEMSLoginView` (`accounts/views.py`) already sets `redirect_authenticated_user = True` and doesn't override `get_success_url`, so it already falls through to `LOGIN_REDIRECT_URL` by default **once that setting points at the dashboard** — this is a one‑line settings change, not a view change, *provided* nothing else currently overrides it (search the settings file and `EEMSLoginView` for any existing `LOGIN_REDIRECT_URL`/`success_url` first; if one already points elsewhere, that's the actual bug to fix here). `?next=` support is untouched — Django's `LoginView` always honours `next` over `LOGIN_REDIRECT_URL` when present, so deep links keep working.
+`EEMSLoginView` (`accounts/views.py`) already sets `redirect_authenticated_user = True` and doesn't override `get_success_url`, so it already falls through to `LOGIN_REDIRECT_URL` by default **once that setting points at the dashboard** — this is a one‑line settings change, not a view change, _provided_ nothing else currently overrides it (search the settings file and `EEMSLoginView` for any existing `LOGIN_REDIRECT_URL`/`success_url` first; if one already points elsewhere, that's the actual bug to fix here). `?next=` support is untouched — Django's `LoginView` always honours `next` over `LOGIN_REDIRECT_URL` when present, so deep links keep working.
 
 ### 10.6.2 Catalogue CTA
 
@@ -617,7 +618,7 @@ def schedule_session(enrollment, start_date, registration_deadline=None):
 
 Setting `session.start_date` this way affects the **`FormationSession` shared by every enrollment on that offering** (confirmed above: `Offering.session` is a single FK, many `Enrollment`s can point at the same `Offering`) — so scheduling from one enrollment's page sets the date for everyone on that offering. That's very likely the intended behaviour (one cohort, one date), but call it out explicitly in the staff‑facing UI ("سيُطبَّق هذا التاريخ على كل التسجيلات في هذه الدورة") so it isn't a surprise the first time two companies share an offering.
 
-`enrollment.roster_locked_at` is set **on this specific enrollment only** (roster locking is per‑company, per 10.0.2/10.2.1) — scheduling the session locks *that* enrollment's own roster; it does not touch other enrollments' `roster_locked_at` on the same offering (each company's admin locks independently, only the shared date is, well, shared).
+`enrollment.roster_locked_at` is set **on this specific enrollment only** (roster locking is per‑company, per 10.0.2/10.2.1) — scheduling the session locks _that_ enrollment's own roster; it does not touch other enrollments' `roster_locked_at` on the same offering (each company's admin locks independently, only the shared date is, well, shared).
 
 ### 10.7.2 Not enforcing "roster must be non‑empty first"
 
@@ -637,12 +638,12 @@ Scheduled date:                 {{ session.start_date|date:"d/m/Y" }}
 Participants attached:          {{ enrollment.roster.count }} (see participants_{offering.code}_{enrollment.pk}.csv)
 ```
 
-This gives the pedagogical‑app operator everything needed to either match an existing `clients.Client` (by `nif`/`nis`/`name`) or create a new one, then create the `Session` and use the *existing* "Importer" screen (already built, seen in the screenshots) for the CSV. Bundle both files behind one "Télécharger le dossier de session" button (zip the two, or offer two separate download links — either is fine).
+This gives the pedagogical‑app operator everything needed to either match an existing `clients.Client` (by `nif`/`nis`/`name`) or create a new one, then create the `Session` and use the _existing_ "Importer" screen (already built, seen in the screenshots) for the CSV. Bundle both files behind one "Télécharger le dossier de session" button (zip the two, or offer two separate download links — either is fine).
 
 ### 10.7.4 Tests
 
 - Scheduling sets `FormationSession.start_date` correctly and locks the calling enrollment's roster (`roster_locked_at` not null).
-- Scheduling a second enrollment on the *same* offering does not re‑lock the first enrollment's roster, but does see the same updated `session.start_date` (shared FK).
+- Scheduling a second enrollment on the _same_ offering does not re‑lock the first enrollment's roster, but does see the same updated `session.start_date` (shared FK).
 - `session_scheduled` email sent once, to the enrolling client only (not to other companies sharing the offering).
 - Roster page for a locked enrollment renders read‑only, no 500 on 0 rows.
 
@@ -667,7 +668,7 @@ This gives the pedagogical‑app operator everything needed to either match an e
 `enrollment/urls.py` (+2 roster URLs, +1 schedule‑session URL),
 `enrollment/signals.py` (+acceptance‑email signal pair),
 `accounts/views.py` (only if `LOGIN_REDIRECT_URL` turns out to be overridden there instead of in settings),
-`eems_project/settings.py` (`LOGIN_REDIRECT_URL`),
+`config/settings.py` (`LOGIN_REDIRECT_URL`),
 offering/specialty detail template (+quick‑register CTA),
 dashboard template (+"تسجيلاتي" tab, +catalogue CTA, +notes, +roster badge/button).
 
