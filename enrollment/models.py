@@ -504,7 +504,6 @@ class Offering(models.Model):
 
     class Meta:
         ordering = ["-is_pinned", "order", "code"]
-        unique_together = ("session", "code")
         verbose_name = "عرض تكوين"
         verbose_name_plural = "عروض التكوين"
 
