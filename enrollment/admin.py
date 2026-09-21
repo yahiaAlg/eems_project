@@ -182,9 +182,7 @@ class FicheTechniqueStatusFilter(admin.SimpleListFilter):
 
         custom = Q(fiche_technique_mode="custom")
         has_file = ~Q(fiche_technique_file="") & Q(fiche_technique_file__isnull=False)
-        has_extras = (
-            ~Q(objectives="") | ~Q(program_outline="") | ~Q(prerequisites="")
-        )
+        has_extras = ~Q(objectives="") | ~Q(program_outline="") | ~Q(prerequisites="")
 
         if value == Offering.FICHE_STATUS_CUSTOM:
             return queryset.filter(custom & has_file)
@@ -227,6 +225,10 @@ class OfferingAdmin(admin.ModelAdmin):
     search_fields = ("code", "title")
     autocomplete_fields = ("specialty", "formateur")
     inlines = [OfferingImageInline, OfferingAttachmentInline]
+
+    class Media:
+        js = ("enrollment/js/offering_admin.js",)
+
     fieldsets = (
         (
             "معلومات عامة",
@@ -322,7 +324,7 @@ class OfferingAdmin(admin.ModelAdmin):
         colour, background, icon = self.FICHE_BADGE_STYLES[obj.fiche_technique_status]
         return format_html(
             '<span style="display:inline-block;padding:2px 9px;border-radius:999px;'
-            'background:{};color:{};font-size:11.5px;font-weight:700;'
+            "background:{};color:{};font-size:11.5px;font-weight:700;"
             'white-space:nowrap;">{} {}</span>',
             background,
             colour,
@@ -413,7 +415,11 @@ class ClientAdmin(admin.ModelAdmin):
         (
             "المسؤول عن الفوترة",
             {
-                "fields": ("main_contact_name", "main_contact_phone", "main_contact_email"),
+                "fields": (
+                    "main_contact_name",
+                    "main_contact_phone",
+                    "main_contact_email",
+                ),
                 "description": "قد يختلف عن الشخص المسؤول عن التنسيق أعلاه.",
                 "classes": ("collapse",),
             },
@@ -564,7 +570,7 @@ class EnrollmentAdmin(admin.ModelAdmin):
         return format_html(
             '<a href="{}" target="_blank" rel="noopener" '
             'style="display:inline-block;padding:2px 9px;border-radius:999px;'
-            'background:{};color:{};font-size:11.5px;font-weight:700;'
+            "background:{};color:{};font-size:11.5px;font-weight:700;"
             'text-decoration:none;white-space:nowrap;">👥 {}{} {}</a>',
             reverse("enrollment:enrollment_roster", args=[obj.pk]),
             background,
@@ -894,7 +900,14 @@ class QuoteRequestAdmin(admin.ModelAdmin):
     straight to "priced" from the changelist would skip the "every line
     actually has a tariff" check the `mark_as_priced` action enforces."""
 
-    list_display = ("reference", "client", "status", "is_priced", "subtotal", "created_at")
+    list_display = (
+        "reference",
+        "client",
+        "status",
+        "is_priced",
+        "subtotal",
+        "created_at",
+    )
     list_filter = ("status",)
     search_fields = (
         "reference",
@@ -1003,7 +1016,9 @@ class QuoteRequestAdmin(admin.ModelAdmin):
 
     @admin.action(description="✘ وضع الحالة: ملغاة")
     def mark_as_cancelled(self, request, queryset):
-        cancelled_count = queryset.exclude(status="cancelled").update(status="cancelled")
+        cancelled_count = queryset.exclude(status="cancelled").update(
+            status="cancelled"
+        )
         if cancelled_count:
             self.message_user(
                 request,
@@ -1084,7 +1099,7 @@ class SessionChangeRequestAdmin(admin.ModelAdmin):
 
     current_date.short_description = "التاريخ الحالي للدورة"
 
-    @admin.action(description="✔ وضع علامة \"تمت المراجعة\" على الطلبات المحددة")
+    @admin.action(description='✔ وضع علامة "تمت المراجعة" على الطلبات المحددة')
     def mark_reviewed(self, request, queryset):
         queryset.update(
             status=SessionChangeRequest.STATUS_REVIEWED,

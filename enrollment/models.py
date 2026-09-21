@@ -330,7 +330,6 @@ BILLING_BASIS_CHOICES = [
 ]
 
 
-
 class Offering(models.Model):
     """A specialty as taught within a given session — carries pricing/seat data."""
 
@@ -509,6 +508,14 @@ class Offering(models.Model):
 
     def __str__(self):
         return f"{self.code} — {self.title} ({self.session})"
+
+    def save(self, *args, **kwargs):
+        # The admin JS prepopulates this from the chosen specialty, but
+        # fall back here too (bulk imports, API, JS-less edits) so `code`
+        # is never left out of sync with `specialty.code` when blank.
+        if not self.code and self.specialty_id:
+            self.code = self.specialty.code
+        super().save(*args, **kwargs)
 
     @property
     def recently_modified(self):
@@ -869,12 +876,8 @@ class Client(models.Model):
         blank=True,
         help_text="مثال: SARL، SPA، EURL، مؤسسة فردية...",
     )
-    nif = models.CharField(
-        "رقم التعريف الجبائي (NIF)", max_length=30, blank=True
-    )
-    nis = models.CharField(
-        "رقم التعريف الإحصائي (NIS)", max_length=30, blank=True
-    )
+    nif = models.CharField("رقم التعريف الجبائي (NIF)", max_length=30, blank=True)
+    nis = models.CharField("رقم التعريف الإحصائي (NIS)", max_length=30, blank=True)
     article_imposition = models.CharField(
         "رقم المادة الجبائية (Article d'imposition)", max_length=30, blank=True
     )
@@ -1210,9 +1213,7 @@ class EnrollmentParticipant(models.Model):
     first_name_ar = models.CharField("الاسم بالعربية", max_length=50, blank=True)
     last_name_ar = models.CharField("اللقب بالعربية", max_length=50, blank=True)
 
-    gender = models.CharField(
-        "الجنس", max_length=1, choices=GENDER_CHOICES, blank=True
-    )
+    gender = models.CharField("الجنس", max_length=1, choices=GENDER_CHOICES, blank=True)
     date_of_birth = models.DateField("تاريخ الميلاد", null=True, blank=True)
     place_of_birth = models.CharField("مكان الميلاد", max_length=100, blank=True)
     place_of_birth_ar = models.CharField(
@@ -1399,9 +1400,7 @@ class CartItem(models.Model):
         from django.core.exceptions import ValidationError
 
         if self.trainer_id and not self.cart.client.is_vip:
-            raise ValidationError(
-                "اختيار المكوّن متاح فقط ضمن سلال الزبائن VIP."
-            )
+            raise ValidationError("اختيار المكوّن متاح فقط ضمن سلال الزبائن VIP.")
 
     # --- pricing (TODO 4.3) --------------------------------------------
     # There is no stored "number of training days" anywhere on `Offering`
