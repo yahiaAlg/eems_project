@@ -245,6 +245,8 @@ class OfferingAdmin(admin.ModelAdmin):
                     "entry_level",
                     "duration_months",
                     "monthly_fee",
+                    "duration_days",
+                    "daily_fee",
                     "total_fee",
                     "seats_available",
                 )

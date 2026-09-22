@@ -376,7 +376,12 @@ class Offering(models.Model):
         choices=ENTRY_LEVELS,
         blank=True,
     )
-    duration_months = models.PositiveSmallIntegerField("مدة التكوين (أشهر)")
+    duration_months = models.PositiveSmallIntegerField(
+        "مدة التكوين (أشهر)",
+        null=True,
+        blank=True,
+        help_text="للتكوينات طويلة المدى. اتركه فارغا إن كانت المدة تُحتسب بالأيام أدناه.",
+    )
     monthly_fee = models.DecimalField(
         "القيمة الشهرية (دج)",
         max_digits=10,
@@ -385,13 +390,27 @@ class Offering(models.Model):
         blank=True,
         help_text="مسار التسجيل الفردي (تكوين تأهيلي طويل المدى بالأشهر).",
     )
+    duration_days = models.PositiveSmallIntegerField(
+        "مدة التكوين (أيام)",
+        null=True,
+        blank=True,
+        help_text="للتكوينات القصيرة المدى — بديل عن مدة الأشهر أعلاه.",
+    )
+    daily_fee = models.DecimalField(
+        "القيمة اليومية (دج)",
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="مسار التسجيل الفردي (تكوين قصير المدى بالأيام).",
+    )
     total_fee = models.DecimalField(
         "القيمة الإجمالية (دج)",
         max_digits=10,
         decimal_places=2,
         null=True,
         blank=True,
-        help_text="مسار التسجيل الفردي (تكوين تأهيلي طويل المدى بالأشهر).",
+        help_text="مسار التسجيل الفردي — تُحتسب تلقائيا من المدة والقيمة (بالأشهر أو بالأيام).",
     )
 
     # --- group/enterprise pricing (TODO 3.1) ---
