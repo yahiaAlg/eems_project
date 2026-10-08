@@ -239,6 +239,7 @@ class OfferingAdmin(admin.ModelAdmin):
                     "formateur",
                     "code",
                     "title",
+                    "slug",
                     "branch_label",
                     "qualification_level",
                     "certificate_type",

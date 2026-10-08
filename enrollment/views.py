@@ -302,12 +302,15 @@ def general_enquiry(request):
 
 
 def specialty_detail(request, session_slug, code):
-    offering = get_object_or_404(
-        Offering,
-        session__slug=session_slug,
-        code=code,
-        is_active=True,
+    # `code` is the URL's last segment: the offering's title slug (new, used by
+    # QR codes) or its code (legacy links) — try the code first, then the slug.
+    offerings_qs = Offering.objects.filter(session__slug=session_slug, is_active=True)
+    offering = (
+        offerings_qs.filter(code=code).first()
+        or offerings_qs.filter(slug=code).first()
     )
+    if offering is None:
+        raise Http404("Offering not found")
 
     detail_client = getattr(request.user, "client", None)
 

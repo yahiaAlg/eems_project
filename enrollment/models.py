@@ -357,6 +357,17 @@ class Offering(models.Model):
     )
     code = models.CharField("رمز الاختصاص", max_length=20, help_text="مثال: TAG0701")
     title = models.CharField("عنوان التخصص", max_length=150)
+    # URL segment built from the title (e.g. "habilitation-a-lutilisation-des-
+    # produits-chimiques"). Unique per session; generated once when blank and
+    # then kept stable so already-printed QR links never break. The detail
+    # page also still answers to the old /<code>/ URL.
+    slug = models.SlugField(
+        "المعرف (slug)",
+        max_length=170,
+        blank=True,
+        db_index=True,
+        help_text="يُولَّد تلقائياً من العنوان عند تركه فارغاً.",
+    )
     branch_label = models.CharField("الشعبة", max_length=100, blank=True)
     qualification_level = models.PositiveSmallIntegerField(
         "مستوى التأهيل",
@@ -534,7 +545,23 @@ class Offering(models.Model):
         # is never left out of sync with `specialty.code` when blank.
         if not self.code and self.specialty_id:
             self.code = self.specialty.code
+        if not self.slug:
+            self.slug = self.build_unique_slug()
         super().save(*args, **kwargs)
+
+    def build_unique_slug(self):
+        """slugify(title) (falls back to the code), made unique within the session."""
+        base = slugify(self.title or "") or slugify(self.code or "") or "formation"
+        base = base[:160]
+        slug, i = base, 2
+        while (
+            Offering.objects.filter(session_id=self.session_id, slug=slug)
+            .exclude(pk=self.pk)
+            .exists()
+        ):
+            slug = f"{base}-{i}"
+            i += 1
+        return slug
 
     @property
     def recently_modified(self):
