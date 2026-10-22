@@ -94,7 +94,7 @@
                 <option value="5" {% if selected_level == 5 %}selected{% endif %}>5 - ش.ت.س</option>
               </select>
             </div>
-            {% if formateurs %}
+            {% if can_view_formateur and formateurs %}
             <div class="filter-group">
               <label>المكوّن</label>
               <select name="formateur" class="form-select" onchange="this.form.submit()">
@@ -150,7 +150,7 @@
                   {% if offering.get_qualification_level_display %}<span class="offer-level">{{ offering.qualification_level }} — {{ offering.get_certificate_type_display }}</span>{% endif %}
                 </div>
                 <h3>{{ offering.title }}</h3>
-                {% if offering.formateur %}
+                {% if can_view_formateur and offering.formateur %}
                 <a href="{{ offering.formateur.get_absolute_url }}" class="offer-formateur">
                   {% if offering.formateur.photo %}
                     <img src="{{ offering.formateur.photo.url }}" alt="{{ offering.formateur.full_name }}">

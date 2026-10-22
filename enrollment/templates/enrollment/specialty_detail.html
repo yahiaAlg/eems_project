@@ -4,7 +4,7 @@
 {% block title %}{{ offering.title }} — {{ offering.code }}{% endblock %}
 
 {% block meta_description %}
-<meta name="description" content="{{ offering.title }} — {{ offering.session.name }}، مدة التكوين {{ offering.duration_display }}{% if offering.formateur %}، يقدّمه {{ offering.formateur.full_name }}{% endif %}. تكوين معتمد من مؤسسة التميز للإدارة والسلامة (EEMS) بسطيف.">
+<meta name="description" content="{{ offering.title }} — {{ offering.session.name }}، مدة التكوين {{ offering.duration_display }}{% if can_view_formateur and offering.formateur %}، يقدّمه {{ offering.formateur.full_name }}{% endif %}. تكوين معتمد من مؤسسة التميز للإدارة والسلامة (EEMS) بسطيف.">
 {% endblock %}
 
 {% block extra_head %}

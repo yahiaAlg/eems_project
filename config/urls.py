@@ -3,12 +3,11 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path, include
 from django.contrib.sitemaps.views import sitemap
-from pages.sitemaps import FormateurSitemap, OfferingSitemap, StaticViewSitemap
+from pages.sitemaps import OfferingSitemap, StaticViewSitemap
 
 sitemaps = {
     "static": StaticViewSitemap,
     "offerings": OfferingSitemap,
-    "formateurs": FormateurSitemap,
 }
 
 urlpatterns = [

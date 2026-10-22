@@ -453,7 +453,7 @@ class Offering(models.Model):
         help_text="مسار الزبائن VIP/المؤسسات — فوترة بالسعر لكل مشارك.",
     )
 
-    seats_available = models.PositiveSmallIntegerField("قدرة الاستيعاب", default=0)
+    seats_available = models.PositiveSmallIntegerField("قدرة الاستيعاب", default=20)
     description = models.TextField("تعريف التخصص", blank=True)
     main_tasks = models.TextField(
         "المهام الأساسية",

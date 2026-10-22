@@ -134,7 +134,7 @@
           <div class="value">{{ offering.seats_available }} مقعد</div>
         </div>
 
-        {% if offering.formateur %}
+        {% if can_view_formateur and offering.formateur %}
         <div class="instructor-card">
           {% if offering.formateur.photo %}
             <img src="{{ offering.formateur.photo.url }}" class="instructor-avatar" alt="{{ offering.formateur.full_name }}">

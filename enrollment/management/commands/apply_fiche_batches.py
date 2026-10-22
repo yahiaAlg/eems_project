@@ -60,9 +60,9 @@ def _get_or_create_offering(session, row):
     duration_months = max(1, round(duration_days / 30)) if duration_days else 1
 
     try:
-        seats = int(row.get("max_participants") or 0)
+        seats = int(row.get("max_participants") or 20)
     except ValueError:
-        seats = 0
+        seats = 20
 
     offering = Offering.objects.create(
         session=session,

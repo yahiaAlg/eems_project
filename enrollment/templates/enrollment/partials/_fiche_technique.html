@@ -59,7 +59,7 @@
     <div class="info-box"><iconify-icon icon="mdi:account-group-outline"></iconify-icon><div class="label">مقاعد متبقية</div><div class="value">{{ offering.seats_remaining }}</div></div>
   </div>
 
-  {% if offering.formateur %}
+  {% if can_view_formateur and offering.formateur %}
     <div class="section-h"><iconify-icon icon="mdi:account-tie-outline"></iconify-icon> المكوّن</div>
     <a href="{{ offering.formateur.get_absolute_url }}" class="formateur-card">
       {% if offering.formateur.photo %}

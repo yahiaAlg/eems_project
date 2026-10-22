@@ -89,6 +89,16 @@ def _can_view_prices(request):
     return bool(client and client.is_vip)
 
 
+def _can_view_formateur(request):
+    """Trainer (formateur) visibility rule: only staff and logged-in VIP
+    clients may see who the trainer is — anonymous visitors and non-VIP
+    clients get nothing (absent from the HTML, 404 on the profile/CV URLs)."""
+    user = request.user
+    if not user.is_authenticated:
+        return False
+    return user.is_staff or _can_view_prices(request)
+
+
 # --- TODO 7.2 — proforma/quote submission notifications --------------------
 # Recipient lists come straight from settings.py, same convention as the
 # `ADMINS` read in `accounts.views.register`/`enrollment.signals` — the
@@ -208,6 +218,9 @@ def catalog(request):
         offerings = offerings.filter(specialty__branch_id=branch_id)
     if level:
         offerings = offerings.filter(qualification_level=level)
+    can_view_formateur = _can_view_formateur(request)
+    if not can_view_formateur:
+        formateur_slug = ""
     if formateur_slug:
         offerings = offerings.filter(formateur__slug=formateur_slug)
     if specialty_code:
@@ -237,9 +250,12 @@ def catalog(request):
         "branches": Branch.objects.filter(is_active=True),
         "formateurs": Formateur.objects.filter(
             is_active=True, offerings__isnull=False
-        ).distinct(),
+        ).distinct()
+        if can_view_formateur
+        else Formateur.objects.none(),
         "offerings": offerings,
         "can_view_price": _can_view_prices(request),
+        "can_view_formateur": can_view_formateur,
         "wishlisted_offering_ids": wishlisted_offering_ids,
         "selected_session": session_slug,
         "selected_branch": int(branch_id) if branch_id.isdigit() else None,
@@ -255,6 +271,8 @@ def catalog(request):
 
 
 def formateur_detail(request, slug):
+    if not _can_view_formateur(request):
+        raise Http404
     formateur = get_object_or_404(Formateur, slug=slug, is_active=True)
     offerings = formateur.offerings.filter(
         is_active=True, session__is_active=True
@@ -274,6 +292,8 @@ def formateur_cv_print(request, slug):
     current profile data (no PDF library, no stored file: plain HTML with
     print CSS). Only reachable when the formateur is on 'auto' CV mode;
     'custom' mode formateurs serve their uploaded file directly instead."""
+    if not _can_view_formateur(request):
+        raise Http404
     formateur = get_object_or_404(Formateur, slug=slug, is_active=True)
     context = {
         "formateur": formateur,
@@ -394,6 +414,7 @@ def specialty_detail(request, session_slug, code):
         "comment_form": comment_form,
         "enquiry_form": enquiry_form,
         "can_view_price": _can_view_prices(request),
+        "can_view_formateur": _can_view_formateur(request),
         "is_wishlisted": is_wishlisted,
         # TODO 10.3 — quick-register CTA: only offered to a logged-in
         # client whose account is already activated (a "pending" account
@@ -426,6 +447,7 @@ def fiche_technique_print(request, session_slug, code):
         "description_text": offering.description or "تعريف مفصل للتخصص متوفر قريبا.",
         "settings": SiteSettings.load(),
         "can_view_price": _can_view_prices(request),
+        "can_view_formateur": _can_view_formateur(request),
     }
     return render(
         request, "enrollment/documents/fiche_technique_placeholder.html", context
