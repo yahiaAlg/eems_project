@@ -1,0 +1,21 @@
+/* enrollment_roster.html — company roster (TODO 10.2) */
+
+.roster-banner { display:flex; align-items:center; gap:10px; background:var(--accent-soft); border:1px solid rgba(245,158,11,.35); color:var(--accent-dark); border-radius:12px; padding:14px 18px; margin-bottom:18px; font-size:.85rem; font-weight:700; }
+.roster-banner iconify-icon { font-size:1.2rem; flex-shrink:0; }
+
+.roster-table-wrap { background:var(--card-bg); border:1px solid var(--card-border); border-radius:14px; box-shadow:var(--shadow); padding:10px; overflow-x:auto; }
+.roster-table { width:100%; border-collapse:collapse; min-width:960px; }
+.roster-table th { text-align:right; font-size:.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:.02em; padding:10px 8px; border-bottom:1px solid var(--card-border); white-space:nowrap; }
+.roster-table td { padding:8px; border-bottom:1px solid var(--card-border); vertical-align:top; }
+.roster-table tr.roster-row:last-child td { border-bottom:none; }
+.roster-table input, .roster-table select { font-size:.82rem; padding:7px 9px; border-radius:7px; border:1px solid var(--card-border); background:var(--body-bg); width:100%; min-width:110px; }
+.roster-table input:disabled, .roster-table select:disabled { background:var(--card-bg); color:var(--muted); }
+.roster-row-error input { border-color:#dc2626; }
+
+.roster-remove-row { background:transparent; border:none; color:#dc2626; cursor:pointer; font-size:1.15rem; padding:6px; border-radius:8px; line-height:1; }
+.roster-remove-row:hover { background:rgba(220,38,38,.08); }
+
+.roster-toolbar { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-top:16px; }
+.roster-count-hint { font-size:.8rem; color:var(--muted); }
+
+#roster-add-row:disabled { opacity:.5; cursor:not-allowed; }

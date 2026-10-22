@@ -237,3 +237,27 @@ REST_FRAMEWORK = {
         "pages_read": "120/min",  # تصفح عام (شعب/تخصصات/دورات) — مستقل عن 'anon' لتفادي حظر واجهة الفلترة الديناميكية
     },
 }
+
+
+# ── Attestation verification (QR printed on certificates → /v/<code>/) ─────
+# The pedagogical app lives on the institute's private network, so it cannot be
+# reached from outside. The QR therefore points HERE; visitors whose public IP
+# is the institute's are forwarded to the app, everyone else sees a notice page
+# explaining that verification is done at the institute.
+#   INSTITUTE_PUBLIC_IPS : comma-separated IPs / CIDRs of the institute's
+#                          internet connection (its public NAT address).
+#   PEDAGOGY_LAN_URL     : base URL of the pedagogical app on the LAN.
+#   CLIENT_IP_HEADER     : META key holding the visitor's IP. Default
+#                          REMOTE_ADDR; behind a proxy use HTTP_X_FORWARDED_FOR
+#                          (right-most entry is used) or HTTP_CF_CONNECTING_IP.
+INSTITUTE_PUBLIC_IPS = [
+    ip.strip() for ip in os.environ.get("INSTITUTE_PUBLIC_IPS", "").split(",") if ip.strip()
+]
+PEDAGOGY_LAN_URL = os.environ.get("PEDAGOGY_LAN_URL", "http://192.168.100.10/pedagogy").rstrip("/")
+CLIENT_IP_HEADER = os.environ.get("CLIENT_IP_HEADER", "REMOTE_ADDR")
+# The institute's public IP is dynamic (ISP changes it), so the pedagogical
+# server announces it every few minutes: POST /internal/institute-ping/ with
+# header X-Ping-Secret. Empty secret = endpoint disabled. An announced IP is
+# trusted for INSTITUTE_IP_TTL_MINUTES after the last ping.
+INSTITUTE_PING_SECRET = os.environ.get("INSTITUTE_PING_SECRET", "")
+INSTITUTE_IP_TTL_MINUTES = int(os.environ.get("INSTITUTE_IP_TTL_MINUTES", "30"))

@@ -12,4 +12,8 @@ urlpatterns = [
     path("about/", views.about, name="about"),
     path("faq/", views.faq, name="faq"),
     path("contact/", views.contact, name="contact"),
+    # Attestation QR gateway — see views.verify_gateway
+    path("internal/institute-ping/", views.institute_ping, name="institute_ping"),
+    path("v/", views.verify_gateway, name="verify_gateway_empty"),
+    path("v/<str:code>/", views.verify_gateway, name="verify_gateway"),
 ]

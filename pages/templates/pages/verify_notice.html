@@ -1,0 +1,69 @@
+{% extends "pages/base.html" %}
+{% load static %}
+
+{% block title %}التحقق من الشهادة — {{ settings.site_name }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  .verify-card { max-width: 640px; margin: 0 auto; background: var(--card-bg); border: 1px solid var(--card-border);
+                 border-radius: var(--radius); box-shadow: var(--shadow-md); padding: 36px 32px; text-align: center; }
+  .verify-icon { width: 68px; height: 68px; border-radius: 50%; margin: 0 auto 18px; display: flex; align-items: center;
+                 justify-content: center; font-size: 30px; background: var(--accent-soft); color: var(--accent-dark); }
+  .verify-card h2 { font-weight: 800; font-size: 22px; margin-bottom: 10px; }
+  .verify-card p { color: var(--muted); line-height: 2; font-size: 15px; }
+  .verify-code { display: inline-block; direction: ltr; margin: 4px 0 16px; padding: 6px 16px; border-radius: 8px;
+                 background: var(--body-bg); border: 1px dashed var(--card-border); font-weight: 700; letter-spacing: 2px; }
+  .verify-steps { text-align: right; margin: 18px 0 6px; padding: 0 22px 0 0; color: var(--text); font-size: 14.5px; line-height: 2.1; }
+  .verify-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 22px; }
+  .verify-lan { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--card-border); font-size: 13px; color: var(--muted); }
+</style>
+{% endblock %}
+
+{% block content %}
+{% include "pages/partials/_navbar.html" with active_nav="" %}
+
+<section class="page-hero">
+  <div class="container position-relative" style="z-index:1;">
+    <div class="section-label">التحقق من الشهادات</div>
+    <h1>التحقق من صحة الشهادة</h1>
+    <p>للحفاظ على سرية بيانات المتكوّنين، تتم عملية التحقق داخل المؤسسة فقط.</p>
+  </div>
+</section>
+
+<section class="page-section alt">
+  <div class="container">
+    <div class="verify-card">
+      <div class="verify-icon"><i class="bi bi-shield-lock-fill"></i></div>
+      <h2>التحقق متاح داخل المؤسسة فقط</h2>
+      <p>
+        لقد قمتم بمسح الرمز المطبوع على شهادة تكوين صادرة عن {{ settings.site_name }}.
+        لا يمكن عرض نتيجة التحقق إلا من داخل شبكة المؤسسة، حيث توجد سجلات الشهادات.
+      </p>
+      {% if code %}
+      <div class="verify-code">{{ code }}</div>
+      <p style="margin-top:-6px;font-size:13px;">رمز التحقق المطبوع على الشهادة</p>
+      {% endif %}
+
+      <ol class="verify-steps">
+        <li>تفضلوا بزيارة مقر المؤسسة مصحوبين بالشهادة الأصلية أو نسخة منها.</li>
+        <li>سلّموا رمز التحقق أعلاه (أو امسحوا الرمز من داخل المؤسسة) لمسؤول المصلحة البيداغوجية.</li>
+        <li>أو تواصلوا معنا عبر الهاتف أو البريد الإلكتروني وسنؤكد لكم صحة الشهادة.</li>
+      </ol>
+
+      <div class="verify-actions">
+        <a href="{% url 'pages:contact' %}" class="btn btn-warning fw-bold"><i class="bi bi-envelope-fill ms-1"></i> تواصل معنا</a>
+        {% if settings.phone %}<a href="tel:{{ settings.phone }}" class="btn btn-outline-secondary" dir="ltr"><i class="bi bi-telephone-fill me-1"></i> {{ settings.phone }}</a>{% endif %}
+        <a href="{% url 'pages:home' %}" class="btn btn-outline-secondary">الصفحة الرئيسية</a>
+      </div>
+      {% if settings.address %}<p style="margin-top:16px;font-size:13px;"><i class="bi bi-geo-alt-fill"></i> {{ settings.address }}</p>{% endif %}
+
+      <div class="verify-lan">
+        هل أنتم متصلون حاليا بشبكة المؤسسة (Wi-Fi الداخلي)؟
+        <a href="{{ lan_url }}" rel="nofollow">افتحوا صفحة التحقق الداخلية</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+{% include "pages/partials/_footer.html" %}
+{% endblock %}

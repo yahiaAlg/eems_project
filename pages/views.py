@@ -1,7 +1,12 @@
 from django.contrib import messages
 from django.shortcuts import redirect, render
 from django.views.decorators.cache import never_cache
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from django.http import HttpResponse, JsonResponse
+from django.conf import settings as django_settings
 from datetime import date
+import ipaddress
 
 from .forms import NewsletterForm, ContactForm
 from .emails import send_branded_mail
@@ -210,3 +215,98 @@ def _visitor_stats():
         "month": SiteVisitor.objects.filter(date__year=today.year, date__month=today.month).count(),
         "total": SiteVisitor.objects.count(),
     }
+
+
+# ── Attestation verification gateway ───────────────────────────────────────
+def _visitor_ip(request):
+    header = getattr(django_settings, "CLIENT_IP_HEADER", "REMOTE_ADDR")
+    raw = request.META.get(header, "") or request.META.get("REMOTE_ADDR", "")
+    # X-Forwarded-For style lists: the right-most entry is the one added by
+    # our own proxy (the left-most ones are client-controlled).
+    raw = raw.split(",")[-1].strip()
+    try:
+        return ipaddress.ip_address(raw)
+    except ValueError:
+        return None
+
+
+def _is_institute_ip(request):
+    ip = _visitor_ip(request)
+    if ip is None:
+        return False
+    # 1) Dynamic IP announced by the pedagogical server (fresh pings only).
+    from datetime import timedelta
+    from django.utils import timezone
+    from .models import InstitutePing
+
+    ping = InstitutePing.objects.filter(pk=1).first()
+    ttl = timedelta(minutes=getattr(django_settings, "INSTITUTE_IP_TTL_MINUTES", 30))
+    if ping and timezone.now() - ping.seen_at <= ttl:
+        try:
+            if ip == ipaddress.ip_address(ping.ip):
+                return True
+        except ValueError:
+            pass
+    # 2) Optional fixed IPs/CIDRs from the environment.
+    for net in getattr(django_settings, "INSTITUTE_PUBLIC_IPS", []):
+        try:
+            if ip in ipaddress.ip_network(net, strict=False):
+                return True
+        except ValueError:
+            continue
+    return False
+
+
+@never_cache
+def verify_gateway(request, code=""):
+    """
+    Target of the QR printed on attestations: /v/<code>/.
+
+    Verification data lives in the pedagogical app on the institute's private
+    network, so it only works from there. Visitors on the institute's internet
+    connection are forwarded to the app; everyone else gets a notice page
+    explaining that the check must be done at the institute.
+    `?from=pedagogy` means the app itself rejected the visitor — never bounce
+    them back (prevents a redirect loop).
+    """
+    clean = "".join(ch for ch in code.upper() if ch.isalnum())[:12]
+    lan_base = django_settings.PEDAGOGY_LAN_URL
+    lan_url = f"{lan_base}/v/{clean}/" if clean else f"{lan_base}/v/"
+
+    if request.GET.get("from") != "pedagogy" and _is_institute_ip(request):
+        return redirect(lan_url)
+
+    context = {
+        "settings": SiteSettings.load(),
+        "code": f"{clean[:4]}-{clean[4:]}" if len(clean) > 4 else clean,
+        "lan_url": lan_url,
+        "social_links": SocialLink.objects.all(),
+        "internal_apps": InternalApp.objects.all(),
+        "nav_links": NavLink.objects.all(),
+        "newsletter_form": NewsletterForm(),
+        "visitor_stats": _visitor_stats(),
+    }
+    response = render(request, "pages/verify_notice.html", context)
+    response["X-Robots-Tag"] = "noindex, nofollow"
+    return response
+
+
+@csrf_exempt
+@require_POST
+def institute_ping(request):
+    """Called by the pedagogical server (cron) to announce the institute's
+    current public IP — the source address of this very request."""
+    import hmac
+
+    secret = getattr(django_settings, "INSTITUTE_PING_SECRET", "")
+    sent = request.headers.get("X-Ping-Secret", "")
+    if not secret or not hmac.compare_digest(sent.encode(), secret.encode()):
+        return HttpResponse(status=403)
+    ip = _visitor_ip(request)
+    if ip is None:
+        return HttpResponse(status=400)
+    from .models import InstitutePing
+
+    obj, _ = InstitutePing.objects.update_or_create(pk=1, defaults={"ip": str(ip)})
+    obj.save()  # refresh seen_at even when the IP is unchanged
+    return JsonResponse({"ip": str(ip)})

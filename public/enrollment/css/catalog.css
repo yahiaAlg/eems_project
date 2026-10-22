@@ -192,9 +192,16 @@
   overflow: hidden;
 }
 .view-toggle button {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
   background: #fff;
+  background-image: none;
+  box-shadow: none;
+  outline: none;
   border: none;
   padding: 8px 14px;
+  font-family: inherit;
   color: var(--muted);
   cursor: pointer;
   display: flex;
@@ -206,6 +213,53 @@
 .view-toggle button.active {
   background: var(--accent-soft);
   color: var(--accent-dark);
+}
+
+/* ── Sort controls (results toolbar) ─────────────────────────── */
+.sort-controls {
+  padding-inline-end: 12px;
+  border-inline-end: 1px solid var(--card-border);
+}
+.sort-dir-btn {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff;
+  background-image: none;
+  box-shadow: none;
+  outline: none;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.18s;
+}
+.sort-dir-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent-dark);
+  background: var(--accent-soft);
+}
+.sort-dir-btn:focus,
+.sort-dir-btn:focus-visible {
+  box-shadow: 0 0 0 3px var(--accent-glow);
+  border-color: var(--accent);
+}
+.sort-dir-btn iconify-icon {
+  font-size: 15px;
+}
+@media (max-width: 575.98px) {
+  .sort-controls {
+    border-inline-end: none;
+    padding-inline-end: 0;
+  }
 }
 
 @media (max-width: 991.98px) {
@@ -251,7 +305,7 @@
 .offer-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 8px;
 }
 .offer-code {
@@ -264,6 +318,30 @@
   padding: 3px 9px;
   direction: ltr;
 }
+.offer-pinned-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #b45309;
+  background: rgba(245, 158, 11, 0.14);
+  border-radius: 6px;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+.offer-updated-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #15803d;
+  background: rgba(34, 197, 94, 0.12);
+  border-radius: 6px;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
 .offer-level {
   font-size: 11.5px;
   font-weight: 700;
@@ -271,6 +349,7 @@
   background: rgba(59, 130, 246, 0.1);
   border-radius: 6px;
   padding: 3px 9px;
+  margin-inline-start: auto;
 }
 .offer-card h3 {
   font-size: 1.1rem;

@@ -4,5 +4,6 @@ Allow: /
 # Block the broken internal app links from being indexed by Google
 Disallow: /pedagogy
 Disallow: /facturation
+Disallow: /v/
 
 Sitemap: https://excellance-ms.dz/sitemap.xml

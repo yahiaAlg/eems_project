@@ -699,3 +699,23 @@ class ContactMessage(models.Model):
 
     def __str__(self):
         return f"{self.name} — {self.get_subject_display()}"
+
+
+class InstitutePing(models.Model):
+    """
+    Single row holding the institute's CURRENT public IP, refreshed every few
+    minutes by the pedagogical app (manage.py ping_main_site). The ISP changes
+    that IP regularly, so it can't be a fixed setting. Used by the attestation
+    QR gateway (views.verify_gateway) to recognise visitors on the institute's
+    internet connection.
+    """
+
+    ip = models.GenericIPAddressField("آخر عنوان IP للمؤسسة")
+    seen_at = models.DateTimeField("آخر إشارة", auto_now=True)
+
+    class Meta:
+        verbose_name = "عنوان IP للمؤسسة"
+        verbose_name_plural = "عنوان IP للمؤسسة"
+
+    def __str__(self):
+        return f"{self.ip} ({self.seen_at:%Y-%m-%d %H:%M})"
