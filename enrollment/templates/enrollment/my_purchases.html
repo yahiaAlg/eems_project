@@ -93,7 +93,7 @@
       </div>
 
       <div class="enrollment-actions">
-        <a href="{% url 'enrollment:detail' e.offering.session.slug e.offering.code %}" class="btn-mini btn-mini-outline">
+        <a href="{% url 'enrollment:detail' e.offering.session.slug e.offering.url_key %}" class="btn-mini btn-mini-outline">
           <iconify-icon icon="mdi:information-outline"></iconify-icon> تفاصيل التخصص
         </a>
         <a href="{% url 'enrollment:dashboard_request_session_change' e.pk %}" class="btn-mini btn-mini-outline">

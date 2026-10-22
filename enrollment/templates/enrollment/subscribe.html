@@ -12,7 +12,7 @@
 
 <section id="sub-hero">
   <div class="container position-relative" style="z-index:1;">
-    <div class="crumb"><a href="{% url 'pages:home' %}">الرئيسية</a> / <a href="{% url 'enrollment:catalog' %}">التخصصات</a> / <a href="{% url 'enrollment:detail' offering.session.slug offering.code %}">{{ offering.code }}</a> / التسجيل</div>
+    <div class="crumb"><a href="{% url 'pages:home' %}">الرئيسية</a> / <a href="{% url 'enrollment:catalog' %}">التخصصات</a> / <a href="{% url 'enrollment:detail' offering.session.slug offering.url_key %}">{{ offering.code }}</a> / التسجيل</div>
     <h1 id="anim-title"><iconify-icon icon="mdi:pencil-plus-outline"></iconify-icon> استمارة التسجيل</h1>
     <p>املأ معلوماتك بدقة — فريقنا سيتواصل معك لتأكيد ترشحك.</p>
   </div>
@@ -26,7 +26,7 @@
         <h4>{{ offering.title }}</h4>
         <div class="summary-sub">{{ offering.session.name }}</div>
 
-        <div class="summary-row"><iconify-icon icon="mdi:clock-time-four-outline"></iconify-icon> مدة التكوين: {{ offering.duration_months }} شهرا</div>
+        <div class="summary-row"><iconify-icon icon="mdi:clock-time-four-outline"></iconify-icon> مدة التكوين: {{ offering.duration_display }}</div>
         {% if offering.get_certificate_type_display %}<div class="summary-row"><iconify-icon icon="mdi:certificate-outline"></iconify-icon> {{ offering.get_certificate_type_display }}</div>{% endif %}
         {% if offering.get_entry_level_display %}<div class="summary-row"><iconify-icon icon="mdi:school-outline"></iconify-icon> مستوى الدخول: {{ offering.get_entry_level_display }}</div>{% endif %}
         <div class="summary-row"><iconify-icon icon="mdi:seat-outline"></iconify-icon> {{ offering.seats_remaining }} مقعد متبقي من {{ offering.seats_available }}</div>

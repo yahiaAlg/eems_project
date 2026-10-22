@@ -45,6 +45,7 @@ def activate_client_and_send_credentials(client):
 
     sent = send_branded_mail(
         template="emails/account_activated_credentials.html",
+        account="inscription",
         subject="تم تفعيل حسابك — بيانات الدخول",
         to=[recipient],
         context={

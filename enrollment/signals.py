@@ -62,6 +62,7 @@ def notify_staff_on_new_enrollment(sender, instance, created, **kwargs):
     if admin_emails:
         send_branded_mail(
             template="emails/enrollment_admin_notification.html",
+            account="inscription",
             subject=f"تسجيل جديد: {client.display_name} — {instance.offering.code}",
             to=admin_emails,
             context=context,
@@ -71,6 +72,7 @@ def notify_staff_on_new_enrollment(sender, instance, created, **kwargs):
     if client.email:
         send_branded_mail(
             template="emails/enrollment_client_confirmation.html",
+            account="inscription",
             subject="تم استلام طلب تسجيلك — إيمس",
             to=[client.email],
             context=context,

@@ -42,7 +42,14 @@ def _get_or_create_offering(session, row):
     """Mirrors seed_enrollment.py's offering defaults for the rare case a
     formation reaches this step without ever having been through
     seed_enrollment (e.g. added to the CSV afterwards)."""
-    offering = Offering.objects.filter(session=session, code=row["code"]).first()
+    same_code = Offering.objects.filter(session=session, code=row["code"])
+    # Several offerings may now share one code -> narrow by title when needed.
+    titles = [t for t in (row.get("title_ar"), row.get("title")) if t]
+    offering = (
+        same_code.filter(title__in=titles).first()
+        if titles and same_code.count() > 1
+        else same_code.first()
+    )
     if offering:
         return offering, False
 

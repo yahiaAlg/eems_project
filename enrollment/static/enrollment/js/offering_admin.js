@@ -136,8 +136,31 @@
       owner[key] = "auto";
     }
 
+    // Duration sync (days take priority over months):
+    //  - typing months      -> days = months * 30
+    //  - typing days        -> months = days / 30 only for an exact multiple
+    //                          of 30, otherwise months stays empty (so a
+    //                          15-day or a 75-day course is shown by its days)
+    // An emptied field is left alone, so retyping a number never fights us.
+    function syncDuration(srcKey) {
+      if (srcKey === "months") {
+        var m = num($months);
+        if (m !== null && m > 0) {
+          $days.val(Math.round(m * MONTH_DAYS));
+          owner.days = "auto";
+        }
+      } else if (srcKey === "days") {
+        var d = num($days);
+        if (d !== null && d > 0) {
+          $months.val(d % MONTH_DAYS === 0 ? d / MONTH_DAYS : "");
+          owner.months = "auto";
+        }
+      }
+    }
+
     function recompute(srcKey) {
       owner[srcKey] = "user"; // whatever the person just edited is authoritative
+      syncDuration(srcKey);
 
       var months = num($months);
       var monthlyFee = num($monthlyFee);
@@ -186,11 +209,12 @@
       dailyFee = num($dailyFee);
 
       // 3) cross-fill the other duration unit (~30 days/month).
-      if (months !== null && monthlyFee !== null && writable("days") && writable("dailyFee")) {
-        setVal("days", months * MONTH_DAYS);
+      // (the durations themselves are already synced by syncDuration above)
+      months = num($months);
+      days = num($days);
+      if (months !== null && monthlyFee !== null && writable("dailyFee")) {
         setVal("dailyFee", round2(monthlyFee / MONTH_DAYS));
-      } else if (days !== null && dailyFee !== null && writable("months") && writable("monthlyFee")) {
-        setVal("months", Math.max(1, Math.round(days / MONTH_DAYS)));
+      } else if (months !== null && days !== null && dailyFee !== null && writable("monthlyFee")) {
         setVal("monthlyFee", round2(dailyFee * MONTH_DAYS));
       }
     }

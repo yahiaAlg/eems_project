@@ -101,7 +101,7 @@ class Command(BaseCommand):
             if base_code in LEGACY_CODES:
                 continue  # preserve curated demo content untouched
 
-            code = base_code if code_counts[base_code] == 1 else f"{base_code}-{row['id']}"
+            code = base_code  # repeated codes are fine: several offerings share one specialty
 
             specialty = None
             specialty_id = row["specialty_id"].strip()
@@ -131,9 +131,8 @@ class Command(BaseCommand):
                 description += f" المدة: {duration_days} يوم ({hours} ساعة تكوين)."
 
             Offering.objects.update_or_create(
-                session=session, code=code,
+                session=session, code=code, title=title,  # code alone repeats now
                 defaults=dict(
-                    title=title,
                     branch_label=branch_label,
                     specialty=specialty,
                     duration_months=duration_months,

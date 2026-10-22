@@ -82,6 +82,7 @@ def notify_enrollment_accepted(enrollment):
     is_enterprise = client.is_enterprise
     sent = send_branded_mail(
         template="emails/enrollment_accepted.html",
+        account="inscription",
         subject=f"تم قبول تسجيلك — {enrollment.offering.title}",
         to=[recipient],
         context={
@@ -145,6 +146,7 @@ def schedule_session(enrollment, start_date, registration_deadline=None):
 
     sent = send_branded_mail(
         template="emails/session_scheduled.html",
+        account="inscription",
         subject=f"تم تحديد تاريخ الدورة — {enrollment.offering.title}",
         to=[client.email],
         context={

@@ -202,7 +202,7 @@ class OfferingAdmin(admin.ModelAdmin):
         "title",
         "session",
         "qualification_level",
-        "duration_months",
+        "duration_display",
         "monthly_fee",
         "seats_display",
         "fiche_technique_badge",
@@ -214,6 +214,11 @@ class OfferingAdmin(admin.ModelAdmin):
     )
     list_editable = ("is_active", "is_featured", "is_pinned", "order")
     ordering = ("-is_pinned", "-updated_at")
+
+    @admin.display(description="مدة التكوين")
+    def duration_display(self, obj):
+        return obj.duration_display or "—"
+
     list_filter = (
         "session",
         "qualification_level",

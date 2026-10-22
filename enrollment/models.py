@@ -391,7 +391,7 @@ class Offering(models.Model):
         "مدة التكوين (أشهر)",
         null=True,
         blank=True,
-        help_text="للتكوينات طويلة المدى. اتركه فارغا إن كانت المدة تُحتسب بالأيام أدناه.",
+        help_text="يُحسب تلقائيا من عدد الأيام (÷ 30) ويبقى فارغا إن لم تبلغ المدة 30 يوما. كتابة عدد الأشهر تملأ الأيام (× 30).",
     )
     monthly_fee = models.DecimalField(
         "القيمة الشهرية (دج)",
@@ -405,7 +405,7 @@ class Offering(models.Model):
         "مدة التكوين (أيام)",
         null=True,
         blank=True,
-        help_text="للتكوينات القصيرة المدى — بديل عن مدة الأشهر أعلاه.",
+        help_text="الأولوية لعدد الأيام: يُعرض إن وُجد، وإلا تُستعمل مدة الأشهر.",
     )
     daily_fee = models.DecimalField(
         "القيمة اليومية (دج)",
@@ -547,7 +547,51 @@ class Offering(models.Model):
             self.code = self.specialty.code
         if not self.slug:
             self.slug = self.build_unique_slug()
+        self.normalize_durations()
         super().save(*args, **kwargs)
+
+    # --- duration (days take priority, months are the fallback) --------
+    MONTH_DAYS = 30
+
+    def normalize_durations(self):
+        """Keep `duration_days` / `duration_months` consistent (mirrors the
+        admin JS): days win; months are filled only for an exact multiple of
+        30 days and stay empty otherwise; a months-only value fills the days."""
+        days, months = self.duration_days, self.duration_months
+        if days:
+            self.duration_months = days // self.MONTH_DAYS if days % self.MONTH_DAYS == 0 else None
+        elif months:
+            self.duration_days = months * self.MONTH_DAYS
+        else:
+            self.duration_days = self.duration_months = None
+
+    @staticmethod
+    def _unit(n, one, two, few, many):
+        word = one if n == 1 else two if n == 2 else few if n <= 10 else many
+        return f"{n} {word}"
+
+    @property
+    def duration_display(self):
+        """Human-readable duration: "15 يوما", "2 شهرين", "2 شهرين و 15 يوما"."""
+        days = self.duration_days or (
+            self.duration_months * self.MONTH_DAYS if self.duration_months else 0
+        )
+        if not days:
+            return ""
+        months, rest = divmod(days, self.MONTH_DAYS)
+        parts = []
+        if months:
+            parts.append(self._unit(months, "شهر", "شهرين", "أشهر", "شهرا"))
+        if rest:
+            parts.append(self._unit(rest, "يوم", "يومين", "أيام", "يوما"))
+        return " و ".join(parts)
+
+    @property
+    def url_key(self):
+        """Last URL segment: the title slug (unique per session). Codes can
+        now repeat across offerings of the same specialty, so they can't
+        identify an offering in a URL any more."""
+        return self.slug or self.code
 
     def build_unique_slug(self):
         """slugify(title) (falls back to the code), made unique within the session."""
@@ -681,7 +725,7 @@ class Offering(models.Model):
         if self.fiche_technique_is_custom:
             return self.fiche_technique_file.url
         return reverse(
-            "enrollment:fiche_technique", args=[self.session.slug, self.code]
+            "enrollment:fiche_technique", args=[self.session.slug, self.url_key]
         )
 
     @property
@@ -728,7 +772,7 @@ class Offering(models.Model):
         return self.approved_comments.count()
 
     def get_absolute_url(self):
-        return reverse("enrollment:detail", args=[self.session.slug, self.code])
+        return reverse("enrollment:detail", args=[self.session.slug, self.url_key])
 
     @property
     def poster_src(self):

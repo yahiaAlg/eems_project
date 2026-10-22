@@ -17,6 +17,22 @@ from .models import (
 # ---------------------------------------------------------------------------
 
 
+
+def resolve_offerings(keys):
+    """One active Offering per key (slug first, then code). Codes may be shared
+    by several offerings of a specialty, so a code never fans out to all of
+    them — the first match is used; send the slug to target an exact one."""
+    qs = Offering.objects.filter(is_active=True)
+    found, missing = [], []
+    for key in keys:
+        offering = qs.filter(slug=key).first() or qs.filter(code=key).first()
+        if offering is None:
+            missing.append(key)
+        elif offering not in found:
+            found.append(offering)
+    return found, set(missing)
+
+
 class FormationSessionSerializer(serializers.ModelSerializer):
     class Meta:
         model = FormationSession
@@ -35,6 +51,7 @@ class OfferingSerializer(serializers.ModelSerializer):
     certificate_type_display = serializers.CharField(
         source="get_certificate_type_display", read_only=True,
     )
+    duration_display = serializers.ReadOnlyField()
     specialty_code = serializers.CharField(source="specialty.code", read_only=True, default=None)
     branch_code = serializers.CharField(source="specialty.branch.code", read_only=True, default=None)
 
@@ -45,7 +62,7 @@ class OfferingSerializer(serializers.ModelSerializer):
             "specialty_code", "branch_code",
             "qualification_level", "qualification_level_display",
             "certificate_type", "certificate_type_display", "entry_level",
-            "duration_months", "monthly_fee", "total_fee",
+            "duration_months", "duration_days", "duration_display", "monthly_fee", "total_fee",
             "seats_available", "seats_taken", "seats_remaining", "fill_rate",
             "description", "tasks_list", "image",
         ]
@@ -177,8 +194,7 @@ class IndividualRegistrationSerializer(serializers.Serializer):
         return value
 
     def validate_offering_codes(self, codes):
-        offerings = list(Offering.objects.filter(code__in=codes, is_active=True))
-        missing = set(codes) - {o.code for o in offerings}
+        offerings, missing = resolve_offerings(codes)
         if missing:
             raise serializers.ValidationError(f"تخصصات غير موجودة أو غير نشطة: {', '.join(sorted(missing))}")
         self._offerings = offerings
@@ -264,8 +280,7 @@ class EnterpriseRegistrationSerializer(serializers.Serializer):
         return value
 
     def validate_offering_codes(self, codes):
-        offerings = list(Offering.objects.filter(code__in=codes, is_active=True))
-        missing = set(codes) - {o.code for o in offerings}
+        offerings, missing = resolve_offerings(codes)
         if missing:
             raise serializers.ValidationError(f"تخصصات غير موجودة أو غير نشطة: {', '.join(sorted(missing))}")
         self._offerings = offerings

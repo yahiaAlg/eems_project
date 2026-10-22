@@ -4,7 +4,7 @@
 {% block title %}{{ offering.title }} — {{ offering.code }}{% endblock %}
 
 {% block meta_description %}
-<meta name="description" content="{{ offering.title }} — {{ offering.session.name }}، مدة التكوين {{ offering.duration_months }} شهرا{% if offering.formateur %}، يقدّمه {{ offering.formateur.full_name }}{% endif %}. تكوين معتمد من مؤسسة التميز للإدارة والسلامة (EEMS) بسطيف.">
+<meta name="description" content="{{ offering.title }} — {{ offering.session.name }}، مدة التكوين {{ offering.duration_display }}{% if offering.formateur %}، يقدّمه {{ offering.formateur.full_name }}{% endif %}. تكوين معتمد من مؤسسة التميز للإدارة والسلامة (EEMS) بسطيف.">
 {% endblock %}
 
 {% block extra_head %}
@@ -55,7 +55,7 @@
     <div class="row g-2">
       {% for rel in related_offerings %}
       <div class="col-md-4">
-        <a class="related-card" href="{% url 'enrollment:detail' rel.session.slug rel.code %}">
+        <a class="related-card" href="{% url 'enrollment:detail' rel.session.slug rel.url_key %}">
           <div class="code">{{ rel.code }}</div>
           <div class="title">{{ rel.title }}</div>
         </a>
@@ -84,7 +84,7 @@
 
     <hr class="my-4">
     <div class="section-h" style="margin-top:0;font-size:1rem;"><iconify-icon icon="mdi:comment-plus-outline"></iconify-icon> أضف تعليقك</div>
-    <form method="post" action="{% url 'enrollment:detail' offering.session.slug offering.code %}#comments">
+    <form method="post" action="{% url 'enrollment:detail' offering.session.slug offering.url_key %}#comments">
       {% csrf_token %}
       <input type="hidden" name="form_type" value="comment">
       <div class="row g-3">
@@ -113,7 +113,7 @@
   <div class="panel reveal-item" id="enquiry">
     <div class="section-h" style="margin-top:0;"><iconify-icon icon="mdi:help-circle-outline"></iconify-icon> عندك سؤال حول هذا التخصص؟</div>
     <p style="color:var(--muted);font-size:.9rem;">اطرح استفسارك وسيتواصل معك فريقنا في أقرب وقت — أو اتصل مباشرة على {{ settings.phone|default:settings.email }}.</p>
-    <form method="post" action="{% url 'enrollment:detail' offering.session.slug offering.code %}#enquiry">
+    <form method="post" action="{% url 'enrollment:detail' offering.session.slug offering.url_key %}#enquiry">
       {% csrf_token %}
       <input type="hidden" name="form_type" value="enquiry">
       <div class="row g-3">

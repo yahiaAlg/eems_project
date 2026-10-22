@@ -47,7 +47,7 @@
 
 <div class="panel reveal-item">
   <div class="info-grid">
-    <div class="info-box"><iconify-icon icon="mdi:clock-time-four-outline"></iconify-icon><div class="label">مدة التكوين</div><div class="value">{{ offering.duration_months }} شهرا</div></div>
+    <div class="info-box"><iconify-icon icon="mdi:clock-time-four-outline"></iconify-icon><div class="label">مدة التكوين</div><div class="value">{{ offering.duration_display }}</div></div>
     {% if can_view_price %}
       {% if offering.monthly_fee %}<div class="info-box"><iconify-icon icon="mdi:cash-multiple"></iconify-icon><div class="label">القيمة الشهرية</div><div class="value">{{ offering.monthly_fee|da }}</div></div>{% endif %}
       {% if offering.total_fee %}<div class="info-box"><iconify-icon icon="mdi:wallet-outline"></iconify-icon><div class="label">القيمة الإجمالية</div><div class="value">{{ offering.total_fee|da }}</div></div>{% endif %}
@@ -115,7 +115,7 @@
 
   <div class="d-flex flex-wrap gap-2 align-items-center">
   {% if request.user.is_authenticated %}
-    <form method="post" action="{% url 'enrollment:add_to_cart' offering.session.slug offering.code %}">
+    <form method="post" action="{% url 'enrollment:add_to_cart' offering.session.slug offering.url_key %}">
       {% csrf_token %}
       <input type="hidden" name="next" value="{{ request.get_full_path }}">
       {% if offering.seats_remaining > 0 %}
@@ -124,13 +124,13 @@
         <button type="submit" class="btn-enroll full"><iconify-icon icon="mdi:cart-plus"></iconify-icon> اكتملت المقاعد — أضف إلى السلة (قائمة الانتظار)</button>
       {% endif %}
     </form>
-    <form method="post" action="{% url 'enrollment:toggle_wishlist' offering.session.slug offering.code %}">
+    <form method="post" action="{% url 'enrollment:toggle_wishlist' offering.session.slug offering.url_key %}">
       {% csrf_token %}
       <input type="hidden" name="next" value="{{ request.get_full_path }}">
       <button type="submit" class="btn-enroll full"><iconify-icon icon="{% if is_wishlisted %}mdi:heart{% else %}mdi:heart-outline{% endif %}"></iconify-icon> {% if is_wishlisted %}محفوظ في قائمة رغباتي{% else %}احفظ لوقت لاحق{% endif %}</button>
     </form>
     {% if can_quick_register %}
-    <a class="btn-enroll outline" href="{% url 'enrollment:subscribe' offering.session.slug offering.code %}">
+    <a class="btn-enroll outline" href="{% url 'enrollment:subscribe' offering.session.slug offering.url_key %}">
       <iconify-icon icon="mdi:flash-outline"></iconify-icon> التسجيل السريع (لمشارك آخر)
     </a>
     {% endif %}

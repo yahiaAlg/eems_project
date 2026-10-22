@@ -143,6 +143,7 @@ def register(request):
             if admin_emails:
                 send_branded_mail(
                     template="emails/account_pending_admin_notification.html",
+                    account="inscription",
                     subject=f"حساب جديد بانتظار الموافقة: {client.display_name}",
                     to=admin_emails,
                     context={

@@ -80,7 +80,7 @@ def read_formation_rows(csv_dir: Path) -> list[dict]:
         base_code = r["code"].strip() or f"FORM{r['id']}"
         # Same disambiguation seed_enrollment.py applies when a code repeats
         # (e.g. "CIP1202" is reused by CPHS / Lutte Incendie / Premier Secours).
-        r["_effective_code"] = base_code if code_counts[base_code] == 1 else f"{base_code}-{r['id']}"
+        r["_effective_code"] = base_code  # no -{id} suffix: codes may repeat
     return rows
 
 

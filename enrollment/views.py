@@ -179,7 +179,7 @@ def catalog(request):
     SORT_FIELDS = {
         "updated": "updated_at",
         "title": "title",
-        "duration": "duration_months",
+        "duration": "duration_days",
         "fee": "monthly_fee",
     }
     sort = request.GET.get("sort") or "updated"
@@ -301,16 +301,21 @@ def general_enquiry(request):
     return redirect(request.META.get("HTTP_REFERER") or "pages:home")
 
 
+def get_offering_or_404(session_slug, key):
+    """Resolve the URL's last segment to an active Offering of the session:
+    by slug first (unique per session), then by legacy code (codes may repeat
+    across offerings of one specialty — the first match wins)."""
+    qs = Offering.objects.filter(session__slug=session_slug, is_active=True)
+    offering = qs.filter(slug=key).first() or qs.filter(code=key).first()
+    if offering is None:
+        raise Http404("Offering not found")
+    return offering
+
+
 def specialty_detail(request, session_slug, code):
     # `code` is the URL's last segment: the offering's title slug (new, used by
     # QR codes) or its code (legacy links) — try the code first, then the slug.
-    offerings_qs = Offering.objects.filter(session__slug=session_slug, is_active=True)
-    offering = (
-        offerings_qs.filter(code=code).first()
-        or offerings_qs.filter(slug=code).first()
-    )
-    if offering is None:
-        raise Http404("Offering not found")
+    offering = get_offering_or_404(session_slug, code)
 
     detail_client = getattr(request.user, "client", None)
 
@@ -412,12 +417,7 @@ def fiche_technique_print(request, session_slug, code):
     the offering's current data (no PDF library, no stored file: plain
     HTML with print CSS). Only reachable when the offering is on 'auto'
     mode; 'custom' mode offerings serve their uploaded file directly."""
-    offering = get_object_or_404(
-        Offering,
-        session__slug=session_slug,
-        code=code,
-        is_active=True,
-    )
+    offering = get_offering_or_404(session_slug, code)
     context = {
         "offering": offering,
         "qualification_level": offering.get_qualification_level_display(),
@@ -433,12 +433,7 @@ def fiche_technique_print(request, session_slug, code):
 
 
 def subscribe(request, session_slug, code):
-    offering = get_object_or_404(
-        Offering,
-        session__slug=session_slug,
-        code=code,
-        is_active=True,
-    )
+    offering = get_offering_or_404(session_slug, code)
 
     if offering.seats_remaining <= 0:
         messages.warning(
@@ -637,12 +632,7 @@ def add_to_cart(request, session_slug, code):
     of registering immediately, so several formations can be queued before
     checkout (Phase 5). The old `subscribe` URL/view above is left untouched
     and keeps working directly for backward compatibility."""
-    offering = get_object_or_404(
-        Offering,
-        session__slug=session_slug,
-        code=code,
-        is_active=True,
-    )
+    offering = get_offering_or_404(session_slug, code)
     fallback = offering.get_absolute_url()
     client = getattr(request.user, "client", None)
     if client is None:
@@ -672,12 +662,7 @@ def toggle_wishlist(request, session_slug, code):
     detail pages: a single endpoint that both saves and un-saves an
     offering, so the same button works whether the heart is being filled
     or emptied (mirrors `add_to_cart`'s idempotent get_or_create above)."""
-    offering = get_object_or_404(
-        Offering,
-        session__slug=session_slug,
-        code=code,
-        is_active=True,
-    )
+    offering = get_offering_or_404(session_slug, code)
     fallback = offering.get_absolute_url()
     client = getattr(request.user, "client", None)
     if client is None:
@@ -1651,7 +1636,7 @@ def ajax_offerings_for_specialty(request):
             "session_name": o.session.name,
             "seats_remaining": o.seats_remaining,
             "subscribe_url": reverse(
-                "enrollment:subscribe", args=[o.session.slug, o.code]
+                "enrollment:subscribe", args=[o.session.slug, o.url_key]
             ),
         }
         for o in offerings
@@ -1905,6 +1890,7 @@ def dashboard_confirm(request, pk):
         if enrollment.client.email:
             send_branded_mail(
                 template="emails/enrollment_confirmed.html",
+                account="inscription",
                 subject="تأكيد تسجيلك — إيمس",
                 to=[enrollment.client.email],
                 context=dict(admin_notification_context),
@@ -1913,6 +1899,7 @@ def dashboard_confirm(request, pk):
         if admin_emails:
             send_branded_mail(
                 template="emails/enrollment_confirmed_admin_notification.html",
+                account="inscription",
                 subject=f"تأكيد تسجيل — شراء نشط: {enrollment.client.display_name}",
                 to=admin_emails,
                 context=admin_notification_context,

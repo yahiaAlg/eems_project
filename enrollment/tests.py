@@ -1461,7 +1461,7 @@ class QuickRegisterPrefillTestCase(TestCase):
         )
         self.detail_url = self.offering.get_absolute_url()
         self.subscribe_url = reverse(
-            "enrollment:subscribe", args=[session.slug, self.offering.code]
+            "enrollment:subscribe", args=[session.slug, self.offering.url_key]
         )
 
     def _make_client(self, username, account_status="active"):

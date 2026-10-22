@@ -162,7 +162,7 @@
                 {% endif %}
                 <div class="offer-meta">
                   <span><iconify-icon icon="mdi:calendar-month-outline"></iconify-icon> {{ offering.session.name }}</span>
-                  <span><iconify-icon icon="mdi:clock-time-four-outline"></iconify-icon> {{ offering.duration_months }} شهرا</span>
+                  <span><iconify-icon icon="mdi:clock-time-four-outline"></iconify-icon> {{ offering.duration_display }}</span>
                 </div>
                 {% if can_view_price and offering.monthly_fee %}<div class="offer-fee">{{ offering.monthly_fee|da }} / شهر</div>{% endif %}
                 <div>
@@ -172,14 +172,14 @@
               </div>
               {% if offering.seats_remaining > 0 %}
                 <div class="card-actions">
-                  <a class="btn-detail" href="{% url 'enrollment:detail' offering.session.slug offering.code %}"><iconify-icon icon="mdi:information-outline"></iconify-icon> التفاصيل</a>
+                  <a class="btn-detail" href="{% url 'enrollment:detail' offering.session.slug offering.url_key %}"><iconify-icon icon="mdi:information-outline"></iconify-icon> التفاصيل</a>
                   {% if request.user.is_authenticated %}
-                  <form method="post" action="{% url 'enrollment:add_to_cart' offering.session.slug offering.code %}" class="cart-form">
+                  <form method="post" action="{% url 'enrollment:add_to_cart' offering.session.slug offering.url_key %}" class="cart-form">
                     {% csrf_token %}
                     <input type="hidden" name="next" value="{{ request.get_full_path }}">
                     <button type="submit" class="btn-cart"><iconify-icon icon="mdi:cart-plus"></iconify-icon> أضف إلى السلة</button>
                   </form>
-                  <form method="post" action="{% url 'enrollment:toggle_wishlist' offering.session.slug offering.code %}" class="wishlist-form">
+                  <form method="post" action="{% url 'enrollment:toggle_wishlist' offering.session.slug offering.url_key %}" class="wishlist-form">
                     {% csrf_token %}
                     <input type="hidden" name="next" value="{{ request.get_full_path }}">
                     <button type="submit" class="btn-wishlist {% if offering.pk in wishlisted_offering_ids %}is-saved{% endif %}" title="{% if offering.pk in wishlisted_offering_ids %}إزالة من قائمة الرغبات{% else %}حفظ لوقت لاحق{% endif %}">
@@ -195,14 +195,14 @@
                 </div>
               {% else %}
                 <div class="card-actions">
-                  <a class="btn-detail full" href="{% url 'enrollment:detail' offering.session.slug offering.code %}"><iconify-icon icon="mdi:clock-alert-outline"></iconify-icon> اكتملت المقاعد — قائمة الانتظار</a>
+                  <a class="btn-detail full" href="{% url 'enrollment:detail' offering.session.slug offering.url_key %}"><iconify-icon icon="mdi:clock-alert-outline"></iconify-icon> اكتملت المقاعد — قائمة الانتظار</a>
                   {% if request.user.is_authenticated %}
-                  <form method="post" action="{% url 'enrollment:add_to_cart' offering.session.slug offering.code %}" class="cart-form">
+                  <form method="post" action="{% url 'enrollment:add_to_cart' offering.session.slug offering.url_key %}" class="cart-form">
                     {% csrf_token %}
                     <input type="hidden" name="next" value="{{ request.get_full_path }}">
                     <button type="submit" class="btn-cart"><iconify-icon icon="mdi:cart-plus"></iconify-icon> أضف إلى السلة</button>
                   </form>
-                  <form method="post" action="{% url 'enrollment:toggle_wishlist' offering.session.slug offering.code %}" class="wishlist-form">
+                  <form method="post" action="{% url 'enrollment:toggle_wishlist' offering.session.slug offering.url_key %}" class="wishlist-form">
                     {% csrf_token %}
                     <input type="hidden" name="next" value="{{ request.get_full_path }}">
                     <button type="submit" class="btn-wishlist {% if offering.pk in wishlisted_offering_ids %}is-saved{% endif %}" title="{% if offering.pk in wishlisted_offering_ids %}إزالة من قائمة الرغبات{% else %}حفظ لوقت لاحق{% endif %}">

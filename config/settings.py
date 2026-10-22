@@ -216,6 +216,19 @@ EMAIL_TIMEOUT = 10  # seconds — never let a slow/unreachable mail server hang 
 DEFAULT_FROM_EMAIL = f"إيمس — الدعم <{EMAIL_HOST_USER}>"
 SERVER_EMAIL = EMAIL_HOST_USER
 
+# Second mailbox — inscription@excellance-ms.dz — used for everything related
+# to REGISTRATION (enrollment confirmations, account activation, ...). Same
+# server/ports as the support mailbox (SSL 465); contact-form, newsletter,
+# enquiry, quote and proforma mails keep going out through support@ above.
+# Override the password via INSCRIPTION_EMAIL_HOST_PASSWORD in .env in production.
+INSCRIPTION_EMAIL_HOST_USER = os.environ.get(
+    "INSCRIPTION_EMAIL_HOST_USER", "inscription@excellance-ms.dz"
+)
+INSCRIPTION_EMAIL_HOST_PASSWORD = os.environ.get(
+    "INSCRIPTION_EMAIL_HOST_PASSWORD", "system2026*"
+)
+INSCRIPTION_FROM_EMAIL = f"إيمس — التسجيل <{INSCRIPTION_EMAIL_HOST_USER}>"
+
 # Django REST Framework settings
 
 REST_FRAMEWORK = {
