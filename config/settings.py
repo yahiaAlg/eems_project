@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "pages",
     "enrollment",
     "accounts",
+    "bridge",
 ]
 
 MIDDLEWARE = [
@@ -274,3 +275,9 @@ CLIENT_IP_HEADER = os.environ.get("CLIENT_IP_HEADER", "REMOTE_ADDR")
 # trusted for INSTITUTE_IP_TTL_MINUTES after the last ping.
 INSTITUTE_PING_SECRET = os.environ.get("INSTITUTE_PING_SECRET", "")
 INSTITUTE_IP_TTL_MINUTES = int(os.environ.get("INSTITUTE_IP_TTL_MINUTES", "30"))
+
+# ISI <-> website sync (bridge app). Requests from the pedagogical server are
+# signed with HMAC-SHA256 using this secret (falls back to INSTITUTE_PING_SECRET).
+# Synced formations are created as Offerings in the session below.
+SYNC_SHARED_SECRET = os.environ.get("SYNC_SHARED_SECRET", "")
+BRIDGE_CATALOGUE_SLUG = os.environ.get("BRIDGE_CATALOGUE_SLUG", "catalogue-eems")
