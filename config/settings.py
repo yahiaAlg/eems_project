@@ -50,7 +50,7 @@ INSTALLED_APPS = [
     "pages",
     "enrollment",
     "accounts",
-    "bridge",
+    "bridge",  # sync with the institute's pedagogical app (ISI)
 ]
 
 MIDDLEWARE = [
@@ -276,8 +276,16 @@ CLIENT_IP_HEADER = os.environ.get("CLIENT_IP_HEADER", "REMOTE_ADDR")
 INSTITUTE_PING_SECRET = os.environ.get("INSTITUTE_PING_SECRET", "")
 INSTITUTE_IP_TTL_MINUTES = int(os.environ.get("INSTITUTE_IP_TTL_MINUTES", "30"))
 
-# ISI <-> website sync (bridge app). Requests from the pedagogical server are
-# signed with HMAC-SHA256 using this secret (falls back to INSTITUTE_PING_SECRET).
-# Synced formations are created as Offerings in the session below.
-SYNC_SHARED_SECRET = os.environ.get("SYNC_SHARED_SECRET", "")
-BRIDGE_CATALOGUE_SLUG = os.environ.get("BRIDGE_CATALOGUE_SLUG", "catalogue-eems")
+# ---------------------------------------------------------------------------
+# Bridge with the pedagogical app (ISI) — see bridge/ app.
+# SYNC_SHARED_SECRET signs every request between the two servers (HMAC-SHA256);
+# empty = bridge disabled (its URLs answer 404). Falls back to the existing
+# INSTITUTE_PING_SECRET so one secret can serve both features.
+# SYNC_DEFAULT_SESSION_SLUG = the FormationSession that holds the catalogue.
+# ---------------------------------------------------------------------------
+SYNC_SHARED_SECRET = os.environ.get("SYNC_SHARED_SECRET", "") or INSTITUTE_PING_SECRET
+SYNC_DEFAULT_SESSION_SLUG = os.environ.get("SYNC_DEFAULT_SESSION_SLUG", "catalogue-eems")
+# New formations arriving from ISI stay hidden (is_active=False) until staff
+# review the auto-generated fiche and publish them (Admin > Liens formations ISI >
+# "Publier"). Set to 1 to publish them immediately.
+SYNC_NEW_OFFERINGS_ACTIVE = os.environ.get("SYNC_NEW_OFFERINGS_ACTIVE", "0") == "1"

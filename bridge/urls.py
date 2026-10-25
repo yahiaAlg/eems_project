@@ -5,6 +5,7 @@ from . import views
 app_name = "bridge"
 
 urlpatterns = [
-    path("internal/sync/ping/", views.ping, name="ping"),
-    path("internal/sync/formation/", views.formation_upsert, name="formation_upsert"),
+    path("formations/", views.formations_upsert, name="formations_upsert"),
+    path("formations/deactivate/", views.formations_deactivate, name="formations_deactivate"),
+    path("feed/", views.feed, name="feed"),
 ]

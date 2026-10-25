@@ -12,6 +12,14 @@ from accounts.services import activate_client_and_send_credentials
 from pages.emails import send_branded_mail
 
 from .forms import ScheduleSessionForm
+
+
+def _notify_bridge(client_ids):
+    """Tell the ISI bridge these clients changed (bulk .update() skips signals)."""
+    from bridge.signals import record_clients_changed
+
+    record_clients_changed(client_ids)
+
 from .services import schedule_session
 from .models import (
     Cart,
@@ -753,11 +761,15 @@ class EnrollmentAdmin(admin.ModelAdmin):
 
     @admin.action(description="وضع الحالة: مرفوض")
     def mark_rejected(self, request, queryset):
+        client_ids = list(queryset.values_list("client_id", flat=True))
         queryset.update(status="rejected")
+        _notify_bridge(client_ids)  # queryset.update() fires no signals
 
     @admin.action(description="وضع الحالة: تم التواصل")
     def mark_contacted(self, request, queryset):
+        client_ids = list(queryset.values_list("client_id", flat=True))
         queryset.update(status="contacted")
+        _notify_bridge(client_ids)
 
 
 @admin.register(EnrollmentParticipant)

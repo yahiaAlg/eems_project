@@ -24,7 +24,7 @@ urlpatterns = [
     path(
         "api/pages/", include("pages.api_urls")
     ),  # /api/pages/branches/, /api/pages/specialties/...
-    path("", include("bridge.urls")),  # /internal/sync/... (signed, ISI only)
+    path("internal/sync/", include("bridge.urls")),  # signed ISI <-> site bridge
     path("", include("enrollment.urls")),  # <-- أضف هذا قبل include("pages.urls")
     path("account/", include("accounts.urls")),  # /account/register/, ... (login/logout: TODO 1.5)
     path("", include("pages.urls")),

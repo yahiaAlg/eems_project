@@ -519,6 +519,9 @@ def subscribe(request, session_slug, code):
                     email=data.get("email", ""),
                     position=data.get("responsible_position", ""),
                 )
+                from bridge.models import ContactPlaceholder
+
+                ContactPlaceholder.objects.get_or_create(participant=participant)
             else:
                 participant = Participant.objects.create(
                     client=client,
