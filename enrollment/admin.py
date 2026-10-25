@@ -203,8 +203,42 @@ class FicheTechniqueStatusFilter(admin.SimpleListFilter):
         return queryset
 
 
+class PendingISIReviewFilter(admin.SimpleListFilter):
+    title = "مزامنة ISI"
+    parameter_name = "isi_review"
+
+    def lookups(self, request, model_admin):
+        return (("pending", "من ISI — بانتظار النشر"), ("isi", "كل ما جاء من ISI"))
+
+    def queryset(self, request, queryset):
+        if self.value() == "pending":
+            return queryset.filter(
+                isi_link__created_from_isi=True, isi_link__deleted_in_isi=False, is_active=False
+            )
+        if self.value() == "isi":
+            return queryset.filter(isi_link__isnull=False)
+        return queryset
+
+
 @admin.register(Offering)
 class OfferingAdmin(admin.ModelAdmin):
+    def changelist_view(self, request, extra_context=None):
+        # Visible alert for staff: formations pushed by ISI that nobody has published yet.
+        if request.method == "GET" and not request.GET.get("isi_review"):
+            n = Offering.objects.filter(
+                isi_link__created_from_isi=True, isi_link__deleted_in_isi=False, is_active=False
+            ).count()
+            if n:
+                messages.warning(
+                    request,
+                    format_html(
+                        '{} تكوين/تكوينات جديدة من ISI مخفية بانتظار المراجعة والنشر — '
+                        '<a href="?isi_review=pending"><strong>عرضها</strong></a>',
+                        n,
+                    ),
+                )
+        return super().changelist_view(request, extra_context)
+
     list_display = (
         "code",
         "title",
@@ -234,8 +268,11 @@ class OfferingAdmin(admin.ModelAdmin):
         "is_active",
         "is_featured",
         "is_pinned",
+        PendingISIReviewFilter,
     )
-    search_fields = ("code", "title")
+    # slug is built from the FRENCH title, so French searches ("Analyse") find
+    # offerings whose displayed title is Arabic.
+    search_fields = ("code", "title", "slug")
     autocomplete_fields = ("specialty", "formateur")
     inlines = [OfferingImageInline, OfferingAttachmentInline]
 

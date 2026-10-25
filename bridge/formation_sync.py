@@ -15,6 +15,7 @@ from enrollment.models import FormationSession, Offering
 from pages.models import Branch, Specialty
 
 from .models import FormationLink
+from .notify import notify_new_offering
 
 FICHE_FIELDS = (
     "description",
@@ -173,6 +174,7 @@ def upsert_offering(p):
                 last_payload=new, created_from_isi=True,
             )
             result["created"] = True
+            notify_new_offering(offering)
     else:
         offering, old = link.offering, link.last_payload or {}
         changed = []

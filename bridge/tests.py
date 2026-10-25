@@ -72,6 +72,36 @@ class FormationSyncTests(TestCase):
         self.assertFalse(o.is_active)            # hidden until staff review & publish
         self.assertFalse(r["is_active"])
 
+    @override_settings(ADMINS=[("Admin", "support@example.test")],
+                       EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+    def test_new_formation_emails_support_and_is_searchable_in_french(self):
+        from django.core import mail
+        from django.test import TestCase as _T
+        with self.captureOnCommitCallbacks(execute=True):
+            r = upsert_offering(payload(title="Analyse de Données", title_ar="تحليل البيانات"))
+        o = Offering.objects.get(pk=r["offering_id"])
+        self.assertEqual(o.title, "تحليل البيانات")          # Arabic title shown...
+        self.assertIn("analyse", o.slug)                       # ...French findable via slug search
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].to, ["support@example.test"])
+        self.assertIn("MEE2512", mail.outbox[0].subject)
+        # an update (not a creation) must not re-notify
+        with self.captureOnCommitCallbacks(execute=True):
+            upsert_offering(payload(title="Analyse de Données", title_ar="تحليل البيانات", max_participants=15))
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_admin_banner_filter_and_french_search(self):
+        from django.contrib.auth import get_user_model
+        U = get_user_model()
+        U.objects.create_superuser("adm", "a@b.c", "pw")
+        self.client.login(username="adm", password="pw")
+        upsert_offering(payload(title="Analyse de Données", title_ar="تحليل البيانات"))
+        r = self.client.get("/admin/enrollment/offering/?q=Analyse", follow=True)
+        self.assertContains(r, "MEE2512")
+        self.assertContains(r, "isi_review=pending")           # alert banner
+        r = self.client.get("/admin/enrollment/offering/?isi_review=pending")
+        self.assertContains(r, "MEE2512")
+
     @override_settings(SYNC_NEW_OFFERINGS_ACTIVE=True)
     def test_can_publish_immediately_by_setting(self):
         r = upsert_offering(payload())
