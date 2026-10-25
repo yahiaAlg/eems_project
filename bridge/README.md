@@ -8,6 +8,7 @@ Signed endpoints under `/internal/sync/` (disabled = 404 while `SYNC_SHARED_SECR
 Changes are recorded by `signals.py` (one `SyncEvent` row per client, re-created on each change).
 Code paths that use `queryset.update()` must call `bridge.signals.record_clients_changed(ids)`
 (audited: only the two EnrollmentAdmin actions needed it); ISI also re-walks known clients daily.
+Staff are emailed (ADMINS / support@) when ISI creates an offering or hides one; Admin > Offerings has an "ISI sync" filter for offerings awaiting review.
 New offerings are created hidden (`SYNC_NEW_OFFERINGS_ACTIVE=0`); publish from Admin > Liens formations ISI.
 `POST formations/deactivate/` hides offerings of formations deleted in ISI.
 `FormationLink` ties an ISI formation to its Offering and remembers the last values synced, so

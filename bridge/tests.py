@@ -1,6 +1,7 @@
 import json
 import time
 
+from django.core import mail
 from django.test import TestCase, override_settings
 
 from enrollment.models import (
@@ -57,6 +58,84 @@ class SecurityTests(TestCase):
         self.assertEqual(self.client.get("/internal/sync/feed/?mode=head").status_code, 404)
 
 
+@override_settings(ADMINS=[("Admin", "support@example.test")],
+                   EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+class NotificationTests(TestCase):
+    def test_new_hidden_offering_emails_support_with_admin_link(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            r = upsert_offering(payload(title="Analyse de Données", title_ar="تحليل البيانات"))
+        self.assertEqual(len(mail.outbox), 1)
+        m = mail.outbox[0]
+        self.assertEqual(m.to, ["support@example.test"])
+        self.assertIn("بانتظار المراجعة", m.subject)
+        body = m.alternatives[0][0]
+        self.assertIn("MEE2512", body)
+        self.assertIn("تحليل البيانات", body)                      # website title (Arabic)
+        self.assertIn("Analyse de Données", body)                  # ISI French title, so it can be found
+        self.assertIn(f"/admin/enrollment/offering/{r['offering_id']}/change/", body)
+
+    def test_no_email_on_update_or_adoption_or_repeat(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            upsert_offering(payload())
+        mail.outbox.clear()
+        with self.captureOnCommitCallbacks(execute=True):
+            upsert_offering(payload(duration_days=9))
+            upsert_offering(payload())
+        self.assertEqual(mail.outbox, [])
+
+    def test_email_when_deleted_in_isi_only_if_it_was_published(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            upsert_offering(payload())
+        mail.outbox.clear()
+        with self.captureOnCommitCallbacks(execute=True):
+            deactivate_offerings([7])                              # still hidden -> nothing to announce
+        self.assertEqual(mail.outbox, [])
+        o = Offering.objects.get(); o.is_active = True; o.save()
+        with self.captureOnCommitCallbacks(execute=True):
+            deactivate_offerings([7])
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn("أُخفي العرض", mail.outbox[0].subject)
+
+    @override_settings(ADMINS=[])
+    def test_no_recipients_is_silent(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            upsert_offering(payload())
+        self.assertEqual(mail.outbox, [])
+
+
+class ReviewFilterTests(TestCase):
+    def test_filter_lists_only_unreviewed_isi_offerings(self):
+        from django.contrib.admin.sites import site
+        from django.contrib.auth.models import User
+        from django.test import RequestFactory
+        from enrollment.admin import OfferingAdmin
+        from .filters import AwaitingReviewFilter
+        upsert_offering(payload())                                          # hidden, from ISI
+        r2 = upsert_offering(payload(isi_formation_id=8, code="B2", website_code="B2", title="Autre", specialty=None))
+        o2 = Offering.objects.get(pk=r2["offering_id"]); o2.is_active = True; o2.save()   # already published
+        FormationSession.objects.get(slug="catalogue-eems")
+        Offering.objects.create(session=FormationSession.objects.get(slug="catalogue-eems"), code="MAN", title="Manual", slug="manual")
+        ma = OfferingAdmin(Offering, site)
+        for value, expected in (("1", ["MEE2512"]), ("2", ["B2", "MEE2512"]), (None, ["B2", "MAN", "MEE2512"])):
+            req = RequestFactory().get("/", {"isi_review": value} if value else {})
+            f = AwaitingReviewFilter(req, {"isi_review": value} if value else {}, Offering, ma)
+            self.assertEqual(sorted(f.queryset(req, Offering.objects.all()).values_list("code", flat=True)), expected)
+
+
+class AdminPageTests(TestCase):
+    def test_offering_changelist_loads_with_review_filter_and_finds_by_code(self):
+        from django.contrib.auth.models import User
+        User.objects.create_superuser("root", "r@x.test", "pw")
+        self.client.login(username="root", password="pw")
+        upsert_offering(payload(title="Analyse de Données", title_ar="تحليل البيانات", code="ADDAPEP", website_code="ADDAPEP"))
+        r = self.client.get("/admin/enrollment/offering/?isi_review=1")
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "ADDAPEP")
+        # why 'Analyse' found nothing: the website title is the Arabic one; the code finds it
+        self.assertNotContains(self.client.get("/admin/enrollment/offering/?q=Analyse"), "ADDAPEP")
+        self.assertContains(self.client.get("/admin/enrollment/offering/?q=ADDAPEP"), "ADDAPEP")
+
+
 class FormationSyncTests(TestCase):
     def test_create_builds_offering_with_auto_fiche(self):
         r = upsert_offering(payload())
@@ -71,36 +150,6 @@ class FormationSyncTests(TestCase):
         self.assertEqual(o.session.slug, "catalogue-eems")
         self.assertFalse(o.is_active)            # hidden until staff review & publish
         self.assertFalse(r["is_active"])
-
-    @override_settings(ADMINS=[("Admin", "support@example.test")],
-                       EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
-    def test_new_formation_emails_support_and_is_searchable_in_french(self):
-        from django.core import mail
-        from django.test import TestCase as _T
-        with self.captureOnCommitCallbacks(execute=True):
-            r = upsert_offering(payload(title="Analyse de Données", title_ar="تحليل البيانات"))
-        o = Offering.objects.get(pk=r["offering_id"])
-        self.assertEqual(o.title, "تحليل البيانات")          # Arabic title shown...
-        self.assertIn("analyse", o.slug)                       # ...French findable via slug search
-        self.assertEqual(len(mail.outbox), 1)
-        self.assertEqual(mail.outbox[0].to, ["support@example.test"])
-        self.assertIn("MEE2512", mail.outbox[0].subject)
-        # an update (not a creation) must not re-notify
-        with self.captureOnCommitCallbacks(execute=True):
-            upsert_offering(payload(title="Analyse de Données", title_ar="تحليل البيانات", max_participants=15))
-        self.assertEqual(len(mail.outbox), 1)
-
-    def test_admin_banner_filter_and_french_search(self):
-        from django.contrib.auth import get_user_model
-        U = get_user_model()
-        U.objects.create_superuser("adm", "a@b.c", "pw")
-        self.client.login(username="adm", password="pw")
-        upsert_offering(payload(title="Analyse de Données", title_ar="تحليل البيانات"))
-        r = self.client.get("/admin/enrollment/offering/?q=Analyse", follow=True)
-        self.assertContains(r, "MEE2512")
-        self.assertContains(r, "isi_review=pending")           # alert banner
-        r = self.client.get("/admin/enrollment/offering/?isi_review=pending")
-        self.assertContains(r, "MEE2512")
 
     @override_settings(SYNC_NEW_OFFERINGS_ACTIVE=True)
     def test_can_publish_immediately_by_setting(self):

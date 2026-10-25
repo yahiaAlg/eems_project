@@ -15,7 +15,7 @@ from enrollment.models import FormationSession, Offering
 from pages.models import Branch, Specialty
 
 from .models import FormationLink
-from .notify import notify_new_offering
+from .notifications import notify_offering_created, notify_offering_hidden
 
 FICHE_FIELDS = (
     "description",
@@ -174,7 +174,10 @@ def upsert_offering(p):
                 last_payload=new, created_from_isi=True,
             )
             result["created"] = True
-            notify_new_offering(offering)
+            # alert staff (support@) once the transaction has really committed
+            transaction.on_commit(
+                lambda o=offering, t=(p.get("title") or ""): notify_offering_created(o, t)
+            )
     else:
         offering, old = link.offering, link.last_payload or {}
         changed = []
@@ -220,6 +223,7 @@ def deactivate_offerings(isi_ids):
         if link.offering.is_active:
             link.offering.is_active = False
             link.offering.save()
+            transaction.on_commit(lambda o=link.offering: notify_offering_hidden(o))
         # last_payload is left as ISI last sent it, so an unrelated later ISI edit
         # (is_active unchanged on ISI's side) will not silently re-publish it.
         link.deleted_in_isi = True
